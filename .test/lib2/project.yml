@@ -1,0 +1,12 @@
+name: lib2
+script:
+  sources:
+    - dir: script
+  imports:
+    - local:
+        dir: ./.test/lib1
+    - local:
+        dir: ./.test/lib3
+config:
+  sources:
+    - dir: config

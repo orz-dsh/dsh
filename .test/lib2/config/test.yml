@@ -1,0 +1,23 @@
+order: 1000
+config:
+  TestConfig:
+    string: lib2_abcd
+    map:
+      key1: lib2_value1
+      key2: lib2_value2
+    deepMap:
+      map1:
+        map2:
+          map3:
+            key1: lib2_value1
+            key2: lib2_value2
+    list:
+      - lib2_aaaa
+      - lib2_bbbb
+      - lib2_cccc
+    objectList:
+      - key: lib2_key1
+        value: lib2_value1
+    arrayList:
+      - [ lib2_1, lib2_2, lib2_3, lib2_4, lib2_5 ]
+      - [ lib2_6, lib2_7, lib2_8, lib2_9, lib2_10 ]

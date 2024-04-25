@@ -1,0 +1,7 @@
+name: lib1
+script:
+  sources:
+    - dir: script
+  imports:
+    - local:
+        dir: ./.test/lib2

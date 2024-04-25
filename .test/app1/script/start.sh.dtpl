@@ -1,0 +1,8 @@
+#!/bin/sh
+
+echo "get string: {{ .TestConfig.string }}"
+echo "get map item: {{ .TestConfig.map.key1 }}"
+echo "get deep map item: {{ .TestConfig.deepMap.map1.map2.map3.key2 }}"
+echo "get list item: {{ index .TestConfig.list 1 }}"
+echo "get object list item: {{ (index .TestConfig.objectList 0).key }}"
+echo "get array list item: {{ index (index .TestConfig.arrayList 0) 2 }}"

@@ -1,0 +1,23 @@
+order: 100
+config:
+  TestConfig:
+    string: abcd
+    map:
+      key1: value1
+      key2: value2
+    deepMap:
+      map1:
+        map2:
+          map3:
+            key1: value1
+            key2: value2
+    list:
+      - aaaa
+      - bbbb
+      - cccc
+    objectList:
+      - key: key1
+        value: value1
+    arrayList:
+      - [ 1, 2, 3, 4, 5 ]
+      - [ 6, 7, 8, 9, 10 ]

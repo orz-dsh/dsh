@@ -1,0 +1,11 @@
+name: lib4
+script:
+  sources:
+    - dir: script
+  imports:
+    - local:
+        dir: ./.test/lib2
+    - local:
+        dir: ./.test/app1
+  #    - local:
+  #        dir: ./.test/lib-err
