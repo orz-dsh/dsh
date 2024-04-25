@@ -93,7 +93,7 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-func FormatMessageBody(bodyMap map[string]interface{}) MessageBody {
+func NewMessageBody(bodyMap map[string]interface{}) MessageBody {
 	var body []string
 	for k, v := range bodyMap {
 		vStr := fmt.Sprintf("%v", v)
@@ -108,7 +108,7 @@ func NewError(title string, body map[string]interface{}) error {
 	tracer := errors.New("").(stackTracer)
 	return &Error{
 		Messages: Messages{
-			{Title: title, Body: FormatMessageBody(body)},
+			{Title: title, Body: NewMessageBody(body)},
 		},
 		Stacks: tracer.StackTrace()[1:],
 	}
@@ -118,7 +118,7 @@ func WrapError(err error, title string, body map[string]interface{}) error {
 	var err_ *Error
 	if errors.As(err, &err_) {
 		return &Error{
-			Messages: append(err_.Messages, Message{Title: title, Body: FormatMessageBody(body)}),
+			Messages: append(err_.Messages, Message{Title: title, Body: NewMessageBody(body)}),
 			Stacks:   err_.Stacks,
 			cause:    err_.cause,
 		}
@@ -126,7 +126,7 @@ func WrapError(err error, title string, body map[string]interface{}) error {
 	if tracer, ok := err.(stackTracer); ok {
 		return &Error{
 			Messages: Messages{
-				{Title: title, Body: FormatMessageBody(body)},
+				{Title: title, Body: NewMessageBody(body)},
 			},
 			Stacks: tracer.StackTrace(),
 			cause:  err,
@@ -135,7 +135,7 @@ func WrapError(err error, title string, body map[string]interface{}) error {
 	tracer := errors.WithStack(err).(stackTracer)
 	return &Error{
 		Messages: Messages{
-			{Title: title, Body: FormatMessageBody(body)},
+			{Title: title, Body: NewMessageBody(body)},
 		},
 		Stacks: tracer.StackTrace()[1:],
 		cause:  err,
