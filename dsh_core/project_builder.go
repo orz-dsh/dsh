@@ -68,7 +68,7 @@ func (builder *Builder) Build(outputPath string) (err error) {
 	if outputPath == "" {
 		outputPath = filepath.Join(builder.Project.Path, "output")
 		// TODO: build to workspace path
-		//outputPath = filepath.Join(builder.Project.Workspace.Path, "output", p.Name)
+		// outputPath = filepath.Join(builder.Project.Workspace.Path, "output", builder.Project.Name)
 	}
 
 	config, err := builder.MakeConfig()
