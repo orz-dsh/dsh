@@ -7,31 +7,42 @@ import (
 	"strings"
 )
 
-type Message struct {
+type ErrorDetail struct {
 	Title string
-	Body  MessageBody
+	Body  ErrorDetailBody
 }
 
-type MessageBody []string
+type ErrorDetailBody []string
 
-type Messages []Message
+type ErrorDetails []ErrorDetail
 
 type stackTracer interface {
 	StackTrace() errors.StackTrace
 }
 
-func (message Message) ToString(ident string) string {
-	if len(message.Body) == 0 {
-		return fmt.Sprintf("%s%s\n", ident, message.Title)
+func (detail ErrorDetail) ToString(ident string) string {
+	if len(detail.Body) == 0 {
+		return fmt.Sprintf("%s%s\n", ident, detail.Title)
 	}
-	return fmt.Sprintf("%s%s\n%s", ident, message.Title, message.Body.ToString(ident+"\t"))
+	return fmt.Sprintf("%s%s\n%s", ident, detail.Title, detail.Body.ToString(ident+"\t"))
 }
 
-func (message Message) String() string {
-	return message.ToString("")
+func (detail ErrorDetail) String() string {
+	return detail.ToString("")
 }
 
-func (body MessageBody) ToString(ident string) string {
+func NewErrorDetailBody(bodyMap map[string]interface{}) ErrorDetailBody {
+	var body []string
+	for k, v := range bodyMap {
+		vStr := fmt.Sprintf("%v", v)
+		vStr = strings.ReplaceAll(vStr, "\n", "\\n")
+		vStr = strings.ReplaceAll(vStr, "\r", "\\r")
+		body = append(body, k+" = "+vStr)
+	}
+	return body
+}
+
+func (body ErrorDetailBody) ToString(ident string) string {
 	var builder strings.Builder
 	for i := 0; i < len(body); i++ {
 		builder.WriteString(ident + body[i] + "\n")
@@ -39,29 +50,29 @@ func (body MessageBody) ToString(ident string) string {
 	return builder.String()
 }
 
-func (body MessageBody) String() string {
+func (body ErrorDetailBody) String() string {
 	return body.ToString("")
 }
 
-func (messages Messages) ToString(ident string) string {
+func (details ErrorDetails) ToString(ident string) string {
 	var builder strings.Builder
-	for i := 0; i < len(messages); i++ {
-		builder.WriteString(messages[i].ToString(ident))
+	for i := 0; i < len(details); i++ {
+		builder.WriteString(details[i].ToString(ident))
 	}
 	return builder.String()
 }
 
-func (messages Messages) String() string {
-	return messages.ToString("")
+func (details ErrorDetails) String() string {
+	return details.ToString("")
 }
 
 type Error struct {
-	Messages Messages
-	Stacks   errors.StackTrace
-	cause    error
+	Details ErrorDetails
+	Stacks  errors.StackTrace
+	cause   error
 }
 
-func (e *Error) Error() string { return e.Messages.String() }
+func (e *Error) Error() string { return e.Details.String() }
 
 func (e *Error) Cause() error { return e.cause }
 
@@ -70,8 +81,8 @@ func (e *Error) Unwrap() error { return e.cause }
 func (e *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
-		_, _ = io.WriteString(s, "\nmessages:\n")
-		_, _ = io.WriteString(s, e.Messages.ToString("\t"))
+		_, _ = io.WriteString(s, "\ndetails:\n")
+		_, _ = io.WriteString(s, e.Details.ToString("\t"))
 		if e.cause != nil {
 			_, _ = io.WriteString(s, "causes:\n")
 			causesStr := e.cause.Error()
@@ -93,22 +104,11 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-func NewMessageBody(bodyMap map[string]interface{}) MessageBody {
-	var body []string
-	for k, v := range bodyMap {
-		vStr := fmt.Sprintf("%v", v)
-		vStr = strings.ReplaceAll(vStr, "\n", "\\n")
-		vStr = strings.ReplaceAll(vStr, "\r", "\\r")
-		body = append(body, k+" = "+vStr)
-	}
-	return body
-}
-
 func NewError(title string, body map[string]interface{}) error {
 	tracer := errors.New("").(stackTracer)
 	return &Error{
-		Messages: Messages{
-			{Title: title, Body: NewMessageBody(body)},
+		Details: ErrorDetails{
+			{Title: title, Body: NewErrorDetailBody(body)},
 		},
 		Stacks: tracer.StackTrace()[1:],
 	}
@@ -118,15 +118,15 @@ func WrapError(err error, title string, body map[string]interface{}) error {
 	var err_ *Error
 	if errors.As(err, &err_) {
 		return &Error{
-			Messages: append(err_.Messages, Message{Title: title, Body: NewMessageBody(body)}),
-			Stacks:   err_.Stacks,
-			cause:    err_.cause,
+			Details: append(err_.Details, ErrorDetail{Title: title, Body: NewErrorDetailBody(body)}),
+			Stacks:  err_.Stacks,
+			cause:   err_.cause,
 		}
 	}
 	if tracer, ok := err.(stackTracer); ok {
 		return &Error{
-			Messages: Messages{
-				{Title: title, Body: NewMessageBody(body)},
+			Details: ErrorDetails{
+				{Title: title, Body: NewErrorDetailBody(body)},
 			},
 			Stacks: tracer.StackTrace(),
 			cause:  err,
@@ -134,8 +134,8 @@ func WrapError(err error, title string, body map[string]interface{}) error {
 	}
 	tracer := errors.WithStack(err).(stackTracer)
 	return &Error{
-		Messages: Messages{
-			{Title: title, Body: NewMessageBody(body)},
+		Details: ErrorDetails{
+			{Title: title, Body: NewErrorDetailBody(body)},
 		},
 		Stacks: tracer.StackTrace()[1:],
 		cause:  err,
