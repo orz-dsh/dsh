@@ -60,7 +60,7 @@ func (project *Project) LoadImports(scope ImportScope) error {
 
 func (project *Project) BuildScriptSources(config map[string]interface{}, funcs template.FuncMap, outputPath string) error {
 	projectOutputPath := filepath.Join(outputPath, project.Name)
-	return project.Script.SourceContainer.BuildSources(config, funcs, projectOutputPath)
+	return project.Script.SourceContainer.BuildSources(project.Workspace.Logger, config, funcs, projectOutputPath)
 }
 
 func (project *Project) LoadConfigSources() error {

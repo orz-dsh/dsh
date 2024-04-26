@@ -9,6 +9,7 @@ import (
 
 type Workspace struct {
 	Path           string
+	Logger         *dsh_utils.Logger
 	ProjectPathMap map[string]*Project
 	ProjectNameMap map[string]*Project
 }
@@ -23,9 +24,12 @@ func GetWorkspaceDefaultPath() string {
 	return filepath.Join(os.TempDir(), "dsh")
 }
 
-func LoadWorkspace(path string) (workspace *Workspace, err error) {
+func LoadWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace, err error) {
 	if path == "" {
 		path = GetWorkspaceDefaultPath()
+	}
+	if logger == nil {
+		logger = dsh_utils.NewLogger(dsh_utils.LogLevelAll)
 	}
 	path, err = filepath.Abs(path)
 	if err != nil {
@@ -33,6 +37,7 @@ func LoadWorkspace(path string) (workspace *Workspace, err error) {
 			"path": path,
 		})
 	}
+	logger.Info("load workspace: path=%s", path)
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		return nil, dsh_utils.WrapError(err, "workspace dir make failed", map[string]interface{}{
@@ -41,6 +46,7 @@ func LoadWorkspace(path string) (workspace *Workspace, err error) {
 	}
 	workspace = &Workspace{
 		Path:           path,
+		Logger:         logger,
 		ProjectPathMap: make(map[string]*Project),
 		ProjectNameMap: make(map[string]*Project),
 	}
@@ -54,24 +60,25 @@ func (w *Workspace) LoadLocalProject(path string) (project *Project, err error) 
 		})
 	}
 
-	projectPath, err := filepath.Abs(path)
+	path, err = filepath.Abs(path)
 	if err != nil {
 		return nil, dsh_utils.WrapError(err, "project abs-path get failed", map[string]interface{}{
 			"path": path,
 		})
 	}
 
-	if project, exist := w.ProjectPathMap[projectPath]; exist {
+	if project, exist := w.ProjectPathMap[path]; exist {
 		return project, nil
 	}
 
-	project = NewProject(w, projectPath)
+	w.Logger.Info("load project: path=%s", path)
+	project = NewProject(w, path)
 
 	var setups []func() error
 
-	manifestYamlPath := filepath.Join(projectPath, "project.yml")
+	manifestYamlPath := filepath.Join(path, "project.yml")
 	if !dsh_utils.IsFileExists(manifestYamlPath) {
-		manifestYamlPath = filepath.Join(projectPath, "project.yaml")
+		manifestYamlPath = filepath.Join(path, "project.yaml")
 		if !dsh_utils.IsFileExists(manifestYamlPath) {
 			manifestYamlPath = ""
 		}
@@ -80,13 +87,13 @@ func (w *Workspace) LoadLocalProject(path string) (project *Project, err error) 
 		manifest := &Manifest{}
 		if err = manifest.LoadYaml(manifestYamlPath); err != nil {
 			return nil, dsh_utils.WrapError(err, "project manifest load failed", map[string]interface{}{
-				"projectPath":      projectPath,
+				"path":             path,
 				"manifestYamlPath": manifestYamlPath,
 			})
 		}
 		if err = manifest.PreCheck(project); err != nil {
 			return nil, dsh_utils.WrapError(err, "project manifest pre-check failed", map[string]interface{}{
-				"projectPath":      projectPath,
+				"path":             path,
 				"manifestYamlPath": manifestYamlPath,
 			})
 		}
@@ -95,7 +102,7 @@ func (w *Workspace) LoadLocalProject(path string) (project *Project, err error) 
 		})
 	} else {
 		return nil, dsh_utils.NewError("project manifest file not found", map[string]interface{}{
-			"projectPath": projectPath,
+			"path": path,
 		})
 	}
 

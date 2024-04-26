@@ -4,6 +4,7 @@ import (
 	"dsh/dsh_utils"
 	"fmt"
 	"path/filepath"
+	"time"
 )
 
 type Builder struct {
@@ -40,6 +41,9 @@ func (builder *Builder) MakeConfig() (map[string]interface{}, error) {
 		return builder.Config, nil
 	}
 
+	startTime := time.Now()
+	builder.Project.Workspace.Logger.Info("make config start")
+
 	sources, err := builder.ConfigImportContainer.LoadConfigSources()
 	if err != nil {
 		return nil, err
@@ -54,10 +58,13 @@ func (builder *Builder) MakeConfig() (map[string]interface{}, error) {
 
 	builder.Config = config
 	builder.ConfigMade = true
+	builder.Project.Workspace.Logger.Info("make config finish: elapsed=%s", time.Since(startTime))
 	return builder.Config, nil
 }
 
 func (builder *Builder) Build(outputPath string) (err error) {
+	startTime := time.Now()
+	builder.Project.Workspace.Logger.Info("build start")
 	if outputPath == "" {
 		outputPath = filepath.Join(builder.Project.Path, "output")
 		// TODO: build to workspace path
@@ -78,5 +85,6 @@ func (builder *Builder) Build(outputPath string) (err error) {
 		return err
 	}
 
+	builder.Project.Workspace.Logger.Info("build finish: elapsed=%s", time.Since(startTime))
 	return nil
 }

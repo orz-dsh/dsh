@@ -2,9 +2,9 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"fmt"
 	"path/filepath"
 	"text/template"
+	"time"
 )
 
 type Script struct {
@@ -92,16 +92,17 @@ func (sc *ScriptSourceContainer) ScanSources(sourceDir string, includeFiles []st
 	return nil
 }
 
-func (sc *ScriptSourceContainer) BuildSources(config map[string]interface{}, funcs template.FuncMap, outputPath string) (err error) {
+func (sc *ScriptSourceContainer) BuildSources(logger *dsh_utils.Logger, config map[string]interface{}, funcs template.FuncMap, outputPath string) (err error) {
 	for i := 0; i < len(sc.PlainSources); i++ {
+		startTime := time.Now()
 		source := sc.PlainSources[i]
 		outputTargetPath := filepath.Join(outputPath, source.SourceName)
-		// TODO: logging
-		fmt.Printf("copy %s to %s\n", source.SourcePath, outputTargetPath)
+		logger.Info("build script start: source=%s, target=%s", source.SourcePath, outputTargetPath)
 		err = dsh_utils.LinkOrCopyFile(source.SourcePath, outputTargetPath)
 		if err != nil {
 			return err
 		}
+		logger.Info("build script finish: elapsed=%s", time.Since(startTime))
 	}
 
 	var templateLibSourcePaths []string
@@ -109,13 +110,14 @@ func (sc *ScriptSourceContainer) BuildSources(config map[string]interface{}, fun
 		templateLibSourcePaths = append(templateLibSourcePaths, sc.TemplateLibSources[i].SourcePath)
 	}
 	for i := 0; i < len(sc.TemplateSources); i++ {
+		startTime := time.Now()
 		source := sc.TemplateSources[i]
 		outputTargetPath := filepath.Join(outputPath, source.SourceName)
-		// TODO: logging
-		fmt.Printf("generate %s to %s\n", source.SourcePath, outputTargetPath)
+		logger.Info("build script start: source=%s, target=%s", source.SourcePath, outputTargetPath)
 		if err = BuildTemplate(config, funcs, source.SourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
 			return err
 		}
+		logger.Info("build script finish: elapsed=%s", time.Since(startTime))
 	}
 
 	return nil

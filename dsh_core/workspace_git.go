@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type GitRefType string
@@ -57,14 +58,18 @@ func (w *Workspace) DownloadGitProject(projectPath string, rawUrl string, parsed
 	}
 	repo, err := git.PlainOpen(projectPath)
 	if errors.Is(err, git.ErrRepositoryNotExists) {
-		repo, err = git.PlainClone(projectPath, false, &git.CloneOptions{
+		startTime := time.Now()
+		w.Logger.Info("clone project start: path=%s, url=%s, ref=%s", projectPath, rawUrl, rawRef)
+		cloneOptions := &git.CloneOptions{
 			URL:           rawUrl,
 			ReferenceName: parsedRef.ReferenceName,
 			SingleBranch:  true,
 			Depth:         1,
-			// TODO: logging
-			Progress: os.Stdout,
-		})
+		}
+		if w.Logger.IsDebugEnabled() {
+			cloneOptions.Progress = w.Logger.GetDebugWriter()
+		}
+		repo, err = git.PlainClone(projectPath, false, cloneOptions)
 		if err != nil {
 			return dsh_utils.WrapError(err, "git clone failed", map[string]interface{}{
 				"url":         rawUrl,
@@ -72,6 +77,7 @@ func (w *Workspace) DownloadGitProject(projectPath string, rawUrl string, parsed
 				"projectPath": projectPath,
 			})
 		}
+		w.Logger.Info("clone project finish: elapsed=%s", time.Since(startTime))
 	} else if err != nil {
 		return dsh_utils.WrapError(err, "git open failed", map[string]interface{}{
 			"url":         rawUrl,
@@ -79,6 +85,8 @@ func (w *Workspace) DownloadGitProject(projectPath string, rawUrl string, parsed
 			"projectPath": projectPath,
 		})
 	} else {
+		startTime := time.Now()
+		w.Logger.Info("pull project start: path=%s, url=%s, ref=%s", projectPath, rawUrl, rawRef)
 		worktree, err := repo.Worktree()
 		if err != nil {
 			return dsh_utils.WrapError(err, "git worktree get failed", map[string]interface{}{
@@ -107,13 +115,15 @@ func (w *Workspace) DownloadGitProject(projectPath string, rawUrl string, parsed
 				"projectPath": projectPath,
 			})
 		}
-		err = worktree.Pull(&git.PullOptions{
+		pullOptions := &git.PullOptions{
 			ReferenceName: parsedRef.ReferenceName,
 			SingleBranch:  true,
 			Depth:         1,
-			// TODO: logging
-			Progress: os.Stdout,
-		})
+		}
+		if w.Logger.IsDebugEnabled() {
+			pullOptions.Progress = w.Logger.GetDebugWriter()
+		}
+		err = worktree.Pull(pullOptions)
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 			return dsh_utils.WrapError(err, "git worktree pull failed", map[string]interface{}{
 				"url":         rawUrl,
@@ -121,6 +131,7 @@ func (w *Workspace) DownloadGitProject(projectPath string, rawUrl string, parsed
 				"projectPath": projectPath,
 			})
 		}
+		w.Logger.Info("pull project finish: elapsed=%s", time.Since(startTime))
 	}
 	return nil
 }

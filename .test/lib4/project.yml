@@ -7,5 +7,8 @@ script:
         dir: ./.test/lib2
     - local:
         dir: ./.test/app1
-  #    - local:
-  #        dir: ./.test/lib-err
+#    - local:
+#        dir: ./.test/lib-err
+#    - git:
+#        url: https://github.com/orz-dsh/dsh
+#        ref: main
