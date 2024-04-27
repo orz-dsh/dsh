@@ -2,76 +2,77 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
+	"fmt"
 	"regexp"
 )
 
-type ProjectInfo struct {
-	Path         string
-	Name         string
-	ManifestPath string
-	ManifestType ProjectManifestType
-	Manifest     *ProjectManifest
+type projectInfo struct {
+	path         string
+	name         string
+	manifestPath string
+	manifestType projectManifestType
+	manifest     *projectManifest
 }
 
-type ProjectManifest struct {
+type projectManifest struct {
 	Name    string
-	Runtime ProjectManifestRuntime
-	Option  ProjectManifestOption
-	Script  ProjectManifestScript
-	Config  ProjectManifestConfig
+	Runtime projectManifestRuntime
+	Option  projectManifestOption
+	Script  projectManifestScript
+	Config  projectManifestConfig
 }
 
-type ProjectManifestRuntime struct {
+type projectManifestRuntime struct {
 	MinVersion dsh_utils.Version `yaml:"minVersion" toml:"minVersion" json:"minVersion"`
 	MaxVersion dsh_utils.Version `yaml:"maxVersion" toml:"maxVersion" json:"maxVersion"`
 }
 
-type ProjectManifestOption struct {
-	Items []ProjectManifestOptionItem
+type projectManifestOption struct {
+	Items []projectManifestOptionItem
 }
 
-type ProjectManifestOptionItem struct {
+type projectManifestOptionItem struct {
 	Name string
 }
 
-type ProjectManifestScript struct {
-	Sources []ProjectManifestSource
-	Imports []ProjectManifestImport
+type projectManifestScript struct {
+	Sources []projectManifestSource
+	Imports []projectManifestImport
 }
 
-type ProjectManifestConfig struct {
-	Sources []ProjectManifestSource
-	Imports []ProjectManifestImport
+type projectManifestConfig struct {
+	Sources []projectManifestSource
+	Imports []projectManifestImport
 }
 
-type ProjectManifestSource struct {
+type projectManifestSource struct {
 	Dir   string
 	Files []string
 }
 
-type ProjectManifestImport struct {
-	Local *ProjectManifestImportLocal
-	Git   *ProjectManifestImportGit
+type projectManifestImport struct {
+	Local *projectManifestImportLocal
+	Git   *projectManifestImportGit
 }
 
-type ProjectManifestImportLocal struct {
+type projectManifestImportLocal struct {
 	Dir string
 }
 
-type ProjectManifestImportGit struct {
+type projectManifestImportGit struct {
 	Url string
 	Ref string
 }
 
-type ProjectManifestType string
+type projectManifestType string
 
 const (
-	ProjectManifestTypeYaml ProjectManifestType = "yaml"
-	ProjectManifestTypeToml ProjectManifestType = "toml"
-	ProjectManifestTypeJson ProjectManifestType = "json"
+	projectManifestTypeYaml projectManifestType = "yaml"
+	projectManifestTypeToml projectManifestType = "toml"
+	projectManifestTypeJson projectManifestType = "json"
 )
 
-func LoadProjectInfo(workspace *Workspace, path string) (project *ProjectInfo, err error) {
+func loadProjectInfo(workspace *Workspace, path string) (project *projectInfo, err error) {
 	manifestPath, manifestFileType := dsh_utils.SelectFile(path, []string{
 		"project.yml",
 		"project.yaml",
@@ -87,43 +88,42 @@ func LoadProjectInfo(workspace *Workspace, path string) (project *ProjectInfo, e
 			"path": path,
 		})
 	}
-	var manifestType ProjectManifestType
-	manifest := &ProjectManifest{}
+	var manifestType projectManifestType
+	manifest := &projectManifest{}
 	switch manifestFileType {
 	case dsh_utils.FileTypeYaml:
-		manifestType = ProjectManifestTypeYaml
+		manifestType = projectManifestTypeYaml
 		if err = dsh_utils.ReadYamlFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
 	case dsh_utils.FileTypeToml:
-		manifestType = ProjectManifestTypeToml
+		manifestType = projectManifestTypeToml
 		if err = dsh_utils.ReadTomlFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
 	case dsh_utils.FileTypeJson:
-		manifestType = ProjectManifestTypeJson
+		manifestType = projectManifestTypeJson
 		if err = dsh_utils.ReadJsonFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
 	default:
-		workspace.Logger.Panic("project manifest file type not supported: path=%s, type=%s", manifestPath, manifestFileType)
-		return nil, nil
+		panic(fmt.Sprintf("project manifest file type not supported: path=%s, type=%s", manifestPath, manifestFileType))
 	}
-	project = &ProjectInfo{
-		Path:         path,
-		ManifestPath: manifestPath,
-		ManifestType: manifestType,
-		Manifest:     manifest,
+	project = &projectInfo{
+		path:         path,
+		manifestPath: manifestPath,
+		manifestType: manifestType,
+		manifest:     manifest,
 	}
-	if err = project.Check(); err != nil {
+	if err = project.check(); err != nil {
 		return nil, err
 	}
-	project.Name = project.Manifest.Name
+	project.name = project.manifest.Name
 	return project, nil
 }
 
-func (info *ProjectInfo) Check() (err error) {
-	manifest := info.Manifest
+func (info *projectInfo) check() (err error) {
+	manifest := info.manifest
 
 	err = dsh_utils.CheckRuntimeVersion(manifest.Runtime.MinVersion, manifest.Runtime.MaxVersion)
 	if err != nil {
@@ -132,14 +132,14 @@ func (info *ProjectInfo) Check() (err error) {
 
 	if manifest.Name == "" {
 		return dsh_utils.NewError("project manifest invalid", map[string]any{
-			"manifestPath": info.ManifestPath,
+			"manifestPath": info.manifestPath,
 			"field":        "name",
 			"reason":       "name is empty",
 		})
 	}
 	if matched, _ := regexp.MatchString("^[a-z][a-z0-9_]*$", manifest.Name); !matched {
 		return dsh_utils.NewError("project manifest invalid", map[string]any{
-			"manifestPath": info.ManifestPath,
+			"manifestPath": info.manifestPath,
 			"field":        "name",
 			"reason":       "name is invalid: " + manifest.Name,
 		})
@@ -149,7 +149,7 @@ func (info *ProjectInfo) Check() (err error) {
 		src := manifest.Script.Sources[i]
 		if src.Dir == "" {
 			return dsh_utils.NewError("project manifest invalid", map[string]any{
-				"manifestPath": info.ManifestPath,
+				"manifestPath": info.manifestPath,
 				"field":        "script.sources",
 				"reason":       "dir is empty",
 			})
@@ -159,20 +159,20 @@ func (info *ProjectInfo) Check() (err error) {
 		imp := manifest.Script.Imports[i]
 		if imp.Local == nil && imp.Git == nil {
 			return dsh_utils.NewError("project manifest invalid", map[string]any{
-				"manifestPath": info.ManifestPath,
+				"manifestPath": info.manifestPath,
 				"field":        "script.imports",
 				"reason":       "local and git are both nil",
 			})
 		} else if imp.Local != nil && imp.Git != nil {
 			return dsh_utils.NewError("project manifest invalid", map[string]any{
-				"manifestPath": info.ManifestPath,
+				"manifestPath": info.manifestPath,
 				"field":        "script.imports",
 				"reason":       "local and git are both not nil",
 			})
 		} else if imp.Local != nil {
 			if imp.Local.Dir == "" {
 				return dsh_utils.NewError("project manifest invalid", map[string]any{
-					"manifestPath": info.ManifestPath,
+					"manifestPath": info.manifestPath,
 					"field":        "script.imports.local",
 					"reason":       "dir is empty",
 				})
@@ -180,7 +180,7 @@ func (info *ProjectInfo) Check() (err error) {
 		} else if imp.Git != nil {
 			if imp.Git.Url == "" || imp.Git.Ref == "" {
 				return dsh_utils.NewError("project manifest invalid", map[string]any{
-					"manifestPath": info.ManifestPath,
+					"manifestPath": info.manifestPath,
 					"field":        "script.imports.git",
 					"reason":       "url or ref is empty",
 				})
@@ -191,7 +191,7 @@ func (info *ProjectInfo) Check() (err error) {
 		src := manifest.Config.Sources[i]
 		if src.Dir == "" {
 			return dsh_utils.NewError("project manifest invalid", map[string]any{
-				"manifestPath": info.ManifestPath,
+				"manifestPath": info.manifestPath,
 				"field":        "config.sources",
 				"reason":       "dir is empty",
 			})
@@ -201,20 +201,20 @@ func (info *ProjectInfo) Check() (err error) {
 		imp := manifest.Config.Imports[i]
 		if imp.Local == nil && imp.Git == nil {
 			return dsh_utils.NewError("project manifest invalid", map[string]any{
-				"manifestPath": info.ManifestPath,
+				"manifestPath": info.manifestPath,
 				"field":        "config.imports",
 				"reason":       "local and git are both nil",
 			})
 		} else if imp.Local != nil && imp.Git != nil {
 			return dsh_utils.NewError("project manifest invalid", map[string]any{
-				"manifestPath": info.ManifestPath,
+				"manifestPath": info.manifestPath,
 				"field":        "config.imports",
 				"reason":       "local and git are both not nil",
 			})
 		} else if imp.Local != nil {
 			if imp.Local.Dir == "" {
 				return dsh_utils.NewError("project manifest invalid", map[string]any{
-					"manifestPath": info.ManifestPath,
+					"manifestPath": info.manifestPath,
 					"field":        "config.imports.local",
 					"reason":       "dir is empty",
 				})
@@ -222,7 +222,7 @@ func (info *ProjectInfo) Check() (err error) {
 		} else if imp.Git != nil {
 			if imp.Git.Url == "" || imp.Git.Ref == "" {
 				return dsh_utils.NewError("project manifest invalid", map[string]any{
-					"manifestPath": info.ManifestPath,
+					"manifestPath": info.manifestPath,
 					"field":        "config.imports.git",
 					"reason":       "url or ref is empty",
 				})

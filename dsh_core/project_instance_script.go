@@ -7,35 +7,35 @@ import (
 	"time"
 )
 
-type ProjectInstanceScript struct {
-	SourceContainer *ProjectInstanceScriptSourceContainer
-	ImportContainer *ProjectInstanceImportShallowContainer
+type projectInstanceScript struct {
+	sourceContainer *projectInstanceScriptSourceContainer
+	importContainer *projectInstanceImportShallowContainer
 }
 
-type ProjectInstanceScriptSource struct {
-	SourcePath string
-	SourceName string
+type projectInstanceScriptSource struct {
+	sourcePath string
+	sourceName string
 }
 
-type ProjectInstanceScriptSourceContainer struct {
-	Context            *Context
-	SourceNameMap      map[string]*ProjectInstanceScriptSource
-	PlainSources       []*ProjectInstanceScriptSource
-	TemplateSources    []*ProjectInstanceScriptSource
-	TemplateLibSources []*ProjectInstanceScriptSource
+type projectInstanceScriptSourceContainer struct {
+	context            *Context
+	sourceNameMap      map[string]*projectInstanceScriptSource
+	plainSources       []*projectInstanceScriptSource
+	templateSources    []*projectInstanceScriptSource
+	templateLibSources []*projectInstanceScriptSource
 }
 
-func NewProjectInstanceScript(context *Context) *ProjectInstanceScript {
-	return &ProjectInstanceScript{
-		SourceContainer: &ProjectInstanceScriptSourceContainer{
-			Context:       context,
-			SourceNameMap: make(map[string]*ProjectInstanceScriptSource),
+func newProjectInstanceScript(context *Context) *projectInstanceScript {
+	return &projectInstanceScript{
+		sourceContainer: &projectInstanceScriptSourceContainer{
+			context:       context,
+			sourceNameMap: make(map[string]*projectInstanceScriptSource),
 		},
-		ImportContainer: NewShallowImportContainer(context, ProjectInstanceImportScopeScript),
+		importContainer: newProjectInstanceImportShallowContainer(context, projectInstanceImportScopeScript),
 	}
 }
 
-func (container *ProjectInstanceScriptSourceContainer) ScanSources(sourceDir string, includeFiles []string) error {
+func (container *projectInstanceScriptSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
 	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypePlain,
 		dsh_utils.FileTypeTemplate,
@@ -47,62 +47,62 @@ func (container *ProjectInstanceScriptSourceContainer) ScanSources(sourceDir str
 	for j := 0; j < len(filePaths); j++ {
 		filePath := filePaths[j]
 		fileType := fileTypes[j]
-		source := &ProjectInstanceScriptSource{
-			SourcePath: filepath.Join(sourceDir, filePaths[j]),
-			SourceName: filePath,
+		source := &projectInstanceScriptSource{
+			sourcePath: filepath.Join(sourceDir, filePaths[j]),
+			sourceName: filePath,
 		}
 		if fileType == dsh_utils.FileTypeTemplate {
-			source.SourceName = source.SourceName[:len(source.SourceName)-len(".dtpl")]
+			source.sourceName = source.sourceName[:len(source.sourceName)-len(".dtpl")]
 		}
-		if existSource, exist := container.SourceNameMap[source.SourceName]; exist {
-			if existSource.SourcePath == source.SourcePath {
+		if existSource, exist := container.sourceNameMap[source.sourceName]; exist {
+			if existSource.sourcePath == source.sourcePath {
 				continue
 			}
 			return dsh_utils.NewError("script source name is duplicated", map[string]any{
-				"sourceName":  source.SourceName,
-				"sourcePath1": source.SourcePath,
-				"sourcePath2": existSource.SourcePath,
+				"sourceName":  source.sourceName,
+				"sourcePath1": source.sourcePath,
+				"sourcePath2": existSource.sourcePath,
 			})
 		}
-		container.SourceNameMap[source.SourceName] = source
+		container.sourceNameMap[source.sourceName] = source
 		switch fileType {
 		case dsh_utils.FileTypePlain:
-			container.PlainSources = append(container.PlainSources, source)
+			container.plainSources = append(container.plainSources, source)
 		case dsh_utils.FileTypeTemplate:
-			container.TemplateSources = append(container.TemplateSources, source)
+			container.templateSources = append(container.templateSources, source)
 		case dsh_utils.FileTypeTemplateLib:
-			container.TemplateLibSources = append(container.TemplateLibSources, source)
+			container.templateLibSources = append(container.templateLibSources, source)
 		}
 	}
 	return nil
 }
 
-func (container *ProjectInstanceScriptSourceContainer) BuildSources(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
-	for i := 0; i < len(container.PlainSources); i++ {
+func (container *projectInstanceScriptSourceContainer) buildSources(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
+	for i := 0; i < len(container.plainSources); i++ {
 		startTime := time.Now()
-		source := container.PlainSources[i]
-		outputTargetPath := filepath.Join(outputPath, source.SourceName)
-		container.Context.Logger.Info("build script start: source=%s, target=%s", source.SourcePath, outputTargetPath)
-		err = dsh_utils.LinkOrCopyFile(source.SourcePath, outputTargetPath)
+		source := container.plainSources[i]
+		outputTargetPath := filepath.Join(outputPath, source.sourceName)
+		container.context.Logger.Info("build script start: source=%s, target=%s", source.sourcePath, outputTargetPath)
+		err = dsh_utils.LinkOrCopyFile(source.sourcePath, outputTargetPath)
 		if err != nil {
 			return err
 		}
-		container.Context.Logger.Info("build script finish: elapsed=%s", time.Since(startTime))
+		container.context.Logger.Info("build script finish: elapsed=%s", time.Since(startTime))
 	}
 
 	var templateLibSourcePaths []string
-	for i := 0; i < len(container.TemplateLibSources); i++ {
-		templateLibSourcePaths = append(templateLibSourcePaths, container.TemplateLibSources[i].SourcePath)
+	for i := 0; i < len(container.templateLibSources); i++ {
+		templateLibSourcePaths = append(templateLibSourcePaths, container.templateLibSources[i].sourcePath)
 	}
-	for i := 0; i < len(container.TemplateSources); i++ {
+	for i := 0; i < len(container.templateSources); i++ {
 		startTime := time.Now()
-		source := container.TemplateSources[i]
-		outputTargetPath := filepath.Join(outputPath, source.SourceName)
-		container.Context.Logger.Info("build script start: source=%s, target=%s", source.SourcePath, outputTargetPath)
-		if err = BuildTemplate(config, funcs, source.SourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
+		source := container.templateSources[i]
+		outputTargetPath := filepath.Join(outputPath, source.sourceName)
+		container.context.Logger.Info("build script start: source=%s, target=%s", source.sourcePath, outputTargetPath)
+		if err = buildTemplate(config, funcs, source.sourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
 			return err
 		}
-		container.Context.Logger.Info("build script finish: elapsed=%s", time.Since(startTime))
+		container.context.Logger.Info("build script finish: elapsed=%s", time.Since(startTime))
 	}
 
 	return nil

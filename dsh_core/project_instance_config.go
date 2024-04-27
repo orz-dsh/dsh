@@ -6,48 +6,48 @@ import (
 	"path/filepath"
 )
 
-type ProjectInstanceConfig struct {
-	SourceContainer *ProjectInstanceConfigSourceContainer
-	ImportContainer *ProjectInstanceImportShallowContainer
+type projectInstanceConfig struct {
+	sourceContainer *projectInstanceConfigSourceContainer
+	importContainer *projectInstanceImportShallowContainer
 }
 
-type ProjectInstanceConfigSource struct {
-	SourcePath string
-	SourceName string
-	SourceType ProjectInstanceConfigSourceType
-	Content    *ProjectInstanceConfigSourceContent
+type projectInstanceConfigSource struct {
+	sourcePath string
+	sourceName string
+	sourceType projectInstanceConfigSourceType
+	content    *projectInstanceConfigSourceContent
 }
 
-type ProjectInstanceConfigSourceContainer struct {
-	Context       *Context
-	SourceNameMap map[string]*ProjectInstanceConfigSource
-	Sources       []*ProjectInstanceConfigSource
+type projectInstanceConfigSourceContainer struct {
+	context       *Context
+	sourceNameMap map[string]*projectInstanceConfigSource
+	sources       []*projectInstanceConfigSource
 }
 
-type ProjectInstanceConfigSourceContent struct {
+type projectInstanceConfigSourceContent struct {
 	Order  int64
 	Config map[string]any
 }
 
-type ProjectInstanceConfigSourceType string
+type projectInstanceConfigSourceType string
 
 const (
-	ProjectInstanceConfigSourceTypeYaml ProjectInstanceConfigSourceType = "yaml"
-	ProjectInstanceConfigSourceTypeToml ProjectInstanceConfigSourceType = "toml"
-	ProjectInstanceConfigSourceTypeJson ProjectInstanceConfigSourceType = "json"
+	projectInstanceConfigSourceTypeYaml projectInstanceConfigSourceType = "yaml"
+	projectInstanceConfigSourceTypeToml projectInstanceConfigSourceType = "toml"
+	projectInstanceConfigSourceTypeJson projectInstanceConfigSourceType = "json"
 )
 
-func NewProjectInstanceConfig(context *Context) *ProjectInstanceConfig {
-	return &ProjectInstanceConfig{
-		SourceContainer: &ProjectInstanceConfigSourceContainer{
-			Context:       context,
-			SourceNameMap: make(map[string]*ProjectInstanceConfigSource),
+func newProjectInstanceConfig(context *Context) *projectInstanceConfig {
+	return &projectInstanceConfig{
+		sourceContainer: &projectInstanceConfigSourceContainer{
+			context:       context,
+			sourceNameMap: make(map[string]*projectInstanceConfigSource),
 		},
-		ImportContainer: NewShallowImportContainer(context, ProjectInstanceImportScopeConfig),
+		importContainer: newProjectInstanceImportShallowContainer(context, projectInstanceImportScopeConfig),
 	}
 }
 
-func (container *ProjectInstanceConfigSourceContainer) ScanSources(sourceDir string, includeFiles []string) error {
+func (container *projectInstanceConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
 	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypeYaml,
 		dsh_utils.FileTypeToml,
@@ -59,76 +59,69 @@ func (container *ProjectInstanceConfigSourceContainer) ScanSources(sourceDir str
 	for i := 0; i < len(filePaths); i++ {
 		filePath := filePaths[i]
 		fileType := fileTypes[i]
-		var sourceType ProjectInstanceConfigSourceType
+		var sourceType projectInstanceConfigSourceType
 		switch fileType {
 		case dsh_utils.FileTypeYaml:
-			sourceType = ProjectInstanceConfigSourceTypeYaml
+			sourceType = projectInstanceConfigSourceTypeYaml
 		case dsh_utils.FileTypeToml:
-			sourceType = ProjectInstanceConfigSourceTypeToml
+			sourceType = projectInstanceConfigSourceTypeToml
 		case dsh_utils.FileTypeJson:
-			sourceType = ProjectInstanceConfigSourceTypeJson
+			sourceType = projectInstanceConfigSourceTypeJson
 		default:
-			container.Context.Logger.Panic("unsupported config source type", map[string]any{
-				"filePath": filePath,
-				"fileType": fileType,
-			})
-			continue
+			panic(fmt.Sprintf("unsupported config source type: filePath=%s, fileType=%s", filePath, fileType))
 		}
-		source := &ProjectInstanceConfigSource{
-			SourcePath: filepath.Join(sourceDir, filePath),
-			SourceName: dsh_utils.RemoveFileExt(filePath),
-			SourceType: sourceType,
+		source := &projectInstanceConfigSource{
+			sourcePath: filepath.Join(sourceDir, filePath),
+			sourceName: dsh_utils.RemoveFileExt(filePath),
+			sourceType: sourceType,
 		}
-		if existSource, exist := container.SourceNameMap[source.SourcePath]; exist {
-			if existSource.SourcePath == source.SourcePath {
+		if existSource, exist := container.sourceNameMap[source.sourcePath]; exist {
+			if existSource.sourcePath == source.sourcePath {
 				continue
 			}
 			return dsh_utils.NewError("config source name is duplicated", map[string]any{
-				"sourceName":  source.SourceName,
-				"sourcePath1": source.SourcePath,
-				"sourcePath2": existSource.SourcePath,
+				"sourceName":  source.sourceName,
+				"sourcePath1": source.sourcePath,
+				"sourcePath2": existSource.sourcePath,
 			})
 		}
-		container.SourceNameMap[source.SourceName] = source
-		container.Sources = append(container.Sources, source)
+		container.sourceNameMap[source.sourceName] = source
+		container.sources = append(container.sources, source)
 	}
 	return nil
 }
 
-func (container *ProjectInstanceConfigSourceContainer) LoadSources() (err error) {
-	for i := 0; i < len(container.Sources); i++ {
-		source := container.Sources[i]
-		if source.Content == nil {
-			content := &ProjectInstanceConfigSourceContent{}
-			if source.SourceType == ProjectInstanceConfigSourceTypeYaml {
-				if err = dsh_utils.ReadYamlFile(source.SourcePath, content); err != nil {
+func (container *projectInstanceConfigSourceContainer) loadSources() (err error) {
+	for i := 0; i < len(container.sources); i++ {
+		source := container.sources[i]
+		if source.content == nil {
+			content := &projectInstanceConfigSourceContent{}
+			if source.sourceType == projectInstanceConfigSourceTypeYaml {
+				if err = dsh_utils.ReadYamlFile(source.sourcePath, content); err != nil {
 					return err
 				}
-			} else if source.SourceType == ProjectInstanceConfigSourceTypeToml {
-				if err = dsh_utils.ReadTomlFile(source.SourcePath, content); err != nil {
+			} else if source.sourceType == projectInstanceConfigSourceTypeToml {
+				if err = dsh_utils.ReadTomlFile(source.sourcePath, content); err != nil {
 					return err
 				}
-			} else if source.SourceType == ProjectInstanceConfigSourceTypeJson {
-				if err = dsh_utils.ReadJsonFile(source.SourcePath, content); err != nil {
+			} else if source.sourceType == projectInstanceConfigSourceTypeJson {
+				if err = dsh_utils.ReadJsonFile(source.sourcePath, content); err != nil {
 					return err
 				}
 			} else {
-				container.Context.Logger.Panic("unsupported config source type", map[string]any{
-					"sourcePath": source.SourcePath,
-				})
-				return nil
+				panic(fmt.Sprintf("unsupported config source type: sourcePath=%s", source.sourcePath))
 			}
-			source.Content = content
+			source.content = content
 		}
 	}
 	return nil
 }
 
-func (content *ProjectInstanceConfigSourceContent) Merge(target map[string]any) {
-	MergeMap(target, content.Config)
+func (content *projectInstanceConfigSourceContent) merge(target map[string]any) {
+	mergeMap(target, content.Config)
 }
 
-func MergeMap(target map[string]any, source map[string]any) map[string]any {
+func mergeMap(target map[string]any, source map[string]any) map[string]any {
 	if target == nil {
 		target = make(map[string]any)
 	}
@@ -141,7 +134,7 @@ func MergeMap(target map[string]any, source map[string]any) map[string]any {
 				}
 				tm = make(map[string]any)
 			}
-			target[k] = MergeMap(tm, m)
+			target[k] = mergeMap(tm, m)
 		} else if a, ok := v.([]any); ok {
 			ta, tok := target[k].([]any)
 			if !tok {
@@ -150,7 +143,7 @@ func MergeMap(target map[string]any, source map[string]any) map[string]any {
 				}
 				ta = make([]any, 0)
 			}
-			target[k] = MergeArray(ta, a)
+			target[k] = mergeArray(ta, a)
 		} else {
 			target[k] = v
 		}
@@ -158,13 +151,13 @@ func MergeMap(target map[string]any, source map[string]any) map[string]any {
 	return target
 }
 
-func MergeArray(target []any, source []any) []any {
+func mergeArray(target []any, source []any) []any {
 	for i := 0; i < len(source); i++ {
 		v := source[i]
 		if m, ok := v.(map[string]any); ok {
-			target = append(target, MergeMap(make(map[string]any), m))
+			target = append(target, mergeMap(make(map[string]any), m))
 		} else if a, ok := v.([]any); ok {
-			target = append(target, MergeArray(make([]any, 0), a))
+			target = append(target, mergeArray(make([]any, 0), a))
 		} else {
 			target = append(target, v)
 		}

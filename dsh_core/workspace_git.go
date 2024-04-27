@@ -12,43 +12,43 @@ import (
 	"time"
 )
 
-type GitRefType string
+type gitRefType string
 
 const (
-	GitRefTypeBranch GitRefType = "branch"
-	GitRefTypeTag    GitRefType = "tag"
+	gitRefTypeBranch gitRefType = "branch"
+	gitRefTypeTag    gitRefType = "tag"
 )
 
-type GitRef struct {
-	Type          GitRefType
+type gitRef struct {
+	Type          gitRefType
 	PathPostfix   string
 	ReferenceName plumbing.ReferenceName
 }
 
-func ParseGitRef(rawRef string) *GitRef {
+func parseGitRef(rawRef string) *gitRef {
 	if strings.HasPrefix(rawRef, "tags/") {
 		tag := strings.TrimPrefix(rawRef, "tags/")
-		return &GitRef{
-			Type:          GitRefTypeTag,
+		return &gitRef{
+			Type:          gitRefTypeTag,
 			PathPostfix:   "tag-" + tag,
 			ReferenceName: plumbing.NewTagReferenceName(tag),
 		}
 	}
-	return &GitRef{
-		Type:          GitRefTypeBranch,
+	return &gitRef{
+		Type:          gitRefTypeBranch,
 		PathPostfix:   "branch-" + rawRef,
 		ReferenceName: plumbing.NewBranchReferenceName(rawRef),
 	}
 }
 
-func (workspace *Workspace) GetGitProjectPath(parsedUrl *url.URL, parsedRef *GitRef) string {
+func (workspace *Workspace) getGitProjectPath(parsedUrl *url.URL, parsedRef *gitRef) string {
 	path1 := strings.ReplaceAll(parsedUrl.Host, ":", "@")
 	path2 := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(parsedUrl.Path, "/"), ".git"), "/", "@") + "@" + parsedRef.PathPostfix
-	projectPath := filepath.Join(workspace.Path, "project", path1, path2)
+	projectPath := filepath.Join(workspace.path, "project", path1, path2)
 	return projectPath
 }
 
-func (workspace *Workspace) DownloadGitProject(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *GitRef) (err error) {
+func (workspace *Workspace) downloadGitProject(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) (err error) {
 	if err = os.MkdirAll(path, os.ModePerm); err != nil {
 		return dsh_utils.WrapError(err, "git mkdir failed", map[string]any{
 			"url":  rawUrl,
@@ -59,15 +59,15 @@ func (workspace *Workspace) DownloadGitProject(path string, rawUrl string, parse
 	repo, err := git.PlainOpen(path)
 	if errors.Is(err, git.ErrRepositoryNotExists) {
 		startTime := time.Now()
-		workspace.Logger.Info("clone project start: path=%s, url=%s, ref=%s", path, rawUrl, rawRef)
+		workspace.logger.Info("clone project start: path=%s, url=%s, ref=%s", path, rawUrl, rawRef)
 		cloneOptions := &git.CloneOptions{
 			URL:           rawUrl,
 			ReferenceName: parsedRef.ReferenceName,
 			SingleBranch:  true,
 			Depth:         1,
 		}
-		if workspace.Logger.IsDebugEnabled() {
-			cloneOptions.Progress = workspace.Logger.GetDebugWriter()
+		if workspace.logger.IsDebugEnabled() {
+			cloneOptions.Progress = workspace.logger.GetDebugWriter()
 		}
 		repo, err = git.PlainClone(path, false, cloneOptions)
 		if err != nil {
@@ -77,7 +77,7 @@ func (workspace *Workspace) DownloadGitProject(path string, rawUrl string, parse
 				"path": path,
 			})
 		}
-		workspace.Logger.Info("clone project finish: elapsed=%s", time.Since(startTime))
+		workspace.logger.Info("clone project finish: elapsed=%s", time.Since(startTime))
 	} else if err != nil {
 		return dsh_utils.WrapError(err, "git open failed", map[string]any{
 			"url":  rawUrl,
@@ -86,7 +86,7 @@ func (workspace *Workspace) DownloadGitProject(path string, rawUrl string, parse
 		})
 	} else {
 		startTime := time.Now()
-		workspace.Logger.Info("pull project start: path=%s, url=%s, ref=%s", path, rawUrl, rawRef)
+		workspace.logger.Info("pull project start: path=%s, url=%s, ref=%s", path, rawUrl, rawRef)
 		worktree, err := repo.Worktree()
 		if err != nil {
 			return dsh_utils.WrapError(err, "git worktree get failed", map[string]any{
@@ -120,8 +120,8 @@ func (workspace *Workspace) DownloadGitProject(path string, rawUrl string, parse
 			SingleBranch:  true,
 			Depth:         1,
 		}
-		if workspace.Logger.IsDebugEnabled() {
-			pullOptions.Progress = workspace.Logger.GetDebugWriter()
+		if workspace.logger.IsDebugEnabled() {
+			pullOptions.Progress = workspace.logger.GetDebugWriter()
 		}
 		err = worktree.Pull(pullOptions)
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
@@ -131,7 +131,7 @@ func (workspace *Workspace) DownloadGitProject(path string, rawUrl string, parse
 				"path": path,
 			})
 		}
-		workspace.Logger.Info("pull project finish: elapsed=%s", time.Since(startTime))
+		workspace.logger.Info("pull project finish: elapsed=%s", time.Since(startTime))
 	}
 	return nil
 }

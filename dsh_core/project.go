@@ -2,63 +2,66 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
+	"fmt"
 	"path/filepath"
 	"time"
 )
 
 type Project struct {
-	Context               *Context
-	Info                  *ProjectInfo
-	Instance              *ProjectInstance
-	ScriptImportContainer *ProjectInstanceImportDeepContainer
-	ConfigImportContainer *ProjectInstanceImportDeepContainer
-	Config                map[string]any
-	ConfigMade            bool
+	context               *Context
+	info                  *projectInfo
+	instance              *projectInstance
+	scriptImportContainer *projectInstanceImportDeepContainer
+	configImportContainer *projectInstanceImportDeepContainer
+	config                map[string]any
+	configMade            bool
 }
 
-func OpenProject(context *Context, info *ProjectInfo) (*Project, error) {
-	context.Logger.Info("open project: name=%s", info.Name)
+func openProject(context *Context, info *projectInfo) (*Project, error) {
+	context.Logger.Info("open project: name=%s", info.name)
 	if context.Project != nil {
 		return nil, dsh_utils.NewError("context already open project", map[string]any{
-			"projectPath": context.Project.Info.Path,
+			"projectPath": context.Project.info.path,
 		})
 	}
-	instance, err := NewProjectInstance(context, info)
+	instance, err := context.newProjectInstance(info)
 	if err != nil {
 		return nil, err
 	}
-	return &Project{
-		Context:               context,
-		Info:                  info,
-		Instance:              instance,
-		ScriptImportContainer: NewDeepImportContainer(instance, ProjectInstanceImportScopeScript),
-		ConfigImportContainer: NewDeepImportContainer(instance, ProjectInstanceImportScopeConfig),
-	}, nil
+	project := &Project{
+		context:               context,
+		info:                  info,
+		instance:              instance,
+		scriptImportContainer: newProjectInstanceImportDeepContainer(instance, projectInstanceImportScopeScript),
+		configImportContainer: newProjectInstanceImportDeepContainer(instance, projectInstanceImportScopeConfig),
+	}
+	context.Project = project
+	return project, nil
 }
 
-func (project *Project) GetImportContainer(scope ProjectInstanceImportScope) *ProjectInstanceImportDeepContainer {
-	if scope == ProjectInstanceImportScopeScript {
-		return project.ScriptImportContainer
-	} else if scope == ProjectInstanceImportScopeConfig {
-		return project.ConfigImportContainer
+func (project *Project) getImportContainer(scope projectInstanceImportScope) *projectInstanceImportDeepContainer {
+	if scope == projectInstanceImportScopeScript {
+		return project.scriptImportContainer
+	} else if scope == projectInstanceImportScopeConfig {
+		return project.configImportContainer
 	}
-	project.Context.Logger.Panic("invalid import scope: scope=%s", scope)
+	panic(fmt.Sprintf("invalid import scope: scope=%s", scope))
 	return nil
 }
 
-func (project *Project) LoadImports(scope ProjectInstanceImportScope) (err error) {
-	return project.GetImportContainer(scope).LoadImports()
+func (project *Project) loadImports(scope projectInstanceImportScope) (err error) {
+	return project.getImportContainer(scope).loadImports()
 }
 
 func (project *Project) MakeConfig() (map[string]any, error) {
-	if project.ConfigMade {
-		return project.Config, nil
+	if project.configMade {
+		return project.config, nil
 	}
 
 	startTime := time.Now()
-	project.Context.Logger.Info("make config start")
+	project.context.Logger.Info("make config start")
 
-	sources, err := project.ConfigImportContainer.LoadConfigSources()
+	sources, err := project.configImportContainer.loadConfigSources()
 	if err != nil {
 		return nil, err
 	}
@@ -67,38 +70,38 @@ func (project *Project) MakeConfig() (map[string]any, error) {
 
 	for i := 0; i < len(sources); i++ {
 		source := sources[i]
-		source.Content.Merge(config)
+		source.content.merge(config)
 	}
 
-	project.Config = config
-	project.ConfigMade = true
-	project.Context.Logger.Info("make config finish: elapsed=%s", time.Since(startTime))
-	return project.Config, nil
+	project.config = config
+	project.configMade = true
+	project.context.Logger.Info("make config finish: elapsed=%s", time.Since(startTime))
+	return project.config, nil
 }
 
 func (project *Project) Build(outputPath string) (err error) {
 	startTime := time.Now()
-	project.Context.Logger.Info("build start")
+	project.context.Logger.Info("build start")
 	if outputPath == "" {
-		outputPath = filepath.Join(project.Instance.Info.Path, "output")
+		outputPath = filepath.Join(project.instance.info.path, "output")
 		// TODO: build to workspace path
-		// outputPath = filepath.Join(project.ProjectInfo.Workspace.Path, "output", project.ProjectInfo.Name)
+		// outputPath = filepath.Join(project.ProjectInfo.Workspace.path, "output", project.ProjectInfo.name)
 	}
 
 	config, err := project.MakeConfig()
 	if err != nil {
 		return err
 	}
-	funcs := NewTemplateFuncs()
+	funcs := newTemplateFuncs()
 
 	if err = dsh_utils.RemakeDir(outputPath); err != nil {
 		return err
 	}
 
-	if err = project.ScriptImportContainer.BuildScriptSources(config, funcs, outputPath); err != nil {
+	if err = project.scriptImportContainer.buildScriptSources(config, funcs, outputPath); err != nil {
 		return err
 	}
 
-	project.Context.Logger.Info("build finish: elapsed=%s", time.Since(startTime))
+	project.context.Logger.Info("build finish: elapsed=%s", time.Since(startTime))
 	return nil
 }

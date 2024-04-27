@@ -8,122 +8,122 @@ import (
 	"text/template"
 )
 
-type ProjectInstanceImport struct {
-	Context      *Context
-	Reference    *ProjectInfo
-	Type         ProjectInstanceImportType
-	Unique       string
-	ProjectPath  string
-	GitRawUrl    string
-	GitParsedUrl *url.URL
-	GitRawRef    string
-	GitParsedRef *GitRef
-	Instance     *ProjectInstance
+type projectInstanceImport struct {
+	context      *Context
+	reference    *projectInfo
+	importType   projectInstanceImportType
+	unique       string
+	projectPath  string
+	gitRawUrl    string
+	gitParsedUrl *url.URL
+	gitRawRef    string
+	gitParsedRef *gitRef
+	instance     *projectInstance
 }
 
-type ProjectInstanceImportScope string
+type projectInstanceImportScope string
 
 const (
-	ProjectInstanceImportScopeScript ProjectInstanceImportScope = "Script"
-	ProjectInstanceImportScopeConfig ProjectInstanceImportScope = "Config"
+	projectInstanceImportScopeScript projectInstanceImportScope = "Script"
+	projectInstanceImportScopeConfig projectInstanceImportScope = "Config"
 )
 
-type ProjectInstanceImportType string
+type projectInstanceImportType string
 
 const (
-	ProjectInstanceImportTypeLocal ProjectInstanceImportType = "Local"
-	ProjectInstanceImportTypeGit   ProjectInstanceImportType = "Git"
+	projectInstanceImportTypeLocal projectInstanceImportType = "Local"
+	projectInstanceImportTypeGit   projectInstanceImportType = "Git"
 )
 
-type ProjectInstanceImportShallowContainer struct {
-	Context         *Context
-	Scope           ProjectInstanceImportScope
-	ImportUniqueMap map[string]*ProjectInstanceImport
-	Imports         []*ProjectInstanceImport
-	ImportsLoaded   bool
+type projectInstanceImportShallowContainer struct {
+	context         *Context
+	scope           projectInstanceImportScope
+	importUniqueMap map[string]*projectInstanceImport
+	imports         []*projectInstanceImport
+	importsLoaded   bool
 }
 
-type ProjectInstanceImportDeepContainer struct {
-	Context       *Context
-	Instance      *ProjectInstance
-	Scope         ProjectInstanceImportScope
-	Imports       []*ProjectInstanceImport
-	ImportsLoaded bool
+type projectInstanceImportDeepContainer struct {
+	context       *Context
+	instance      *projectInstance
+	scope         projectInstanceImportScope
+	imports       []*projectInstanceImport
+	importsLoaded bool
 }
 
-func NewProjectInstanceImportLocal(context *Context, reference *ProjectInfo, projectPath string) *ProjectInstanceImport {
-	return &ProjectInstanceImport{
-		Context:     context,
-		Reference:   reference,
-		Type:        ProjectInstanceImportTypeLocal,
-		Unique:      projectPath,
-		ProjectPath: projectPath,
+func newProjectInstanceImportLocal(context *Context, reference *projectInfo, projectPath string) *projectInstanceImport {
+	return &projectInstanceImport{
+		context:     context,
+		reference:   reference,
+		importType:  projectInstanceImportTypeLocal,
+		unique:      projectPath,
+		projectPath: projectPath,
 	}
 }
 
-func NewProjectInstanceImportGit(context *Context, reference *ProjectInfo, projectPath string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *GitRef) *ProjectInstanceImport {
-	return &ProjectInstanceImport{
-		Context:      context,
-		Reference:    reference,
-		Type:         ProjectInstanceImportTypeGit,
-		Unique:       projectPath,
-		ProjectPath:  projectPath,
-		GitRawUrl:    rawUrl,
-		GitParsedUrl: parsedUrl,
-		GitRawRef:    rawRef,
-		GitParsedRef: parsedRef,
+func newProjectInstanceImportGit(context *Context, reference *projectInfo, projectPath string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) *projectInstanceImport {
+	return &projectInstanceImport{
+		context:      context,
+		reference:    reference,
+		importType:   projectInstanceImportTypeGit,
+		unique:       projectPath,
+		projectPath:  projectPath,
+		gitRawUrl:    rawUrl,
+		gitParsedUrl: parsedUrl,
+		gitRawRef:    rawRef,
+		gitParsedRef: parsedRef,
 	}
 }
 
-func (imp *ProjectInstanceImport) LoadProject() error {
-	if imp.Instance == nil {
-		workspace := imp.Context.Workspace
-		if imp.Type == ProjectInstanceImportTypeLocal {
-			project, err := workspace.LoadLocalProjectInfo(imp.ProjectPath)
+func (imp *projectInstanceImport) load() error {
+	if imp.instance == nil {
+		workspace := imp.context.Workspace
+		if imp.importType == projectInstanceImportTypeLocal {
+			info, err := workspace.loadLocalProjectInfo(imp.projectPath)
 			if err != nil {
-				return dsh_utils.WrapError(err, "import local project load failed", map[string]any{
-					"projectPath": imp.ProjectPath,
+				return dsh_utils.WrapError(err, "import local project info failed", map[string]any{
+					"projectPath": imp.projectPath,
 				})
 			}
-			instance, err := NewProjectInstance(imp.Context, project)
+			instance, err := imp.context.newProjectInstance(info)
 			if err != nil {
-				return dsh_utils.WrapError(err, "import local project open failed", map[string]any{
-					"projectPath": imp.ProjectPath,
+				return dsh_utils.WrapError(err, "import local project instance failed", map[string]any{
+					"projectPath": imp.projectPath,
 				})
 			}
-			imp.Instance = instance
+			imp.instance = instance
 		} else {
-			project, err := workspace.LoadGitProjectInfo(imp.ProjectPath, imp.GitRawUrl, imp.GitParsedUrl, imp.GitRawRef, imp.GitParsedRef)
+			info, err := workspace.loadGitProjectInfo(imp.projectPath, imp.gitRawUrl, imp.gitParsedUrl, imp.gitRawRef, imp.gitParsedRef)
 			if err != nil {
-				return dsh_utils.WrapError(err, "import git project load failed", map[string]any{
-					"projectPath": imp.ProjectPath,
-					"gitUrl":      imp.GitRawUrl,
-					"gitRef":      imp.GitRawRef,
+				return dsh_utils.WrapError(err, "import git project info failed", map[string]any{
+					"projectPath": imp.projectPath,
+					"gitUrl":      imp.gitRawUrl,
+					"gitRef":      imp.gitRawRef,
 				})
 			}
-			instance, err := NewProjectInstance(imp.Context, project)
+			instance, err := imp.context.newProjectInstance(info)
 			if err != nil {
-				return dsh_utils.WrapError(err, "import git project open failed", map[string]any{
-					"projectPath": imp.ProjectPath,
-					"gitUrl":      imp.GitRawUrl,
-					"gitRef":      imp.GitRawRef,
+				return dsh_utils.WrapError(err, "import git project instance failed", map[string]any{
+					"projectPath": imp.projectPath,
+					"gitUrl":      imp.gitRawUrl,
+					"gitRef":      imp.gitRawRef,
 				})
 			}
-			imp.Instance = instance
+			imp.instance = instance
 		}
 	}
 	return nil
 }
 
-func NewShallowImportContainer(context *Context, scope ProjectInstanceImportScope) *ProjectInstanceImportShallowContainer {
-	return &ProjectInstanceImportShallowContainer{
-		Context:         context,
-		Scope:           scope,
-		ImportUniqueMap: make(map[string]*ProjectInstanceImport),
+func newProjectInstanceImportShallowContainer(context *Context, scope projectInstanceImportScope) *projectInstanceImportShallowContainer {
+	return &projectInstanceImportShallowContainer{
+		context:         context,
+		scope:           scope,
+		importUniqueMap: make(map[string]*projectInstanceImport),
 	}
 }
 
-func (container *ProjectInstanceImportShallowContainer) ImportLocal(context *Context, path string, reference *ProjectInfo) (err error) {
+func (container *projectInstanceImportShallowContainer) importLocal(context *Context, path string, reference *projectInfo) (err error) {
 	if !dsh_utils.IsDirExists(path) {
 		return dsh_utils.NewError("import local project dir not found", map[string]any{
 			"path": path,
@@ -135,150 +135,150 @@ func (container *ProjectInstanceImportShallowContainer) ImportLocal(context *Con
 			"path": path,
 		})
 	}
-	if importProjectPath == reference.Path {
+	if importProjectPath == reference.path {
 		return nil
 	}
-	imp := NewProjectInstanceImportLocal(context, reference, importProjectPath)
-	if _, exist := container.ImportUniqueMap[imp.Unique]; !exist {
-		container.ImportUniqueMap[imp.Unique] = imp
-		container.Imports = append(container.Imports, imp)
+	imp := newProjectInstanceImportLocal(context, reference, importProjectPath)
+	if _, exist := container.importUniqueMap[imp.unique]; !exist {
+		container.importUniqueMap[imp.unique] = imp
+		container.imports = append(container.imports, imp)
 	}
 	return nil
 }
 
-func (container *ProjectInstanceImportShallowContainer) ImportGit(context *Context, reference *ProjectInfo, rawUrl string, rawRef string) error {
+func (container *projectInstanceImportShallowContainer) importGit(context *Context, reference *projectInfo, rawUrl string, rawRef string) error {
 	parsedUrl, err := url.Parse(rawUrl)
 	if err != nil {
 		return dsh_utils.WrapError(err, "import git project url parse failed", map[string]any{
 			"url": rawUrl,
 		})
 	}
-	parsedRef := ParseGitRef(rawRef)
-	projectPath := context.Workspace.GetGitProjectPath(parsedUrl, parsedRef)
-	if projectPath == reference.Path {
+	parsedRef := parseGitRef(rawRef)
+	projectPath := context.Workspace.getGitProjectPath(parsedUrl, parsedRef)
+	if projectPath == reference.path {
 		return nil
 	}
-	imp := NewProjectInstanceImportGit(context, reference, projectPath, rawUrl, parsedUrl, rawRef, parsedRef)
-	if _, exist := container.ImportUniqueMap[imp.Unique]; !exist {
-		container.ImportUniqueMap[imp.Unique] = imp
-		container.Imports = append(container.Imports, imp)
+	imp := newProjectInstanceImportGit(context, reference, projectPath, rawUrl, parsedUrl, rawRef, parsedRef)
+	if _, exist := container.importUniqueMap[imp.unique]; !exist {
+		container.importUniqueMap[imp.unique] = imp
+		container.imports = append(container.imports, imp)
 	}
 	return nil
 }
 
-func (container *ProjectInstanceImportShallowContainer) LoadImports() (err error) {
-	if container.ImportsLoaded {
+func (container *projectInstanceImportShallowContainer) loadImports() (err error) {
+	if container.importsLoaded {
 		return nil
 	}
 
-	for i := 0; i < len(container.Imports); i++ {
-		if err = container.Imports[i].LoadProject(); err != nil {
+	for i := 0; i < len(container.imports); i++ {
+		if err = container.imports[i].load(); err != nil {
 			return err
 		}
 	}
 
-	container.ImportsLoaded = true
+	container.importsLoaded = true
 	return nil
 }
 
-func NewDeepImportContainer(instance *ProjectInstance, scope ProjectInstanceImportScope) *ProjectInstanceImportDeepContainer {
-	return &ProjectInstanceImportDeepContainer{
-		Context:  instance.Context,
-		Instance: instance,
-		Scope:    scope,
+func newProjectInstanceImportDeepContainer(instance *projectInstance, scope projectInstanceImportScope) *projectInstanceImportDeepContainer {
+	return &projectInstanceImportDeepContainer{
+		context:  instance.context,
+		instance: instance,
+		scope:    scope,
 	}
 }
 
-func (container *ProjectInstanceImportDeepContainer) LoadImports() (err error) {
-	if container.ImportsLoaded {
+func (container *projectInstanceImportDeepContainer) loadImports() (err error) {
+	if container.importsLoaded {
 		return nil
 	}
-	if err = container.Instance.LoadImports(container.Scope); err != nil {
+	if err = container.instance.loadImports(container.scope); err != nil {
 		return err
 	}
 
-	var deepImports []*ProjectInstanceImport
-	var deepImportMap = make(map[string]*ProjectInstanceImport)
+	var deepImports []*projectInstanceImport
+	var deepImportMap = make(map[string]*projectInstanceImport)
 
-	shallowContainer := container.Instance.GetImportContainer(container.Scope)
-	for i := 0; i < len(shallowContainer.Imports); i++ {
-		imp := shallowContainer.Imports[i]
+	shallowContainer := container.instance.getImportContainer(container.scope)
+	for i := 0; i < len(shallowContainer.imports); i++ {
+		imp := shallowContainer.imports[i]
 		deepImports = append(deepImports, imp)
-		deepImportMap[imp.Unique] = imp
+		deepImportMap[imp.unique] = imp
 	}
 
-	scanningImports := shallowContainer.Imports
+	scanningImports := shallowContainer.imports
 	for i := 0; i < len(scanningImports); i++ {
 		imp1 := scanningImports[i]
-		if err = imp1.Instance.LoadImports(shallowContainer.Scope); err != nil {
+		if err = imp1.instance.loadImports(shallowContainer.scope); err != nil {
 			return err
 		}
-		sic1 := imp1.Instance.GetImportContainer(shallowContainer.Scope)
-		for j := 0; j < len(sic1.Imports); j++ {
-			imp2 := sic1.Imports[j]
-			if imp2.ProjectPath == container.Instance.Info.Path {
+		sic1 := imp1.instance.getImportContainer(shallowContainer.scope)
+		for j := 0; j < len(sic1.imports); j++ {
+			imp2 := sic1.imports[j]
+			if imp2.projectPath == container.instance.info.path {
 				continue
 			}
-			if _, exist := deepImportMap[imp2.Unique]; !exist {
+			if _, exist := deepImportMap[imp2.unique]; !exist {
 				deepImports = append(deepImports, imp2)
-				deepImportMap[imp2.Unique] = imp2
+				deepImportMap[imp2.unique] = imp2
 				scanningImports = append(scanningImports, imp2)
 			}
 		}
 	}
 
-	container.Imports = deepImports
-	container.ImportsLoaded = true
+	container.imports = deepImports
+	container.importsLoaded = true
 	return nil
 }
 
-func (container *ProjectInstanceImportDeepContainer) BuildScriptSources(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
-	if container.Scope != ProjectInstanceImportScopeScript {
-		panic("ProjectInstanceImportDeepContainer.BuildScriptSources() only support ProjectInstanceImportScopeScript")
+func (container *projectInstanceImportDeepContainer) buildScriptSources(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
+	if container.scope != projectInstanceImportScopeScript {
+		panic("projectInstanceImportDeepContainer.buildScriptSources() only support projectInstanceImportScopeScript")
 	}
-	if err = container.LoadImports(); err != nil {
+	if err = container.loadImports(); err != nil {
 		return err
 	}
-	for i := 0; i < len(container.Imports); i++ {
-		if err = container.Imports[i].Instance.BuildScriptSources(config, funcs, outputPath); err != nil {
+	for i := 0; i < len(container.imports); i++ {
+		if err = container.imports[i].instance.buildScriptSources(config, funcs, outputPath); err != nil {
 			return err
 		}
 	}
-	if err = container.Instance.BuildScriptSources(config, funcs, outputPath); err != nil {
+	if err = container.instance.buildScriptSources(config, funcs, outputPath); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (container *ProjectInstanceImportDeepContainer) LoadConfigSources() (sources []*ProjectInstanceConfigSource, err error) {
-	if container.Scope != ProjectInstanceImportScopeConfig {
-		panic("ProjectInstanceImportDeepContainer.LoadConfigSources() only support ProjectInstanceImportScopeConfig")
+func (container *projectInstanceImportDeepContainer) loadConfigSources() (sources []*projectInstanceConfigSource, err error) {
+	if container.scope != projectInstanceImportScopeConfig {
+		panic("projectInstanceImportDeepContainer.loadConfigSources() only support projectInstanceImportScopeConfig")
 	}
-	if err = container.LoadImports(); err != nil {
+	if err = container.loadImports(); err != nil {
 		return nil, err
 	}
-	for i := 0; i < len(container.Imports); i++ {
-		if err = container.Imports[i].Instance.LoadConfigSources(); err != nil {
+	for i := 0; i < len(container.imports); i++ {
+		if err = container.imports[i].instance.loadConfigSources(); err != nil {
 			return nil, err
 		}
 	}
-	if err = container.Instance.LoadConfigSources(); err != nil {
+	if err = container.instance.loadConfigSources(); err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < len(container.Imports); i++ {
-		for j := 0; j < len(container.Imports[i].Instance.Config.SourceContainer.Sources); j++ {
-			source := container.Imports[i].Instance.Config.SourceContainer.Sources[j]
+	for i := 0; i < len(container.imports); i++ {
+		for j := 0; j < len(container.imports[i].instance.config.sourceContainer.sources); j++ {
+			source := container.imports[i].instance.config.sourceContainer.sources[j]
 			sources = append(sources, source)
 		}
 	}
-	for i := 0; i < len(container.Instance.Config.SourceContainer.Sources); i++ {
-		source := container.Instance.Config.SourceContainer.Sources[i]
+	for i := 0; i < len(container.instance.config.sourceContainer.sources); i++ {
+		source := container.instance.config.sourceContainer.sources[i]
 		sources = append(sources, source)
 	}
 
-	slices.SortStableFunc(sources, func(a, b *ProjectInstanceConfigSource) int {
-		rst := a.Content.Order - b.Content.Order
+	slices.SortStableFunc(sources, func(a, b *projectInstanceConfigSource) int {
+		rst := a.content.Order - b.content.Order
 		if rst < 0 {
 			return 1
 		} else if rst > 0 {
