@@ -24,7 +24,7 @@ func GetWorkspaceDefaultPath() string {
 	return filepath.Join(os.TempDir(), "dsh")
 }
 
-func LoadWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace, err error) {
+func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace, err error) {
 	if path == "" {
 		path = GetWorkspaceDefaultPath()
 	}
@@ -34,7 +34,7 @@ func LoadWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 			"path": path,
 		})
 	}
-	logger.Info("load workspace: path=%s", path)
+	logger.Info("open workspace: path=%s", path)
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		return nil, dsh_utils.WrapError(err, "workspace dir make failed", map[string]any{
@@ -68,7 +68,7 @@ func (workspace *Workspace) LoadLocalProjectInfo(path string) (info *ProjectInfo
 		return info, nil
 	}
 
-	workspace.Logger.Info("load project info: path=%s", path)
+	workspace.Logger.Debug("load project info: path=%s", path)
 	if info, err = LoadProjectInfo(workspace, path); err != nil {
 		return nil, err
 	}

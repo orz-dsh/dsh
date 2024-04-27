@@ -8,7 +8,7 @@ import (
 
 func TestProject1(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.LoadWorkspace("", logger)
+	workspace, err := dsh_core.OpenWorkspace("", logger)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -25,7 +25,7 @@ func TestProject1(t *testing.T) {
 
 func TestProject2(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.LoadWorkspace("", logger)
+	workspace, err := dsh_core.OpenWorkspace("", logger)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

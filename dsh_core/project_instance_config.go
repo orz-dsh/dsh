@@ -60,13 +60,14 @@ func (container *ProjectInstanceConfigSourceContainer) ScanSources(sourceDir str
 		filePath := filePaths[i]
 		fileType := fileTypes[i]
 		var sourceType ProjectInstanceConfigSourceType
-		if fileType == dsh_utils.FileTypeYaml {
+		switch fileType {
+		case dsh_utils.FileTypeYaml:
 			sourceType = ProjectInstanceConfigSourceTypeYaml
-		} else if fileType == dsh_utils.FileTypeToml {
+		case dsh_utils.FileTypeToml:
 			sourceType = ProjectInstanceConfigSourceTypeToml
-		} else if fileType == dsh_utils.FileTypeJson {
+		case dsh_utils.FileTypeJson:
 			sourceType = ProjectInstanceConfigSourceTypeJson
-		} else {
+		default:
 			container.Context.Logger.Panic("unsupported config source type", map[string]any{
 				"filePath": filePath,
 				"fileType": fileType,

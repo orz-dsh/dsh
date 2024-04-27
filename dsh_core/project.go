@@ -17,6 +17,7 @@ type Project struct {
 }
 
 func OpenProject(context *Context, info *ProjectInfo) (*Project, error) {
+	context.Logger.Info("open project: name=%s", info.Name)
 	if context.Project != nil {
 		return nil, dsh_utils.NewError("context already open project", map[string]any{
 			"projectPath": context.Project.Info.Path,

@@ -72,7 +72,16 @@ const (
 )
 
 func LoadProjectInfo(workspace *Workspace, path string) (project *ProjectInfo, err error) {
-	manifestPath := dsh_utils.SelectFiles(path, []string{"project.yml", "project.yaml", "project.toml", "project.json"})
+	manifestPath, manifestFileType := dsh_utils.SelectFile(path, []string{
+		"project.yml",
+		"project.yaml",
+		"project.toml",
+		"project.json",
+	}, []dsh_utils.FileType{
+		dsh_utils.FileTypeYaml,
+		dsh_utils.FileTypeToml,
+		dsh_utils.FileTypeJson,
+	})
 	if manifestPath == "" {
 		return nil, dsh_utils.NewError("project manifest file not found", map[string]any{
 			"path": path,
@@ -80,23 +89,24 @@ func LoadProjectInfo(workspace *Workspace, path string) (project *ProjectInfo, e
 	}
 	var manifestType ProjectManifestType
 	manifest := &ProjectManifest{}
-	if dsh_utils.IsYamlFile(manifestPath) {
+	switch manifestFileType {
+	case dsh_utils.FileTypeYaml:
 		manifestType = ProjectManifestTypeYaml
 		if err = dsh_utils.ReadYamlFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
-	} else if dsh_utils.IsTomlFile(manifestPath) {
+	case dsh_utils.FileTypeToml:
 		manifestType = ProjectManifestTypeToml
 		if err = dsh_utils.ReadTomlFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
-	} else if dsh_utils.IsJsonFile(manifestPath) {
+	case dsh_utils.FileTypeJson:
 		manifestType = ProjectManifestTypeJson
 		if err = dsh_utils.ReadJsonFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
-	} else {
-		workspace.Logger.Panic("project manifest file type not supported: path=%s", manifestPath)
+	default:
+		workspace.Logger.Panic("project manifest file type not supported: path=%s, type=%s", manifestPath, manifestFileType)
 		return nil, nil
 	}
 	project = &ProjectInfo{

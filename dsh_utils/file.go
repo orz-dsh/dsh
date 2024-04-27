@@ -124,10 +124,6 @@ func ReadYamlFile(path string, model any) error {
 	return nil
 }
 
-func IsYamlFile(path string) bool {
-	return strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")
-}
-
 func ReadTomlFile(path string, model any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -142,10 +138,6 @@ func ReadTomlFile(path string, model any) error {
 		})
 	}
 	return nil
-}
-
-func IsTomlFile(path string) bool {
-	return strings.HasSuffix(path, ".toml")
 }
 
 func ReadJsonFile(path string, model any) error {
@@ -164,26 +156,16 @@ func ReadJsonFile(path string, model any) error {
 	return nil
 }
 
+func IsYamlFile(path string) bool {
+	return strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")
+}
+
+func IsTomlFile(path string) bool {
+	return strings.HasSuffix(path, ".toml")
+}
+
 func IsJsonFile(path string) bool {
 	return strings.HasSuffix(path, ".json")
-}
-
-func RemoveFileExt(path string) string {
-	ext := filepath.Ext(path)
-	if ext == "" {
-		return path
-	}
-	return path[:len(path)-len(ext)]
-}
-
-func SelectFiles(sourceDir string, files []string) string {
-	for i := 0; i < len(files); i++ {
-		path := filepath.Join(sourceDir, files[i])
-		if IsFileExists(path) {
-			return path
-		}
-	}
-	return ""
 }
 
 func IsTemplateFile(path string) bool {
@@ -226,6 +208,24 @@ func GetFileType(path string, fileTypes []FileType) FileType {
 		return FileTypePlain
 	}
 	return ""
+}
+
+func RemoveFileExt(path string) string {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return path
+	}
+	return path[:len(path)-len(ext)]
+}
+
+func SelectFile(sourceDir string, files []string, fileTypes []FileType) (string, FileType) {
+	for i := 0; i < len(files); i++ {
+		path := filepath.Join(sourceDir, files[i])
+		if IsFileExists(path) {
+			return path, GetFileType(path, fileTypes)
+		}
+	}
+	return "", ""
 }
 
 func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
