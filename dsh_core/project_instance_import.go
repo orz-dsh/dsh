@@ -267,13 +267,13 @@ func (container *ProjectInstanceImportDeepContainer) LoadConfigSources() (source
 	}
 
 	for i := 0; i < len(container.Imports); i++ {
-		for j := 0; j < len(container.Imports[i].Instance.Config.SourceContainer.YamlSources); j++ {
-			source := container.Imports[i].Instance.Config.SourceContainer.YamlSources[j]
+		for j := 0; j < len(container.Imports[i].Instance.Config.SourceContainer.Sources); j++ {
+			source := container.Imports[i].Instance.Config.SourceContainer.Sources[j]
 			sources = append(sources, source)
 		}
 	}
-	for i := 0; i < len(container.Instance.Config.SourceContainer.YamlSources); i++ {
-		source := container.Instance.Config.SourceContainer.YamlSources[i]
+	for i := 0; i < len(container.Instance.Config.SourceContainer.Sources); i++ {
+		source := container.Instance.Config.SourceContainer.Sources[i]
 		sources = append(sources, source)
 	}
 

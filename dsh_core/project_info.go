@@ -2,7 +2,6 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"path/filepath"
 	"regexp"
 )
 
@@ -72,38 +71,33 @@ const (
 	ProjectManifestTypeJson ProjectManifestType = "json"
 )
 
-func LoadProjectInfo(path string) (project *ProjectInfo, err error) {
-	manifestYamlPath := filepath.Join(path, "project.yml")
-	if !dsh_utils.IsFileExists(manifestYamlPath) {
-		manifestYamlPath = filepath.Join(path, "project.yaml")
-		if !dsh_utils.IsFileExists(manifestYamlPath) {
-			manifestYamlPath = ""
-		}
-	}
-	var manifestPath string
-	var manifestType ProjectManifestType
-	if manifestYamlPath != "" {
-		manifestPath = manifestYamlPath
-		manifestType = ProjectManifestTypeYaml
-	} else {
+func LoadProjectInfo(workspace *Workspace, path string) (project *ProjectInfo, err error) {
+	manifestPath := dsh_utils.SelectFiles(path, []string{"project.yml", "project.yaml", "project.toml", "project.json"})
+	if manifestPath == "" {
 		return nil, dsh_utils.NewError("project manifest file not found", map[string]any{
 			"path": path,
 		})
 	}
-
+	var manifestType ProjectManifestType
 	manifest := &ProjectManifest{}
-	if manifestType == ProjectManifestTypeYaml {
-		if err = dsh_utils.ReadYaml(manifestPath, manifest); err != nil {
+	if dsh_utils.IsYamlFile(manifestPath) {
+		manifestType = ProjectManifestTypeYaml
+		if err = dsh_utils.ReadYamlFile(manifestPath, manifest); err != nil {
 			return nil, err
 		}
-	} else if manifestType == ProjectManifestTypeToml {
-		// TODO
-		panic("toml not supported yet")
-	} else if manifestType == ProjectManifestTypeJson {
-		// TODO
-		panic("json not supported yet")
+	} else if dsh_utils.IsTomlFile(manifestPath) {
+		manifestType = ProjectManifestTypeToml
+		if err = dsh_utils.ReadTomlFile(manifestPath, manifest); err != nil {
+			return nil, err
+		}
+	} else if dsh_utils.IsJsonFile(manifestPath) {
+		manifestType = ProjectManifestTypeJson
+		if err = dsh_utils.ReadJsonFile(manifestPath, manifest); err != nil {
+			return nil, err
+		}
 	} else {
-		panic("unsupported manifest type: " + manifestType)
+		workspace.Logger.Panic("project manifest file type not supported: path=%s", manifestPath)
+		return nil, nil
 	}
 	project = &ProjectInfo{
 		Path:         path,

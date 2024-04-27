@@ -1,12 +1,25 @@
 package dsh_utils
 
 import (
+	"encoding/json"
+	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+)
+
+type FileType string
+
+const (
+	FileTypeYaml        FileType = "yaml"
+	FileTypeToml        FileType = "toml"
+	FileTypeJson        FileType = "json"
+	FileTypeTemplate    FileType = "template"
+	FileTypeTemplateLib FileType = "template-lib"
+	FileTypePlain       FileType = "plain"
 )
 
 func IsFileExists(path string) bool {
@@ -95,7 +108,7 @@ func LinkOrCopyFile(sourcePath string, targetPath string) (err error) {
 	return nil
 }
 
-func ReadYaml(path string, model interface{}) error {
+func ReadYamlFile(path string, model any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return WrapError(err, "file read failed", map[string]any{
@@ -111,57 +124,111 @@ func ReadYaml(path string, model interface{}) error {
 	return nil
 }
 
-func IsYaml(path string) bool {
+func IsYamlFile(path string) bool {
 	return strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")
 }
 
-func ScanScriptSources(sourceDir string, includeFiles []string) (plainSourcePaths []string, templateSourcePaths []string, templateLibSourcePaths []string, err error) {
-	var includeFileMap = make(map[string]bool)
-	for i := 0; i < len(includeFiles); i++ {
-		includeFileMap[filepath.Join(sourceDir, includeFiles[i])] = true
-	}
-	err = filepath.WalkDir(sourceDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return WrapError(err, "dir walk failed", map[string]any{
-				"dir": sourceDir,
-			})
-		}
-		if !d.IsDir() {
-			if len(includeFileMap) > 0 {
-				if _, exist := includeFileMap[path]; !exist {
-					return nil
-				}
-			}
-			relPath, err := filepath.Rel(sourceDir, path)
-			if err != nil {
-				return WrapError(err, "file rel-path get failed", map[string]any{
-					"dir":  sourceDir,
-					"path": path,
-				})
-			}
-			isTemplate := strings.HasSuffix(relPath, ".dtpl")
-			if isTemplate {
-				templateSourcePaths = append(templateSourcePaths, relPath)
-			} else {
-				isTemplateLib := strings.HasSuffix(relPath, ".dtpl.lib")
-				if isTemplateLib {
-					templateLibSourcePaths = append(templateLibSourcePaths, relPath)
-				} else {
-					plainSourcePaths = append(plainSourcePaths, relPath)
-				}
-			}
-		}
-		return nil
-	})
+func ReadTomlFile(path string, model any) error {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, nil, WrapError(err, "script sources scan failed", map[string]any{
-			"sourceDir": sourceDir,
+		return WrapError(err, "file read failed", map[string]any{
+			"path": path,
 		})
 	}
-	return plainSourcePaths, templateSourcePaths, templateLibSourcePaths, nil
+	err = toml.Unmarshal(data, model)
+	if err != nil {
+		return WrapError(err, "toml unmarshal failed", map[string]any{
+			"path": path,
+		})
+	}
+	return nil
 }
 
-func ScanConfigSources(sourceDir string, includeFiles []string) (yamlSourcePaths []string, err error) {
+func IsTomlFile(path string) bool {
+	return strings.HasSuffix(path, ".toml")
+}
+
+func ReadJsonFile(path string, model any) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return WrapError(err, "file read failed", map[string]any{
+			"path": path,
+		})
+	}
+	err = json.Unmarshal(data, model)
+	if err != nil {
+		return WrapError(err, "json unmarshal failed", map[string]any{
+			"path": path,
+		})
+	}
+	return nil
+}
+
+func IsJsonFile(path string) bool {
+	return strings.HasSuffix(path, ".json")
+}
+
+func RemoveFileExt(path string) string {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return path
+	}
+	return path[:len(path)-len(ext)]
+}
+
+func SelectFiles(sourceDir string, files []string) string {
+	for i := 0; i < len(files); i++ {
+		path := filepath.Join(sourceDir, files[i])
+		if IsFileExists(path) {
+			return path
+		}
+	}
+	return ""
+}
+
+func IsTemplateFile(path string) bool {
+	return strings.HasSuffix(path, ".dtpl")
+}
+
+func IsTemplateLibFile(path string) bool {
+	return strings.HasSuffix(path, ".dtpl.lib")
+}
+
+func GetFileType(path string, fileTypes []FileType) FileType {
+	includePlain := false
+	for i := 0; i < len(fileTypes); i++ {
+		switch fileTypes[i] {
+		case FileTypeYaml:
+			if IsYamlFile(path) {
+				return FileTypeYaml
+			}
+		case FileTypeToml:
+			if IsTomlFile(path) {
+				return FileTypeToml
+			}
+		case FileTypeJson:
+			if IsJsonFile(path) {
+				return FileTypeJson
+			}
+		case FileTypeTemplate:
+			if IsTemplateFile(path) {
+				return FileTypeTemplate
+			}
+		case FileTypeTemplateLib:
+			if IsTemplateLibFile(path) {
+				return FileTypeTemplateLib
+			}
+		case FileTypePlain:
+			includePlain = true
+		}
+	}
+	if includePlain {
+		return FileTypePlain
+	}
+	return ""
+}
+
+func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
 	var includeFileMap = make(map[string]bool)
 	for i := 0; i < len(includeFiles); i++ {
 		includeFileMap[filepath.Join(sourceDir, includeFiles[i])] = true
@@ -185,18 +252,20 @@ func ScanConfigSources(sourceDir string, includeFiles []string) (yamlSourcePaths
 					"path": path,
 				})
 			}
-			if IsYaml(relPath) {
-				yamlSourcePaths = append(yamlSourcePaths, relPath)
+			fileType := GetFileType(relPath, includeFileTypes)
+			if fileType != "" {
+				filePaths = append(filePaths, relPath)
+				fileTypes = append(fileTypes, fileType)
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, WrapError(err, "config sources scan failed", map[string]any{
+		return nil, nil, WrapError(err, "files scan failed", map[string]any{
 			"sourceDir": sourceDir,
 		})
 	}
-	return yamlSourcePaths, nil
+	return filePaths, fileTypes, nil
 }
 
 func WriteTemplate(t *template.Template, env any, targetPath string) (err error) {

@@ -36,14 +36,23 @@ func NewProjectInstanceScript(context *Context) *ProjectInstanceScript {
 }
 
 func (container *ProjectInstanceScriptSourceContainer) ScanSources(sourceDir string, includeFiles []string) error {
-	plainSourcePaths, templateSourcePaths, templateLibSourcePaths, err := dsh_utils.ScanScriptSources(sourceDir, includeFiles)
+	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
+		dsh_utils.FileTypePlain,
+		dsh_utils.FileTypeTemplate,
+		dsh_utils.FileTypeTemplateLib,
+	})
 	if err != nil {
 		return err
 	}
-	for i := 0; i < len(plainSourcePaths); i++ {
+	for j := 0; j < len(filePaths); j++ {
+		filePath := filePaths[j]
+		fileType := fileTypes[j]
 		source := &ProjectInstanceScriptSource{
-			SourcePath: filepath.Join(sourceDir, plainSourcePaths[i]),
-			SourceName: plainSourcePaths[i],
+			SourcePath: filepath.Join(sourceDir, filePaths[j]),
+			SourceName: filePath,
+		}
+		if fileType == dsh_utils.FileTypeTemplate {
+			source.SourceName = source.SourceName[:len(source.SourceName)-len(".dtpl")]
 		}
 		if existSource, exist := container.SourceNameMap[source.SourceName]; exist {
 			if existSource.SourcePath == source.SourcePath {
@@ -56,43 +65,14 @@ func (container *ProjectInstanceScriptSourceContainer) ScanSources(sourceDir str
 			})
 		}
 		container.SourceNameMap[source.SourceName] = source
-		container.PlainSources = append(container.PlainSources, source)
-	}
-	for i := 0; i < len(templateSourcePaths); i++ {
-		source := &ProjectInstanceScriptSource{
-			SourcePath: filepath.Join(sourceDir, templateSourcePaths[i]),
-			SourceName: templateSourcePaths[i][:len(templateSourcePaths[i])-len(".dtpl")],
+		switch fileType {
+		case dsh_utils.FileTypePlain:
+			container.PlainSources = append(container.PlainSources, source)
+		case dsh_utils.FileTypeTemplate:
+			container.TemplateSources = append(container.TemplateSources, source)
+		case dsh_utils.FileTypeTemplateLib:
+			container.TemplateLibSources = append(container.TemplateLibSources, source)
 		}
-		if existSource, exist := container.SourceNameMap[source.SourceName]; exist {
-			if existSource.SourcePath == source.SourcePath {
-				continue
-			}
-			return dsh_utils.NewError("script source name is duplicated", map[string]any{
-				"sourceName":  source.SourceName,
-				"sourcePath1": source.SourcePath,
-				"sourcePath2": existSource.SourcePath,
-			})
-		}
-		container.SourceNameMap[source.SourceName] = source
-		container.TemplateSources = append(container.TemplateSources, source)
-	}
-	for i := 0; i < len(templateLibSourcePaths); i++ {
-		source := &ProjectInstanceScriptSource{
-			SourcePath: filepath.Join(sourceDir, templateLibSourcePaths[i]),
-			SourceName: templateLibSourcePaths[i],
-		}
-		if existSource, exist := container.SourceNameMap[source.SourceName]; exist {
-			if existSource.SourcePath == source.SourcePath {
-				continue
-			}
-			return dsh_utils.NewError("script source name is duplicated", map[string]any{
-				"sourceName":  source.SourceName,
-				"sourcePath1": source.SourcePath,
-				"sourcePath2": existSource.SourcePath,
-			})
-		}
-		container.SourceNameMap[source.SourceName] = source
-		container.TemplateLibSources = append(container.TemplateLibSources, source)
 	}
 	return nil
 }

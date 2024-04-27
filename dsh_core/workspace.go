@@ -69,7 +69,7 @@ func (workspace *Workspace) LoadLocalProjectInfo(path string) (info *ProjectInfo
 	}
 
 	workspace.Logger.Info("load project info: path=%s", path)
-	if info, err = LoadProjectInfo(path); err != nil {
+	if info, err = LoadProjectInfo(workspace, path); err != nil {
 		return nil, err
 	}
 
