@@ -1,0 +1,48 @@
+{
+  "name": "app1",
+  "runtime": {
+    "minVersion": "1.0.0",
+    "maxVersion": "2.0.0"
+  },
+  "script": {
+    "sources": [
+      {
+        "dir": "script"
+      }
+    ],
+    "imports": [
+      {
+        "local": {
+          "dir": "./.test/lib1"
+        }
+      },
+      {
+        "local": {
+          "dir": "./.test/lib2"
+        }
+      }
+    ]
+  },
+  "config": {
+    "sources": [
+      {
+        "dir": "config",
+        "files": [
+          "test1.yml"
+        ]
+      }
+    ],
+    "imports": [
+      {
+        "local": {
+          "dir": "./.test/lib1"
+        }
+      },
+      {
+        "local": {
+          "dir": "./.test/lib2"
+        }
+      }
+    ]
+  }
+}

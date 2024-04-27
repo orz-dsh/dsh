@@ -1,0 +1,26 @@
+name = "app1"
+
+[runtime]
+minVersion = "1.0.0"
+maxVersion = "2.0.0"
+
+[[script.sources]]
+dir = "script"
+
+[[script.imports]]
+local.dir = "./.test/lib1"
+
+[[script.imports]]
+local.dir = "./.test/lib2"
+
+[[config.sources]]
+dir = "config"
+files = [
+    "test1.yml"
+]
+
+[[config.imports]]
+local.dir = "./.test/lib1"
+
+[[config.imports]]
+local.dir = "./.test/lib2"

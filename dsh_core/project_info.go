@@ -22,8 +22,8 @@ type ProjectManifest struct {
 }
 
 type ProjectManifestRuntime struct {
-	MinVersion dsh_utils.Version `yaml:"minVersion"`
-	MaxVersion dsh_utils.Version `yaml:"maxVersion"`
+	MinVersion dsh_utils.Version `yaml:"minVersion" toml:"minVersion" json:"minVersion"`
+	MaxVersion dsh_utils.Version `yaml:"maxVersion" toml:"maxVersion" json:"maxVersion"`
 }
 
 type ProjectManifestOption struct {
@@ -114,6 +114,11 @@ func LoadProjectInfo(workspace *Workspace, path string) (project *ProjectInfo, e
 
 func (info *ProjectInfo) Check() (err error) {
 	manifest := info.Manifest
+
+	err = dsh_utils.CheckRuntimeVersion(manifest.Runtime.MinVersion, manifest.Runtime.MaxVersion)
+	if err != nil {
+		return err
+	}
 
 	if manifest.Name == "" {
 		return dsh_utils.NewError("project manifest invalid", map[string]any{
