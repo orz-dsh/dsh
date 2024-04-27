@@ -12,12 +12,12 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	project, err := workspace.LoadLocalProject("./.test/app1")
+	context := dsh_core.NewContext(workspace, logger)
+	project, err := workspace.OpenLocalProject(context, "./.test/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	builder := project.NewBuilder()
-	err = builder.Build("")
+	err = project.Build("")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -29,7 +29,8 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = workspace.LoadGitProject("", "https://github.com/orz-dsh/not-exist-project.git", nil, "main", nil)
+	context := dsh_core.NewContext(workspace, logger)
+	_, err = workspace.OpenGitProject(context, "https://github.com/orz-dsh/not-exist-project.git", "main")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

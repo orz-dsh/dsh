@@ -1,72 +1,103 @@
 package dsh_core
 
 import (
-	"fmt"
+	"dsh/dsh_utils"
 	"path/filepath"
-	"text/template"
+	"time"
 )
 
 type Project struct {
-	Workspace *Workspace
-	Path      string
-	Name      string
-	Script    *Script
-	Config    *Config
+	Context               *Context
+	Info                  *ProjectInfo
+	Instance              *ProjectInstance
+	ScriptImportContainer *ProjectInstanceImportDeepContainer
+	ConfigImportContainer *ProjectInstanceImportDeepContainer
+	Config                map[string]any
+	ConfigMade            bool
 }
 
-func NewProject(workspace *Workspace, projectPath string) *Project {
+func OpenProject(context *Context, info *ProjectInfo) (*Project, error) {
+	if context.Project != nil {
+		return nil, dsh_utils.NewError("context already open project", map[string]any{
+			"projectPath": context.Project.Info.Path,
+		})
+	}
+	instance, err := NewProjectInstance(context, info)
+	if err != nil {
+		return nil, err
+	}
 	return &Project{
-		Workspace: workspace,
-		Path:      projectPath,
-		Script: &Script{
-			SourceContainer: NewScriptSourceContainer(),
-			ImportContainer: NewShallowImportContainer(ImportScopeScript),
-		},
-		Config: &Config{
-			SourceContainer: NewConfigSourceContainer(),
-			ImportContainer: NewShallowImportContainer(ImportScopeConfig),
-		},
+		Context:               context,
+		Info:                  info,
+		Instance:              instance,
+		ScriptImportContainer: NewDeepImportContainer(instance, ProjectInstanceImportScopeScript),
+		ConfigImportContainer: NewDeepImportContainer(instance, ProjectInstanceImportScopeConfig),
+	}, nil
+}
+
+func (project *Project) GetImportContainer(scope ProjectInstanceImportScope) *ProjectInstanceImportDeepContainer {
+	if scope == ProjectInstanceImportScopeScript {
+		return project.ScriptImportContainer
+	} else if scope == ProjectInstanceImportScopeConfig {
+		return project.ConfigImportContainer
 	}
+	project.Context.Logger.Panic("invalid import scope: scope=%s", scope)
+	return nil
 }
 
-func (project *Project) ScanScriptSources(sourceDir string, includeFiles []string) error {
-	return project.Script.SourceContainer.ScanSources(sourceDir, includeFiles)
+func (project *Project) LoadImports(scope ProjectInstanceImportScope) (err error) {
+	return project.GetImportContainer(scope).LoadImports()
 }
 
-func (project *Project) ScanConfigSources(sourceDir string, includeFiles []string) error {
-	return project.Config.SourceContainer.ScanSources(sourceDir, includeFiles)
-}
-
-func (project *Project) GetImportContainer(scope ImportScope) *ShallowImportContainer {
-	if scope == ImportScopeScript {
-		return project.Script.ImportContainer
-	} else if scope == ImportScopeConfig {
-		return project.Config.ImportContainer
+func (project *Project) MakeConfig() (map[string]any, error) {
+	if project.ConfigMade {
+		return project.Config, nil
 	}
-	panic(fmt.Sprintf("invalid import scope [%s]", scope))
+
+	startTime := time.Now()
+	project.Context.Logger.Info("make config start")
+
+	sources, err := project.ConfigImportContainer.LoadConfigSources()
+	if err != nil {
+		return nil, err
+	}
+
+	config := make(map[string]any)
+
+	for i := 0; i < len(sources); i++ {
+		source := sources[i]
+		source.Content.Merge(config)
+	}
+
+	project.Config = config
+	project.ConfigMade = true
+	project.Context.Logger.Info("make config finish: elapsed=%s", time.Since(startTime))
+	return project.Config, nil
 }
 
-func (project *Project) AddLocalImport(scope ImportScope, path string) error {
-	return project.GetImportContainer(scope).AddLocalImport(project, path)
-}
+func (project *Project) Build(outputPath string) (err error) {
+	startTime := time.Now()
+	project.Context.Logger.Info("build start")
+	if outputPath == "" {
+		outputPath = filepath.Join(project.Instance.Info.Path, "output")
+		// TODO: build to workspace path
+		// outputPath = filepath.Join(project.ProjectInfo.Workspace.Path, "output", project.ProjectInfo.Name)
+	}
 
-func (project *Project) AddGitImport(scope ImportScope, rawUrl string, rawRef string) error {
-	return project.GetImportContainer(scope).AddGitImport(project, rawUrl, rawRef)
-}
+	config, err := project.MakeConfig()
+	if err != nil {
+		return err
+	}
+	funcs := NewTemplateFuncs()
 
-func (project *Project) LoadImports(scope ImportScope) error {
-	return project.GetImportContainer(scope).LoadImports(project.Workspace)
-}
+	if err = dsh_utils.RemakeDir(outputPath); err != nil {
+		return err
+	}
 
-func (project *Project) BuildScriptSources(config map[string]interface{}, funcs template.FuncMap, outputPath string) error {
-	projectOutputPath := filepath.Join(outputPath, project.Name)
-	return project.Script.SourceContainer.BuildSources(project.Workspace.Logger, config, funcs, projectOutputPath)
-}
+	if err = project.ScriptImportContainer.BuildScriptSources(config, funcs, outputPath); err != nil {
+		return err
+	}
 
-func (project *Project) LoadConfigSources() error {
-	return project.Config.SourceContainer.LoadSources()
-}
-
-func (project *Project) NewBuilder() *Builder {
-	return NewBuilder(project)
+	project.Context.Logger.Info("build finish: elapsed=%s", time.Since(startTime))
+	return nil
 }

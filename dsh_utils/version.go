@@ -23,7 +23,7 @@ func (v Version) GetVersionNumber() (versionNumber int32, err error) {
 	versionStr := string(v)
 	fragmentStr := strings.Split(versionStr, ".")
 	if len(fragmentStr) < 1 || len(fragmentStr) > 3 {
-		return 0, NewError("version format invalid", map[string]interface{}{
+		return 0, NewError("version format invalid", map[string]any{
 			"version": versionStr,
 		})
 	}
@@ -31,12 +31,12 @@ func (v Version) GetVersionNumber() (versionNumber int32, err error) {
 	for i := 0; i < len(fragmentStr); i++ {
 		number, err := strconv.Atoi(fragmentStr[i])
 		if err != nil {
-			return 0, NewError("version format invalid", map[string]interface{}{
+			return 0, NewError("version format invalid", map[string]any{
 				"version": versionStr,
 			})
 		}
 		if number > 999 {
-			return 0, NewError("version format invalid", map[string]interface{}{
+			return 0, NewError("version format invalid", map[string]any{
 				"version": versionStr,
 			})
 		}
@@ -56,7 +56,7 @@ func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
 	if minVersion != "" {
 		minVersionNumber, err = minVersion.GetVersionNumber()
 		if err != nil {
-			return WrapError(err, "min version get number failed", map[string]interface{}{
+			return WrapError(err, "min version get number failed", map[string]any{
 				"minVersion": minVersion,
 			})
 		}
@@ -65,7 +65,7 @@ func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
 	if maxVersion != "" {
 		maxVersionNumber, err = maxVersion.GetVersionNumber()
 		if err != nil {
-			return WrapError(err, "max version get number failed", map[string]interface{}{
+			return WrapError(err, "max version get number failed", map[string]any{
 				"maxVersion": maxVersion,
 			})
 		}
@@ -73,7 +73,7 @@ func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
 	if runtimeVersionNumber >= minVersionNumber && runtimeVersionNumber <= maxVersionNumber {
 		return nil
 	}
-	return NewError("runtime version check failed", map[string]interface{}{
+	return NewError("runtime version check failed", map[string]any{
 		"runtimeVersion": runtimeVersion,
 		"minVersion":     minVersion,
 		"maxVersion":     maxVersion,

@@ -6,40 +6,43 @@ import (
 	"path/filepath"
 )
 
-type Config struct {
-	SourceContainer *ConfigSourceContainer
-	ImportContainer *ShallowImportContainer
+type ProjectInstanceConfig struct {
+	SourceContainer *ProjectInstanceConfigSourceContainer
+	ImportContainer *ProjectInstanceImportShallowContainer
 }
 
-type ConfigSource struct {
+type ProjectInstanceConfigSource struct {
 	SourcePath string
 	SourceName string
-	Content    *ConfigSourceContent
+	Content    *ProjectInstanceConfigSourceContent
 }
 
-type ConfigSourceContainer struct {
-	SourceNameMap map[string]*ConfigSource
-	YamlSources   []*ConfigSource
+type ProjectInstanceConfigSourceContainer struct {
+	SourceNameMap map[string]*ProjectInstanceConfigSource
+	YamlSources   []*ProjectInstanceConfigSource
 }
 
-type ConfigSourceContent struct {
+type ProjectInstanceConfigSourceContent struct {
 	Order  int64
-	Config map[string]interface{}
+	Config map[string]any
 }
 
-func NewConfigSourceContainer() *ConfigSourceContainer {
-	return &ConfigSourceContainer{
-		SourceNameMap: make(map[string]*ConfigSource),
+func NewProjectInstanceConfig(context *Context) *ProjectInstanceConfig {
+	return &ProjectInstanceConfig{
+		SourceContainer: &ProjectInstanceConfigSourceContainer{
+			SourceNameMap: make(map[string]*ProjectInstanceConfigSource),
+		},
+		ImportContainer: NewShallowImportContainer(context, ProjectInstanceImportScopeConfig),
 	}
 }
 
-func (container *ConfigSourceContainer) ScanSources(sourceDir string, includeFiles []string) error {
+func (container *ProjectInstanceConfigSourceContainer) ScanSources(sourceDir string, includeFiles []string) error {
 	yamlSourcePaths, err := dsh_utils.ScanConfigSources(sourceDir, includeFiles)
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(yamlSourcePaths); i++ {
-		source := &ConfigSource{
+		source := &ProjectInstanceConfigSource{
 			SourcePath: filepath.Join(sourceDir, yamlSourcePaths[i]),
 			SourceName: yamlSourcePaths[i],
 		}
@@ -47,7 +50,7 @@ func (container *ConfigSourceContainer) ScanSources(sourceDir string, includeFil
 			if existSource.SourcePath == source.SourcePath {
 				continue
 			}
-			return dsh_utils.NewError("config source name is duplicated", map[string]interface{}{
+			return dsh_utils.NewError("config source name is duplicated", map[string]any{
 				"sourceName":  source.SourceName,
 				"sourcePath1": source.SourcePath,
 				"sourcePath2": existSource.SourcePath,
@@ -59,11 +62,11 @@ func (container *ConfigSourceContainer) ScanSources(sourceDir string, includeFil
 	return nil
 }
 
-func (container *ConfigSourceContainer) LoadSources() (err error) {
+func (container *ProjectInstanceConfigSourceContainer) LoadSources() (err error) {
 	for i := 0; i < len(container.YamlSources); i++ {
 		source := container.YamlSources[i]
 		if source.Content == nil {
-			content := &ConfigSourceContent{}
+			content := &ProjectInstanceConfigSourceContent{}
 			if err = dsh_utils.ReadYaml(source.SourcePath, content); err != nil {
 				return err
 			}
@@ -73,22 +76,22 @@ func (container *ConfigSourceContainer) LoadSources() (err error) {
 	return nil
 }
 
-func (content *ConfigSourceContent) Merge(target map[string]interface{}) {
+func (content *ProjectInstanceConfigSourceContent) Merge(target map[string]any) {
 	MergeMap(target, content.Config)
 }
 
-func MergeMap(target map[string]interface{}, source map[string]interface{}) map[string]interface{} {
+func MergeMap(target map[string]any, source map[string]any) map[string]any {
 	if target == nil {
-		target = make(map[string]interface{})
+		target = make(map[string]any)
 	}
 	for k, v := range source {
-		if m, ok := v.(map[string]interface{}); ok {
-			tm, tok := target[k].(map[string]interface{})
+		if m, ok := v.(map[string]any); ok {
+			tm, tok := target[k].(map[string]any)
 			if !tok {
 				if tm != nil {
 					panic(fmt.Sprintf("target[%s] is not a map", k))
 				}
-				tm = make(map[string]interface{})
+				tm = make(map[string]any)
 			}
 			target[k] = MergeMap(tm, m)
 		} else if a, ok := v.([]interface{}); ok {
@@ -110,8 +113,8 @@ func MergeMap(target map[string]interface{}, source map[string]interface{}) map[
 func MergeArray(target []interface{}, source []interface{}) []interface{} {
 	for i := 0; i < len(source); i++ {
 		v := source[i]
-		if m, ok := v.(map[string]interface{}); ok {
-			target = append(target, MergeMap(make(map[string]interface{}), m))
+		if m, ok := v.(map[string]any); ok {
+			target = append(target, MergeMap(make(map[string]any), m))
 		} else if a, ok := v.([]interface{}); ok {
 			target = append(target, MergeArray(make([]interface{}, 0), a))
 		} else {

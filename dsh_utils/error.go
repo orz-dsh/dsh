@@ -31,7 +31,7 @@ func (detail ErrorDetail) String() string {
 	return detail.ToString("")
 }
 
-func NewErrorDetailBody(bodyMap map[string]interface{}) ErrorDetailBody {
+func NewErrorDetailBody(bodyMap map[string]any) ErrorDetailBody {
 	var body []string
 	for k, v := range bodyMap {
 		vStr := fmt.Sprintf("%v", v)
@@ -104,7 +104,7 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-func NewError(title string, body map[string]interface{}) error {
+func NewError(title string, body map[string]any) error {
 	tracer := errors.New("").(stackTracer)
 	return &Error{
 		Details: ErrorDetails{
@@ -114,7 +114,7 @@ func NewError(title string, body map[string]interface{}) error {
 	}
 }
 
-func WrapError(err error, title string, body map[string]interface{}) error {
+func WrapError(err error, title string, body map[string]any) error {
 	var err_ *Error
 	if errors.As(err, &err_) {
 		return &Error{

@@ -27,12 +27,12 @@ func IsDirExists(path string) bool {
 
 func RemakeDir(path string) (err error) {
 	if err = os.RemoveAll(path); err != nil {
-		return WrapError(err, "dir remove failed", map[string]interface{}{
+		return WrapError(err, "dir remove failed", map[string]any{
 			"path": path,
 		})
 	}
 	if err = os.MkdirAll(path, os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]interface{}{
+		return WrapError(err, "dir make failed", map[string]any{
 			"path": path,
 		})
 	}
@@ -41,7 +41,7 @@ func RemakeDir(path string) (err error) {
 
 func LinkFile(sourcePath string, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]interface{}{
+		return WrapError(err, "dir make failed", map[string]any{
 			"path": targetPath,
 		})
 	}
@@ -50,14 +50,14 @@ func LinkFile(sourcePath string, targetPath string) (err error) {
 
 func CopyFile(sourcePath string, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]interface{}{
+		return WrapError(err, "dir make failed", map[string]any{
 			"path": targetPath,
 		})
 	}
 
 	targetFile, err := os.Create(targetPath)
 	if err != nil {
-		return WrapError(err, "file create failed", map[string]interface{}{
+		return WrapError(err, "file create failed", map[string]any{
 			"path": targetPath,
 		})
 	}
@@ -65,7 +65,7 @@ func CopyFile(sourcePath string, targetPath string) (err error) {
 
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
-		return WrapError(err, "file open failed", map[string]interface{}{
+		return WrapError(err, "file open failed", map[string]any{
 			"path": sourcePath,
 		})
 	}
@@ -73,7 +73,7 @@ func CopyFile(sourcePath string, targetPath string) (err error) {
 
 	_, err = io.Copy(targetFile, sourceFile)
 	if err != nil {
-		return WrapError(err, "file copy failed", map[string]interface{}{
+		return WrapError(err, "file copy failed", map[string]any{
 			"targetFile": targetFile,
 			"sourceFile": sourceFile,
 		})
@@ -86,7 +86,7 @@ func LinkOrCopyFile(sourcePath string, targetPath string) (err error) {
 	if err != nil {
 		err = CopyFile(sourcePath, targetPath)
 		if err != nil {
-			return WrapError(err, "link or copy failed", map[string]interface{}{
+			return WrapError(err, "link or copy failed", map[string]any{
 				"sourcePath": sourcePath,
 				"targetPath": targetPath,
 			})
@@ -98,13 +98,13 @@ func LinkOrCopyFile(sourcePath string, targetPath string) (err error) {
 func ReadYaml(path string, model interface{}) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return WrapError(err, "file read failed", map[string]interface{}{
+		return WrapError(err, "file read failed", map[string]any{
 			"path": path,
 		})
 	}
 	err = yaml.Unmarshal(data, model)
 	if err != nil {
-		return WrapError(err, "yaml unmarshal failed", map[string]interface{}{
+		return WrapError(err, "yaml unmarshal failed", map[string]any{
 			"path": path,
 		})
 	}
@@ -122,7 +122,7 @@ func ScanScriptSources(sourceDir string, includeFiles []string) (plainSourcePath
 	}
 	err = filepath.WalkDir(sourceDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return WrapError(err, "dir walk failed", map[string]interface{}{
+			return WrapError(err, "dir walk failed", map[string]any{
 				"dir": sourceDir,
 			})
 		}
@@ -134,7 +134,7 @@ func ScanScriptSources(sourceDir string, includeFiles []string) (plainSourcePath
 			}
 			relPath, err := filepath.Rel(sourceDir, path)
 			if err != nil {
-				return WrapError(err, "file rel-path get failed", map[string]interface{}{
+				return WrapError(err, "file rel-path get failed", map[string]any{
 					"dir":  sourceDir,
 					"path": path,
 				})
@@ -154,7 +154,7 @@ func ScanScriptSources(sourceDir string, includeFiles []string) (plainSourcePath
 		return nil
 	})
 	if err != nil {
-		return nil, nil, nil, WrapError(err, "script sources scan failed", map[string]interface{}{
+		return nil, nil, nil, WrapError(err, "script sources scan failed", map[string]any{
 			"sourceDir": sourceDir,
 		})
 	}
@@ -168,7 +168,7 @@ func ScanConfigSources(sourceDir string, includeFiles []string) (yamlSourcePaths
 	}
 	err = filepath.WalkDir(sourceDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return WrapError(err, "dir walk failed", map[string]interface{}{
+			return WrapError(err, "dir walk failed", map[string]any{
 				"dir": sourceDir,
 			})
 		}
@@ -180,7 +180,7 @@ func ScanConfigSources(sourceDir string, includeFiles []string) (yamlSourcePaths
 			}
 			relPath, err := filepath.Rel(sourceDir, path)
 			if err != nil {
-				return WrapError(err, "file rel-path get failed", map[string]interface{}{
+				return WrapError(err, "file rel-path get failed", map[string]any{
 					"dir":  sourceDir,
 					"path": path,
 				})
@@ -192,7 +192,7 @@ func ScanConfigSources(sourceDir string, includeFiles []string) (yamlSourcePaths
 		return nil
 	})
 	if err != nil {
-		return nil, WrapError(err, "config sources scan failed", map[string]interface{}{
+		return nil, WrapError(err, "config sources scan failed", map[string]any{
 			"sourceDir": sourceDir,
 		})
 	}
@@ -201,14 +201,14 @@ func ScanConfigSources(sourceDir string, includeFiles []string) (yamlSourcePaths
 
 func WriteTemplate(t *template.Template, env any, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]interface{}{
+		return WrapError(err, "dir make failed", map[string]any{
 			"path": targetPath,
 		})
 	}
 
 	targetFile, err := os.Create(targetPath)
 	if err != nil {
-		return WrapError(err, "file create failed", map[string]interface{}{
+		return WrapError(err, "file create failed", map[string]any{
 			"path": targetPath,
 		})
 	}
@@ -216,7 +216,7 @@ func WriteTemplate(t *template.Template, env any, targetPath string) (err error)
 
 	err = t.Execute(targetFile, env)
 	if err != nil {
-		return WrapError(err, "template execute failed", map[string]interface{}{
+		return WrapError(err, "template execute failed", map[string]any{
 			"targetFile": targetFile,
 		})
 	}

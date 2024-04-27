@@ -18,7 +18,7 @@ func test13() error {
 	return WrapError(
 		errors.Join(errors.New("error1"), errors.New("error2"), errors.New("error3")),
 		"test error",
-		map[string]interface{}{
+		map[string]any{
 			"a": "aaa",
 		},
 	)
@@ -36,7 +36,7 @@ func test23() error {
 	return WrapError(
 		errors2.Wrap(errors2.Wrap(errors2.Wrap(errors.New("error1"), "error2"), "error3"), "error4"),
 		"test error",
-		map[string]interface{}{
+		map[string]any{
 			"a": "aaa",
 		},
 	)
@@ -53,7 +53,7 @@ func test32() error {
 func test33() error {
 	return NewError(
 		"test error",
-		map[string]interface{}{
+		map[string]any{
 			"a": "aaa",
 		},
 	)
@@ -72,16 +72,16 @@ func test43() error {
 		WrapError(
 			NewError(
 				"test error1",
-				map[string]interface{}{
+				map[string]any{
 					"a": "aaa",
 					"i": 1,
-					"obj": map[string]interface{}{
+					"obj": map[string]any{
 						"b": "bb\nb",
 					},
 				},
 			),
 			"test error2",
-			map[string]interface{}{
+			map[string]any{
 				"b": "bbb",
 			},
 		),

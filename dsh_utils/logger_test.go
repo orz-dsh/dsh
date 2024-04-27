@@ -8,6 +8,6 @@ func TestLogger(t *testing.T) {
 	logger.Info("info %s", "format")
 	logger.Warn("warn %s", "format")
 	logger.Error("error %s", "format")
-	logger.Fatal("critical error%+v", NewError("crash error", map[string]interface{}{"key": "value"}))
-	logger.Panic("critical error%+v", NewError("crash error", map[string]interface{}{"key": "value"}))
+	logger.Fatal("critical error%+v", NewError("crash error", map[string]any{"key": "value"}))
+	logger.Panic("critical error%+v", NewError("crash error", map[string]any{"key": "value"}))
 }
