@@ -91,9 +91,9 @@ func (instance *projectInstance) loadImports(scope projectInstanceImportScope) e
 	return instance.getImportContainer(scope).loadImports()
 }
 
-func (instance *projectInstance) buildScriptSources(config map[string]any, funcs template.FuncMap, outputPath string) error {
+func (instance *projectInstance) makeScript(config map[string]any, funcs template.FuncMap, outputPath string) error {
 	projectOutputPath := filepath.Join(outputPath, instance.info.name)
-	return instance.script.sourceContainer.buildSources(config, funcs, projectOutputPath)
+	return instance.script.sourceContainer.make(config, funcs, projectOutputPath)
 }
 
 func (instance *projectInstance) loadConfigSources() error {

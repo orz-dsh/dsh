@@ -232,19 +232,19 @@ func (container *projectInstanceImportDeepContainer) loadImports() (err error) {
 	return nil
 }
 
-func (container *projectInstanceImportDeepContainer) buildScriptSources(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
+func (container *projectInstanceImportDeepContainer) makeScript(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
 	if container.scope != projectInstanceImportScopeScript {
-		panic("projectInstanceImportDeepContainer.buildScriptSources() only support projectInstanceImportScopeScript")
+		panic("projectInstanceImportDeepContainer.makeScript() only support projectInstanceImportScopeScript")
 	}
 	if err = container.loadImports(); err != nil {
 		return err
 	}
 	for i := 0; i < len(container.imports); i++ {
-		if err = container.imports[i].instance.buildScriptSources(config, funcs, outputPath); err != nil {
+		if err = container.imports[i].instance.makeScript(config, funcs, outputPath); err != nil {
 			return err
 		}
 	}
-	if err = container.instance.buildScriptSources(config, funcs, outputPath); err != nil {
+	if err = container.instance.makeScript(config, funcs, outputPath); err != nil {
 		return err
 	}
 	return nil

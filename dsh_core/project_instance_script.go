@@ -77,17 +77,17 @@ func (container *projectInstanceScriptSourceContainer) scanSources(sourceDir str
 	return nil
 }
 
-func (container *projectInstanceScriptSourceContainer) buildSources(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
+func (container *projectInstanceScriptSourceContainer) make(config map[string]any, funcs template.FuncMap, outputPath string) (err error) {
 	for i := 0; i < len(container.plainSources); i++ {
 		startTime := time.Now()
 		source := container.plainSources[i]
 		outputTargetPath := filepath.Join(outputPath, source.sourceName)
-		container.context.Logger.Info("build script start: source=%s, target=%s", source.sourcePath, outputTargetPath)
+		container.context.Logger.Info("make file start: source=%s, target=%s", source.sourcePath, outputTargetPath)
 		err = dsh_utils.LinkOrCopyFile(source.sourcePath, outputTargetPath)
 		if err != nil {
 			return err
 		}
-		container.context.Logger.Info("build script finish: elapsed=%s", time.Since(startTime))
+		container.context.Logger.Info("make file finish: elapsed=%s", time.Since(startTime))
 	}
 
 	var templateLibSourcePaths []string
@@ -98,11 +98,11 @@ func (container *projectInstanceScriptSourceContainer) buildSources(config map[s
 		startTime := time.Now()
 		source := container.templateSources[i]
 		outputTargetPath := filepath.Join(outputPath, source.sourceName)
-		container.context.Logger.Info("build script start: source=%s, target=%s", source.sourcePath, outputTargetPath)
-		if err = buildTemplate(config, funcs, source.sourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
+		container.context.Logger.Info("make file start: source=%s, target=%s", source.sourcePath, outputTargetPath)
+		if err = makeTemplate(config, funcs, source.sourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
 			return err
 		}
-		container.context.Logger.Info("build script finish: elapsed=%s", time.Since(startTime))
+		container.context.Logger.Info("make file finish: elapsed=%s", time.Since(startTime))
 	}
 
 	return nil

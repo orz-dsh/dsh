@@ -79,9 +79,9 @@ func (project *Project) MakeConfig() (map[string]any, error) {
 	return project.config, nil
 }
 
-func (project *Project) Build(outputPath string) (err error) {
+func (project *Project) MakeScript(outputPath string) (err error) {
 	startTime := time.Now()
-	project.context.Logger.Info("build start")
+	project.context.Logger.Info("make script start")
 	if outputPath == "" {
 		outputPath = filepath.Join(project.instance.info.path, "output")
 		// TODO: build to workspace path
@@ -98,10 +98,10 @@ func (project *Project) Build(outputPath string) (err error) {
 		return err
 	}
 
-	if err = project.scriptImportContainer.buildScriptSources(config, funcs, outputPath); err != nil {
+	if err = project.scriptImportContainer.makeScript(config, funcs, outputPath); err != nil {
 		return err
 	}
 
-	project.context.Logger.Info("build finish: elapsed=%s", time.Since(startTime))
+	project.context.Logger.Info("make script finish: elapsed=%s", time.Since(startTime))
 	return nil
 }

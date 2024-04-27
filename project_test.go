@@ -17,7 +17,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = project.Build("")
+	err = project.MakeScript("")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
