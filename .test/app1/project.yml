@@ -1,22 +1,47 @@
 name: app1
 runtime:
-  minVersion: "1.0.0"
-  maxVersion: "2.0.0"
+  minVersion: 1.0.0
+  maxVersion: 2.0.0
+option:
+  items:
+    - name: test
+      default: c
+      choices:
+        - a
+        - b
+        - c
+        - d
+      links:
+        - project: lib1
+          option: test
+          mapper: >-
+            value == 'a' ? '1234' : (value == 'b' ? '5678' : (value == 'c' ? '0000' : nil))
+        - project: lib2
+          option: test
+          mapper: upper(value)
+  verifies:
+    - test != 'd'
 script:
   sources:
     - dir: script
+      match: test == "a" || test == "b"
   imports:
     - local:
         dir: ./.test/lib1
+      match: test == "a"
     - local:
         dir: ./.test/lib2
+      match: test == "a"
 config:
   sources:
     - dir: config
       files:
         - test1.yml
+      match: test == "a" || test == "b"
   imports:
     - local:
         dir: ./.test/lib1
+      match: test == "a" || test == "b"
     - local:
         dir: ./.test/lib2
+      match: test == "a" || test == "b"

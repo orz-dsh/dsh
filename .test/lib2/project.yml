@@ -1,4 +1,15 @@
 name: lib2
+option:
+  items:
+    - name: test
+      choices:
+        - A
+        - B
+        - C
+        - D
+      links:
+        - project: lib1
+          option: test
 script:
   sources:
     - dir: script

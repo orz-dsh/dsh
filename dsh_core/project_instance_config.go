@@ -3,6 +3,7 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"fmt"
+	"github.com/expr-lang/expr/vm"
 	"path/filepath"
 )
 
@@ -26,7 +27,9 @@ type projectInstanceConfigSourceContainer struct {
 
 type projectInstanceConfigSourceContent struct {
 	Order  int64
+	Match  string
 	Config map[string]any
+	match  *vm.Program
 }
 
 type projectInstanceConfigSourceType string
@@ -110,6 +113,13 @@ func (container *projectInstanceConfigSourceContainer) loadSources() (err error)
 				}
 			} else {
 				panic(fmt.Sprintf("unsupported config source type: sourcePath=%s", source.sourcePath))
+			}
+			if content.Match != "" {
+				if content.match, err = dsh_utils.CompileExpr(content.Match); err != nil {
+					return dsh_utils.WrapError(err, "compile match expr failed", map[string]any{
+						"sourcePath": source.sourcePath,
+					})
+				}
 			}
 			source.content = content
 		}

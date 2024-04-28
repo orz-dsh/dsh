@@ -9,6 +9,7 @@ import (
 type projectInstance struct {
 	context *Context
 	info    *projectInfo
+	option  *projectInstanceOption
 	script  *projectInstanceScript
 	config  *projectInstanceConfig
 }
@@ -17,16 +18,16 @@ type projectInstanceSourceContainer interface {
 	scanSources(sourceDir string, includeFiles []string) error
 }
 
-func newProjectInstance(context *Context, info *projectInfo) (instance *projectInstance, err error) {
+func newProjectInstance(context *Context, info *projectInfo, optionValues map[string]string) (instance *projectInstance, err error) {
 	context.Logger.Info("instance project: name=%s", info.name)
 
-	for i := 0; i < len(info.manifest.Option.Items); i++ {
-		// TODO: 遍历 options
+	option, err := newProjectInstanceOption(context, info, optionValues)
+	if err != nil {
+		return nil, err
 	}
-
 	script := newProjectInstanceScript(context)
 	config := newProjectInstanceConfig(context)
-	sources := [][]projectManifestSource{
+	sources := [][]*projectManifestSource{
 		info.manifest.Script.Sources,
 		info.manifest.Config.Sources,
 	}
@@ -34,7 +35,7 @@ func newProjectInstance(context *Context, info *projectInfo) (instance *projectI
 		script.sourceContainer,
 		config.sourceContainer,
 	}
-	imports := [][]projectManifestImport{
+	imports := [][]*projectManifestImport{
 		info.manifest.Script.Imports,
 		info.manifest.Config.Imports,
 	}
@@ -46,7 +47,15 @@ func newProjectInstance(context *Context, info *projectInfo) (instance *projectI
 		for j := 0; j < len(sources[i]); j++ {
 			src := sources[i][j]
 			if src.Dir != "" {
-				// TODO: selector match
+				if src.Match != "" {
+					matched, err := option.match(src.match)
+					if err != nil {
+						return nil, err
+					}
+					if !matched {
+						continue
+					}
+				}
 				if err = sourceContainers[i].scanSources(filepath.Join(info.path, src.Dir), src.Files); err != nil {
 					return nil, err
 				}
@@ -57,12 +66,28 @@ func newProjectInstance(context *Context, info *projectInfo) (instance *projectI
 		for j := 0; j < len(imports[i]); j++ {
 			imp := imports[i][j]
 			if imp.Local != nil && imp.Local.Dir != "" {
-				// TODO: selector match
+				if imp.Match != "" {
+					matched, err := option.match(imp.match)
+					if err != nil {
+						return nil, err
+					}
+					if !matched {
+						continue
+					}
+				}
 				if err = importContainers[i].importLocal(context, imp.Local.Dir, info); err != nil {
 					return nil, err
 				}
 			} else if imp.Git != nil && imp.Git.Url != "" && imp.Git.Ref != "" {
-				// TODO: selector match
+				if imp.Match != "" {
+					matched, err := option.match(imp.match)
+					if err != nil {
+						return nil, err
+					}
+					if !matched {
+						continue
+					}
+				}
 				if err = importContainers[i].importGit(context, info, imp.Git.Url, imp.Git.Ref); err != nil {
 					return nil, err
 				}
@@ -72,6 +97,7 @@ func newProjectInstance(context *Context, info *projectInfo) (instance *projectI
 	return &projectInstance{
 		context: context,
 		info:    info,
+		option:  option,
 		script:  script,
 		config:  config,
 	}, nil

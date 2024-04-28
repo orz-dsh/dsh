@@ -37,7 +37,7 @@ func NewErrorDetailBody(bodyMap map[string]any) ErrorDetailBody {
 		vStr := fmt.Sprintf("%v", v)
 		vStr = strings.ReplaceAll(vStr, "\n", "\\n")
 		vStr = strings.ReplaceAll(vStr, "\r", "\\r")
-		body = append(body, k+" = "+vStr)
+		body = append(body, k+" = `"+vStr+"`")
 	}
 	return body
 }

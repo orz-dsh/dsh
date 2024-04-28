@@ -1,4 +1,17 @@
 name: lib1
+option:
+  items:
+    - name: test
+      default: 1234
+      choices:
+        - "1234"
+        - "5678"
+        - "0000"
+      links:
+        - project: app1
+          option: test
+        - project: lib2
+          option: test
 script:
   sources:
     - dir: script

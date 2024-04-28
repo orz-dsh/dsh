@@ -3,6 +3,7 @@ module dsh
 go 1.22
 
 require (
+	github.com/expr-lang/expr v1.16.5
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/pelletier/go-toml/v2 v2.2.1
 	github.com/pkg/errors v0.9.1

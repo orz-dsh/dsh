@@ -17,14 +17,14 @@ type Project struct {
 	configMade            bool
 }
 
-func openProject(context *Context, info *projectInfo) (*Project, error) {
+func openProject(context *Context, info *projectInfo, optionValues map[string]string) (*Project, error) {
 	context.Logger.Info("open project: name=%s", info.name)
 	if context.Project != nil {
 		return nil, dsh_utils.NewError("context already open project", map[string]any{
 			"projectPath": context.Project.info.path,
 		})
 	}
-	instance, err := context.newProjectInstance(info)
+	instance, err := context.newProjectInstance(info, optionValues)
 	if err != nil {
 		return nil, err
 	}

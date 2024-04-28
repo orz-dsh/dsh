@@ -113,18 +113,18 @@ func (workspace *Workspace) loadGitProjectInfo(path string, rawUrl string, parse
 	return workspace.loadLocalProjectInfo(path)
 }
 
-func (workspace *Workspace) OpenLocalProject(context *Context, path string) (*Project, error) {
+func (workspace *Workspace) OpenLocalProject(context *Context, path string, optionValues map[string]string) (*Project, error) {
 	info, err := workspace.loadLocalProjectInfo(path)
 	if err != nil {
 		return nil, err
 	}
-	return openProject(context, info)
+	return openProject(context, info, optionValues)
 }
 
-func (workspace *Workspace) OpenGitProject(context *Context, url string, ref string) (*Project, error) {
+func (workspace *Workspace) OpenGitProject(context *Context, url string, ref string, optionValues map[string]string) (*Project, error) {
 	info, err := workspace.loadGitProjectInfo("", url, nil, ref, nil)
 	if err != nil {
 		return nil, err
 	}
-	return openProject(context, info)
+	return openProject(context, info, optionValues)
 }
