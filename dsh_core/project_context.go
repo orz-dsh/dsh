@@ -38,16 +38,16 @@ func (context *projectContext) newProjectInstance(manifest *projectManifest, opt
 type optionLink struct {
 	finalTarget string
 	target      string
-	mapper      *vm.Program
+	mapping     *vm.Program
 }
 
-func (context *projectContext) addOptionLink(sourceProject string, sourceOption string, targetProject string, targetOption string, mapper *vm.Program) error {
+func (context *projectContext) addOptionLink(sourceProject string, sourceOption string, targetProject string, targetOption string, mapping *vm.Program) error {
 	sop := sourceProject + "." + sourceOption
 	top := targetProject + "." + targetOption
 	finalLink := &optionLink{
 		finalTarget: top,
 		target:      top,
-		mapper:      mapper,
+		mapping:     mapping,
 	}
 	if topLink, exist := context.optionLinks[top]; exist {
 		finalLink.finalTarget = topLink.finalTarget
@@ -81,8 +81,8 @@ func (context *projectContext) getOptionLinkValue(projectName string, optionName
 	name := projectName + "." + optionName
 	if link, exist := context.optionLinks[name]; exist {
 		if value, exist := context.optionValues[link.target]; exist {
-			if link.mapper != nil {
-				result, err := dsh_utils.EvalExprReturnString(link.mapper, map[string]any{
+			if link.mapping != nil {
+				result, err := dsh_utils.EvalExprReturnString(link.mapping, map[string]any{
 					"value": value,
 				})
 				if err != nil {

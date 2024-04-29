@@ -80,7 +80,7 @@ func (project *Project) MakeScript(outputPath string) (err error) {
 	if outputPath == "" {
 		outputPath = filepath.Join(project.instance.manifest.projectPath, "output")
 		// TODO: build to workspace path
-		// outputPath = filepath.Join(project.ProjectInfo.workspace.path, "output", project.ProjectInfo.name)
+		//outputPath = filepath.Join(project.context.workspace.path, "output", project.manifest.Name)
 	}
 
 	config, err := project.MakeConfig()

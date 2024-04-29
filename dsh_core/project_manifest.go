@@ -45,8 +45,8 @@ type projectManifestOptionItem struct {
 type projectManifestOptionItemLink struct {
 	Project string
 	Option  string
-	Mapper  string
-	mapper  *vm.Program
+	Mapping string
+	mapping *vm.Program
 }
 
 type projectManifestScript struct {
@@ -258,13 +258,13 @@ func (manifest *projectManifest) init() (err error) {
 					"reason": "option is empty",
 				})
 			}
-			if option.Links[j].Mapper != "" {
-				option.Links[j].mapper, err = dsh_utils.CompileExpr(option.Links[j].Mapper)
+			if option.Links[j].Mapping != "" {
+				option.Links[j].mapping, err = dsh_utils.CompileExpr(option.Links[j].Mapping)
 				if err != nil {
 					return dsh_utils.WrapError(err, "project manifest invalid", map[string]any{
 						"path":   manifest.manifestPath,
-						"field":  fmt.Sprintf("option.items[%d].links[%d].mapper", i, j),
-						"reason": "mapper is invalid",
+						"field":  fmt.Sprintf("option.items[%d].links[%d].mapping", i, j),
+						"reason": "mapping is invalid",
 					})
 				}
 			}

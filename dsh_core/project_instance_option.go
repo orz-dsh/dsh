@@ -161,7 +161,7 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 	}
 	for i := 0; i < len(item.Links); i++ {
 		link := item.Links[i]
-		if err := option.context.addOptionLink(link.Project, link.Option, manifest.Name, item.Name, link.mapper); err != nil {
+		if err := option.context.addOptionLink(link.Project, link.Option, manifest.Name, item.Name, link.mapping); err != nil {
 			return err
 		}
 	}

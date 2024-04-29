@@ -14,11 +14,11 @@ option:
       links:
         - project: lib1
           option: test
-          mapper: >-
+          mapping: >-
             value == 'a' ? '1234' : (value == 'b' ? '5678' : (value == 'c' ? '0000' : nil))
         - project: lib2
           option: test
-          mapper: upper(value)
+          mapping: upper(value)
   verifies:
     - test != 'd'
 script:
