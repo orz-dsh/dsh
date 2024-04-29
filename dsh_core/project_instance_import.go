@@ -269,29 +269,11 @@ func (container *projectInstanceImportDeepContainer) loadConfigSources() (source
 	for i := 0; i < len(container.imports); i++ {
 		for j := 0; j < len(container.imports[i].instance.config.sourceContainer.sources); j++ {
 			source := container.imports[i].instance.config.sourceContainer.sources[j]
-			if source.content.match != nil {
-				matched, err := container.imports[i].instance.option.match(source.content.match)
-				if err != nil {
-					return nil, err
-				}
-				if !matched {
-					continue
-				}
-			}
 			sources = append(sources, source)
 		}
 	}
 	for i := 0; i < len(container.instance.config.sourceContainer.sources); i++ {
 		source := container.instance.config.sourceContainer.sources[i]
-		if source.content.match != nil {
-			matched, err := container.instance.option.match(source.content.match)
-			if err != nil {
-				return nil, err
-			}
-			if !matched {
-				continue
-			}
-		}
 		sources = append(sources, source)
 	}
 

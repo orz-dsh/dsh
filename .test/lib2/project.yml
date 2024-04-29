@@ -21,3 +21,6 @@ script:
 config:
   sources:
     - dir: config
+      files:
+        - test.yml
+      match: test == "A"
