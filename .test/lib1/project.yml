@@ -8,10 +8,14 @@ option:
         - "5678"
         - "0000"
       links:
-        - project: app1
-          option: test
         - project: lib2
           option: test
+          mapper: >-
+            value == '1234' ? 'A' : (value == '5678' ? 'B' : (value == '0000' ? 'C' : nil))
+        - project: app1
+          option: test
+          mapper: >-
+            value == '1234' ? 'a' : (value == '5678' ? 'b' : (value == '0000' ? 'c' : nil))
 script:
   sources:
     - dir: script

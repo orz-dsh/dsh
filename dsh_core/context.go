@@ -42,8 +42,9 @@ func (context *Context) newProjectInstance(info *projectInfo, optionValues map[s
 }
 
 type optionLink struct {
-	target string
-	mapper *vm.Program
+	finalTarget string
+	target      string
+	mapper      *vm.Program
 }
 
 func (context *Context) addOptionLink(sourceProject string, sourceOption string, targetProject string, targetOption string, mapper *vm.Program) error {
@@ -54,10 +55,10 @@ func (context *Context) addOptionLink(sourceProject string, sourceOption string,
 		mapper: mapper,
 	}
 	if topLink, exist := context.optionLinks[top]; exist {
-		finalLink = topLink
+		finalLink.finalTarget = topLink.finalTarget
 	}
 	if link, exist := context.optionLinks[sop]; exist {
-		if link.target != finalLink.target {
+		if link.finalTarget != finalLink.finalTarget {
 			return dsh_utils.NewError("option link conflict", map[string]interface{}{
 				"source":  sop,
 				"target1": finalLink,

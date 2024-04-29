@@ -246,6 +246,27 @@ func (info *projectInfo) init() (err error) {
 			}
 		}
 		for j := 0; j < len(option.Links); j++ {
+			if option.Links[j].Project == "" {
+				return dsh_utils.NewError("project manifest invalid", map[string]any{
+					"manifestPath": info.manifestPath,
+					"field":        fmt.Sprintf("option.items[%d].links[%d].project", i, j),
+					"reason":       "project is empty",
+				})
+			}
+			if option.Links[j].Project == manifest.Name {
+				return dsh_utils.NewError("project manifest invalid", map[string]any{
+					"manifestPath": info.manifestPath,
+					"field":        fmt.Sprintf("option.items[%d].links[%d].project", i, j),
+					"reason":       "can not link same project option",
+				})
+			}
+			if option.Links[j].Option == "" {
+				return dsh_utils.NewError("project manifest invalid", map[string]any{
+					"manifestPath": info.manifestPath,
+					"field":        fmt.Sprintf("option.items[%d].links[%d].option", i, j),
+					"reason":       "option is empty",
+				})
+			}
 			if option.Links[j].Mapper != "" {
 				option.Links[j].mapper, err = dsh_utils.CompileExpr(option.Links[j].Mapper)
 				if err != nil {
