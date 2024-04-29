@@ -7,14 +7,14 @@ import (
 )
 
 type projectInstanceOption struct {
-	context   *Context
+	context   *projectContext
 	info      *projectInfo
 	values    map[string]string
 	items     map[string]any
 	initiated bool
 }
 
-func newProjectInstanceOption(context *Context, info *projectInfo, values map[string]string) (*projectInstanceOption, error) {
+func newProjectInstanceOption(context *projectContext, info *projectInfo, values map[string]string) (*projectInstanceOption, error) {
 	if values == nil {
 		values = make(map[string]string)
 	}

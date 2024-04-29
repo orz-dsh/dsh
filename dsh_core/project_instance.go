@@ -7,7 +7,7 @@ import (
 )
 
 type projectInstance struct {
-	context *Context
+	context *projectContext
 	info    *projectInfo
 	option  *projectInstanceOption
 	script  *projectInstanceScript
@@ -18,8 +18,8 @@ type projectInstanceSourceContainer interface {
 	scanSources(sourceDir string, includeFiles []string) error
 }
 
-func newProjectInstance(context *Context, info *projectInfo, optionValues map[string]string) (instance *projectInstance, err error) {
-	context.Logger.Info("instance project: name=%s", info.name)
+func newProjectInstance(context *projectContext, info *projectInfo, optionValues map[string]string) (instance *projectInstance, err error) {
+	context.logger.Info("instance project: name=%s", info.name)
 
 	option, err := newProjectInstanceOption(context, info, optionValues)
 	if err != nil {

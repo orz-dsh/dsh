@@ -20,7 +20,7 @@ type projectInstanceConfigSource struct {
 }
 
 type projectInstanceConfigSourceContainer struct {
-	context       *Context
+	context       *projectContext
 	sourceNameMap map[string]*projectInstanceConfigSource
 	sources       []*projectInstanceConfigSource
 }
@@ -40,7 +40,7 @@ const (
 	projectInstanceConfigSourceTypeJson projectInstanceConfigSourceType = "json"
 )
 
-func newProjectInstanceConfig(context *Context) *projectInstanceConfig {
+func newProjectInstanceConfig(context *projectContext) *projectInstanceConfig {
 	return &projectInstanceConfig{
 		sourceContainer: &projectInstanceConfigSourceContainer{
 			context:       context,

@@ -5,31 +5,25 @@ import (
 	"github.com/expr-lang/expr/vm"
 )
 
-type Context struct {
-	Workspace       *Workspace
-	Logger          *dsh_utils.Logger
-	OptionSelector  *OptionSelector
-	Project         *Project
+type projectContext struct {
+	workspace       *Workspace
+	logger          *dsh_utils.Logger
 	instanceNameMap map[string]*projectInstance
 	optionLinks     map[string]*optionLink
 	optionValues    map[string]string
 }
 
-type OptionSelector struct {
-}
-
-func NewContext(workspace *Workspace, logger *dsh_utils.Logger) *Context {
-	return &Context{
-		Workspace:       workspace,
-		Logger:          logger,
-		OptionSelector:  &OptionSelector{},
+func newProjectContext(workspace *Workspace, logger *dsh_utils.Logger) *projectContext {
+	return &projectContext{
+		workspace:       workspace,
+		logger:          logger,
 		instanceNameMap: make(map[string]*projectInstance),
 		optionLinks:     make(map[string]*optionLink),
 		optionValues:    make(map[string]string),
 	}
 }
 
-func (context *Context) newProjectInstance(info *projectInfo, optionValues map[string]string) (*projectInstance, error) {
+func (context *projectContext) newProjectInstance(info *projectInfo, optionValues map[string]string) (*projectInstance, error) {
 	if instance, exist := context.instanceNameMap[info.name]; exist {
 		return instance, nil
 	}
@@ -47,7 +41,7 @@ type optionLink struct {
 	mapper      *vm.Program
 }
 
-func (context *Context) addOptionLink(sourceProject string, sourceOption string, targetProject string, targetOption string, mapper *vm.Program) error {
+func (context *projectContext) addOptionLink(sourceProject string, sourceOption string, targetProject string, targetOption string, mapper *vm.Program) error {
 	sop := sourceProject + "." + sourceOption
 	top := targetProject + "." + targetOption
 	finalLink := &optionLink{
@@ -72,7 +66,7 @@ func (context *Context) addOptionLink(sourceProject string, sourceOption string,
 	return nil
 }
 
-func (context *Context) addOptionValue(projectName string, optionName string, value string) error {
+func (context *projectContext) addOptionValue(projectName string, optionName string, value string) error {
 	name := projectName + "." + optionName
 	if _, exist := context.optionValues[name]; exist {
 		return dsh_utils.NewError("duplicate option value", map[string]interface{}{
@@ -83,7 +77,7 @@ func (context *Context) addOptionValue(projectName string, optionName string, va
 	return nil
 }
 
-func (context *Context) getOptionLinkValue(projectName string, optionName string) (*string, bool, error) {
+func (context *projectContext) getOptionLinkValue(projectName string, optionName string) (*string, bool, error) {
 	name := projectName + "." + optionName
 	if link, exist := context.optionLinks[name]; exist {
 		if value, exist := context.optionValues[link.target]; exist {

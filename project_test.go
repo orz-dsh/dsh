@@ -12,8 +12,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	context := dsh_core.NewContext(workspace, logger)
-	project, err := workspace.OpenLocalProject(context, "./.test/app1", map[string]string{
+	project, err := workspace.OpenLocalProject("./.test/app1", map[string]string{
 		"test": "a",
 	})
 	if err != nil {
@@ -31,8 +30,7 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	context := dsh_core.NewContext(workspace, logger)
-	_, err = workspace.OpenGitProject(context, "https://github.com/orz-dsh/not-exist-project.git", "main", map[string]string{
+	_, err = workspace.OpenGitProject("https://github.com/orz-dsh/not-exist-project.git", "main", map[string]string{
 		"option1": "value1",
 	})
 	if err != nil {

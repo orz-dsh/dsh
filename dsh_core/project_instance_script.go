@@ -18,14 +18,14 @@ type projectInstanceScriptSource struct {
 }
 
 type projectInstanceScriptSourceContainer struct {
-	context            *Context
+	context            *projectContext
 	sourceNameMap      map[string]*projectInstanceScriptSource
 	plainSources       []*projectInstanceScriptSource
 	templateSources    []*projectInstanceScriptSource
 	templateLibSources []*projectInstanceScriptSource
 }
 
-func newProjectInstanceScript(context *Context) *projectInstanceScript {
+func newProjectInstanceScript(context *projectContext) *projectInstanceScript {
 	return &projectInstanceScript{
 		sourceContainer: &projectInstanceScriptSourceContainer{
 			context:       context,
@@ -82,12 +82,12 @@ func (container *projectInstanceScriptSourceContainer) make(config map[string]an
 		startTime := time.Now()
 		source := container.plainSources[i]
 		outputTargetPath := filepath.Join(outputPath, source.sourceName)
-		container.context.Logger.Info("make file start: source=%s, target=%s", source.sourcePath, outputTargetPath)
+		container.context.logger.Info("make file start: source=%s, target=%s", source.sourcePath, outputTargetPath)
 		err = dsh_utils.LinkOrCopyFile(source.sourcePath, outputTargetPath)
 		if err != nil {
 			return err
 		}
-		container.context.Logger.Info("make file finish: elapsed=%s", time.Since(startTime))
+		container.context.logger.Info("make file finish: elapsed=%s", time.Since(startTime))
 	}
 
 	var templateLibSourcePaths []string
@@ -98,11 +98,11 @@ func (container *projectInstanceScriptSourceContainer) make(config map[string]an
 		startTime := time.Now()
 		source := container.templateSources[i]
 		outputTargetPath := filepath.Join(outputPath, source.sourceName)
-		container.context.Logger.Info("make file start: source=%s, target=%s", source.sourcePath, outputTargetPath)
+		container.context.logger.Info("make file start: source=%s, target=%s", source.sourcePath, outputTargetPath)
 		if err = makeTemplate(config, funcs, source.sourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
 			return err
 		}
-		container.context.Logger.Info("make file finish: elapsed=%s", time.Since(startTime))
+		container.context.logger.Info("make file finish: elapsed=%s", time.Since(startTime))
 	}
 
 	return nil

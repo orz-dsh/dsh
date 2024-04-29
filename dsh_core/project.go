@@ -8,7 +8,7 @@ import (
 )
 
 type Project struct {
-	context               *Context
+	context               *projectContext
 	info                  *projectInfo
 	instance              *projectInstance
 	scriptImportContainer *projectInstanceImportDeepContainer
@@ -17,13 +17,9 @@ type Project struct {
 	configMade            bool
 }
 
-func openProject(context *Context, info *projectInfo, optionValues map[string]string) (*Project, error) {
-	context.Logger.Info("open project: name=%s", info.name)
-	if context.Project != nil {
-		return nil, dsh_utils.NewError("context already open project", map[string]any{
-			"projectPath": context.Project.info.path,
-		})
-	}
+func openProject(workspace *Workspace, info *projectInfo, optionValues map[string]string) (*Project, error) {
+	context := newProjectContext(workspace, workspace.logger)
+	context.logger.Info("open project: name=%s", info.name)
 	instance, err := context.newProjectInstance(info, optionValues)
 	if err != nil {
 		return nil, err
@@ -35,7 +31,6 @@ func openProject(context *Context, info *projectInfo, optionValues map[string]st
 		scriptImportContainer: newProjectInstanceImportDeepContainer(instance, projectInstanceImportScopeScript),
 		configImportContainer: newProjectInstanceImportDeepContainer(instance, projectInstanceImportScopeConfig),
 	}
-	context.Project = project
 	return project, nil
 }
 
@@ -59,7 +54,7 @@ func (project *Project) MakeConfig() (map[string]any, error) {
 	}
 
 	startTime := time.Now()
-	project.context.Logger.Info("make config start")
+	project.context.logger.Info("make config start")
 
 	sources, err := project.configImportContainer.loadConfigSources()
 	if err != nil {
@@ -75,17 +70,17 @@ func (project *Project) MakeConfig() (map[string]any, error) {
 
 	project.config = config
 	project.configMade = true
-	project.context.Logger.Info("make config finish: elapsed=%s", time.Since(startTime))
+	project.context.logger.Info("make config finish: elapsed=%s", time.Since(startTime))
 	return project.config, nil
 }
 
 func (project *Project) MakeScript(outputPath string) (err error) {
 	startTime := time.Now()
-	project.context.Logger.Info("make script start")
+	project.context.logger.Info("make script start")
 	if outputPath == "" {
 		outputPath = filepath.Join(project.instance.info.path, "output")
 		// TODO: build to workspace path
-		// outputPath = filepath.Join(project.ProjectInfo.Workspace.path, "output", project.ProjectInfo.name)
+		// outputPath = filepath.Join(project.ProjectInfo.workspace.path, "output", project.ProjectInfo.name)
 	}
 
 	config, err := project.MakeConfig()
@@ -102,6 +97,6 @@ func (project *Project) MakeScript(outputPath string) (err error) {
 		return err
 	}
 
-	project.context.Logger.Info("make script finish: elapsed=%s", time.Since(startTime))
+	project.context.logger.Info("make script finish: elapsed=%s", time.Since(startTime))
 	return nil
 }
