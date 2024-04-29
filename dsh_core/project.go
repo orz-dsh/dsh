@@ -9,7 +9,7 @@ import (
 
 type Project struct {
 	context               *projectContext
-	info                  *projectInfo
+	manifest              *projectManifest
 	instance              *projectInstance
 	scriptImportContainer *projectInstanceImportDeepContainer
 	configImportContainer *projectInstanceImportDeepContainer
@@ -17,16 +17,16 @@ type Project struct {
 	configMade            bool
 }
 
-func openProject(workspace *Workspace, info *projectInfo, optionValues map[string]string) (*Project, error) {
+func openProject(workspace *Workspace, manifest *projectManifest, optionValues map[string]string) (*Project, error) {
 	context := newProjectContext(workspace, workspace.logger)
-	context.logger.Info("open project: name=%s", info.name)
-	instance, err := context.newProjectInstance(info, optionValues)
+	context.logger.Info("open project: name=%s", manifest.Name)
+	instance, err := context.newProjectInstance(manifest, optionValues)
 	if err != nil {
 		return nil, err
 	}
 	project := &Project{
 		context:               context,
-		info:                  info,
+		manifest:              manifest,
 		instance:              instance,
 		scriptImportContainer: newProjectInstanceImportDeepContainer(instance, projectInstanceImportScopeScript),
 		configImportContainer: newProjectInstanceImportDeepContainer(instance, projectInstanceImportScopeConfig),
@@ -78,7 +78,7 @@ func (project *Project) MakeScript(outputPath string) (err error) {
 	startTime := time.Now()
 	project.context.logger.Info("make script start")
 	if outputPath == "" {
-		outputPath = filepath.Join(project.instance.info.path, "output")
+		outputPath = filepath.Join(project.instance.manifest.projectPath, "output")
 		// TODO: build to workspace path
 		// outputPath = filepath.Join(project.ProjectInfo.workspace.path, "output", project.ProjectInfo.name)
 	}

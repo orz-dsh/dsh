@@ -8,21 +8,21 @@ import (
 
 type projectInstanceOption struct {
 	context   *projectContext
-	info      *projectInfo
+	manifest  *projectManifest
 	values    map[string]string
 	items     map[string]any
 	initiated bool
 }
 
-func newProjectInstanceOption(context *projectContext, info *projectInfo, values map[string]string) (*projectInstanceOption, error) {
+func newProjectInstanceOption(context *projectContext, manifest *projectManifest, values map[string]string) (*projectInstanceOption, error) {
 	if values == nil {
 		values = make(map[string]string)
 	}
 	option := &projectInstanceOption{
-		context: context,
-		info:    info,
-		values:  values,
-		items:   make(map[string]any),
+		context:  context,
+		manifest: manifest,
+		values:   values,
+		items:    make(map[string]any),
 	}
 	err := option.init()
 	if err != nil {
@@ -35,9 +35,9 @@ func (option *projectInstanceOption) init() (err error) {
 	if option.initiated {
 		return nil
 	}
-	info := option.info
-	for i := 0; i < len(info.manifest.Option.Items); i++ {
-		if err = option.addItem(info.manifest.Option.Items[i]); err != nil {
+	manifest := option.manifest
+	for i := 0; i < len(manifest.Option.Items); i++ {
+		if err = option.addItem(manifest.Option.Items[i]); err != nil {
 			return err
 		}
 	}
@@ -50,11 +50,11 @@ func (option *projectInstanceOption) init() (err error) {
 }
 
 func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) error {
-	info := option.info
+	manifest := option.manifest
 	if _, exist := option.items[item.Name]; exist {
 		return dsh_utils.NewError("duplicate option", map[string]any{
-			"projectName": info.name,
-			"projectPath": info.path,
+			"projectName": manifest.Name,
+			"projectPath": manifest.projectPath,
 			"optionName":  item.Name,
 		})
 	}
@@ -64,8 +64,8 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 		originalValue = v
 		if len(item.Choices) > 0 && !slices.Contains(item.Choices, originalValue) {
 			return dsh_utils.NewError("option value invalid", map[string]any{
-				"projectName":   info.name,
-				"projectPath":   info.path,
+				"projectName":   manifest.Name,
+				"projectPath":   manifest.projectPath,
 				"optionName":    item.Name,
 				"optionValue":   originalValue,
 				"optionChoices": item.Choices,
@@ -80,8 +80,8 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 			integer, err := dsh_utils.ParseInteger(v)
 			if err != nil {
 				return dsh_utils.WrapError(err, "option integer value invalid", map[string]any{
-					"projectName": info.name,
-					"projectPath": info.path,
+					"projectName": manifest.Name,
+					"projectPath": manifest.projectPath,
 					"optionName":  item.Name,
 					"optionValue": v,
 				})
@@ -91,21 +91,21 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 			decimal, err := dsh_utils.ParseDecimal(v)
 			if err != nil {
 				return dsh_utils.WrapError(err, "option decimal value invalid", map[string]any{
-					"projectName": info.name,
-					"projectPath": info.path,
+					"projectName": manifest.Name,
+					"projectPath": manifest.projectPath,
 					"optionName":  item.Name,
 					"optionValue": v,
 				})
 			}
 			value = decimal
 		}
-	} else if linkValue, exist, err := option.context.getOptionLinkValue(info.name, item.Name); exist {
+	} else if linkValue, exist, err := option.context.getOptionLinkValue(manifest.Name, item.Name); exist {
 		if linkValue != nil {
 			originalValue = *linkValue
 			if len(item.Choices) > 0 && !slices.Contains(item.Choices, originalValue) {
 				return dsh_utils.NewError("option value invalid", map[string]any{
-					"projectName":   info.name,
-					"projectPath":   info.path,
+					"projectName":   manifest.Name,
+					"projectPath":   manifest.projectPath,
 					"optionName":    item.Name,
 					"optionValue":   originalValue,
 					"optionChoices": item.Choices,
@@ -120,8 +120,8 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 				integer, err := dsh_utils.ParseInteger(originalValue)
 				if err != nil {
 					return dsh_utils.WrapError(err, "option integer value invalid", map[string]any{
-						"projectName": info.name,
-						"projectPath": info.path,
+						"projectName": manifest.Name,
+						"projectPath": manifest.projectPath,
 						"optionName":  item.Name,
 						"optionValue": originalValue,
 					})
@@ -131,8 +131,8 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 				decimal, err := dsh_utils.ParseDecimal(originalValue)
 				if err != nil {
 					return dsh_utils.WrapError(err, "option decimal value invalid", map[string]any{
-						"projectName": info.name,
-						"projectPath": info.path,
+						"projectName": manifest.Name,
+						"projectPath": manifest.projectPath,
 						"optionName":  item.Name,
 						"optionValue": originalValue,
 					})
@@ -148,20 +148,20 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 	}
 	if value == nil && !item.Optional {
 		return dsh_utils.NewError("option required", map[string]any{
-			"projectName": info.name,
-			"projectPath": info.path,
+			"projectName": manifest.Name,
+			"projectPath": manifest.projectPath,
 			"optionName":  item.Name,
 		})
 	}
 	if value != nil {
-		if err := option.context.addOptionValue(info.name, item.Name, originalValue); err != nil {
+		if err := option.context.addOptionValue(manifest.Name, item.Name, originalValue); err != nil {
 			return err
 		}
 		option.items[item.Name] = value
 	}
 	for i := 0; i < len(item.Links); i++ {
 		link := item.Links[i]
-		if err := option.context.addOptionLink(link.Project, link.Option, info.name, item.Name, link.mapper); err != nil {
+		if err := option.context.addOptionLink(link.Project, link.Option, manifest.Name, item.Name, link.mapper); err != nil {
 			return err
 		}
 	}
@@ -169,8 +169,8 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 }
 
 func (option *projectInstanceOption) verify() error {
-	info := option.info
-	verifies := info.manifest.Option.verifies
+	manifest := option.manifest
+	verifies := manifest.Option.verifies
 	for i := 0; i < len(verifies); i++ {
 		result, err := dsh_utils.EvalExprReturnBool(verifies[i], option.items)
 		if err != nil {
@@ -178,8 +178,8 @@ func (option *projectInstanceOption) verify() error {
 		}
 		if !result {
 			return dsh_utils.NewError("option verify failed", map[string]any{
-				"projectName": info.name,
-				"projectPath": info.path,
+				"projectName": manifest.Name,
+				"projectPath": manifest.projectPath,
 				"verify":      verifies[i].Source().Content(),
 			})
 		}

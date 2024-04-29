@@ -7,37 +7,37 @@ import (
 )
 
 type projectInstance struct {
-	context *projectContext
-	info    *projectInfo
-	option  *projectInstanceOption
-	script  *projectInstanceScript
-	config  *projectInstanceConfig
+	context  *projectContext
+	manifest *projectManifest
+	option   *projectInstanceOption
+	script   *projectInstanceScript
+	config   *projectInstanceConfig
 }
 
 type projectInstanceSourceContainer interface {
 	scanSources(sourceDir string, includeFiles []string) error
 }
 
-func newProjectInstance(context *projectContext, info *projectInfo, optionValues map[string]string) (instance *projectInstance, err error) {
-	context.logger.Info("instance project: name=%s", info.name)
+func newProjectInstance(context *projectContext, manifest *projectManifest, optionValues map[string]string) (instance *projectInstance, err error) {
+	context.logger.Info("instance project: name=%s", manifest.Name)
 
-	option, err := newProjectInstanceOption(context, info, optionValues)
+	option, err := newProjectInstanceOption(context, manifest, optionValues)
 	if err != nil {
 		return nil, err
 	}
 	script := newProjectInstanceScript(context)
 	config := newProjectInstanceConfig(context)
 	sources := [][]*projectManifestSource{
-		info.manifest.Script.Sources,
-		info.manifest.Config.Sources,
+		manifest.Script.Sources,
+		manifest.Config.Sources,
 	}
 	sourceContainers := []projectInstanceSourceContainer{
 		script.sourceContainer,
 		config.sourceContainer,
 	}
 	imports := [][]*projectManifestImport{
-		info.manifest.Script.Imports,
-		info.manifest.Config.Imports,
+		manifest.Script.Imports,
+		manifest.Config.Imports,
 	}
 	importContainers := []*projectInstanceImportShallowContainer{
 		script.importContainer,
@@ -56,7 +56,7 @@ func newProjectInstance(context *projectContext, info *projectInfo, optionValues
 						continue
 					}
 				}
-				if err = sourceContainers[i].scanSources(filepath.Join(info.path, src.Dir), src.Files); err != nil {
+				if err = sourceContainers[i].scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
 					return nil, err
 				}
 			}
@@ -75,7 +75,7 @@ func newProjectInstance(context *projectContext, info *projectInfo, optionValues
 						continue
 					}
 				}
-				if err = importContainers[i].importLocal(context, imp.Local.Dir, info); err != nil {
+				if err = importContainers[i].importLocal(context, imp.Local.Dir, manifest); err != nil {
 					return nil, err
 				}
 			} else if imp.Git != nil && imp.Git.Url != "" && imp.Git.Ref != "" {
@@ -88,18 +88,18 @@ func newProjectInstance(context *projectContext, info *projectInfo, optionValues
 						continue
 					}
 				}
-				if err = importContainers[i].importGit(context, info, imp.Git.Url, imp.Git.Ref); err != nil {
+				if err = importContainers[i].importGit(context, manifest, imp.Git.Url, imp.Git.Ref); err != nil {
 					return nil, err
 				}
 			}
 		}
 	}
 	return &projectInstance{
-		context: context,
-		info:    info,
-		option:  option,
-		script:  script,
-		config:  config,
+		context:  context,
+		manifest: manifest,
+		option:   option,
+		script:   script,
+		config:   config,
 	}, nil
 }
 
@@ -118,7 +118,7 @@ func (instance *projectInstance) loadImports(scope projectInstanceImportScope) e
 }
 
 func (instance *projectInstance) makeScript(config map[string]any, funcs template.FuncMap, outputPath string) error {
-	projectOutputPath := filepath.Join(outputPath, instance.info.name)
+	projectOutputPath := filepath.Join(outputPath, instance.manifest.Name)
 	return instance.script.sourceContainer.make(config, funcs, projectOutputPath)
 }
 

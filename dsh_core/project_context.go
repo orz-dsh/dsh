@@ -23,15 +23,15 @@ func newProjectContext(workspace *Workspace, logger *dsh_utils.Logger) *projectC
 	}
 }
 
-func (context *projectContext) newProjectInstance(info *projectInfo, optionValues map[string]string) (*projectInstance, error) {
-	if instance, exist := context.instanceNameMap[info.name]; exist {
+func (context *projectContext) newProjectInstance(manifest *projectManifest, optionValues map[string]string) (*projectInstance, error) {
+	if instance, exist := context.instanceNameMap[manifest.Name]; exist {
 		return instance, nil
 	}
-	instance, err := newProjectInstance(context, info, optionValues)
+	instance, err := newProjectInstance(context, manifest, optionValues)
 	if err != nil {
 		return nil, err
 	}
-	context.instanceNameMap[info.name] = instance
+	context.instanceNameMap[manifest.Name] = instance
 	return instance, nil
 }
 

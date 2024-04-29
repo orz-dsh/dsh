@@ -10,7 +10,7 @@ import (
 
 type projectInstanceImport struct {
 	context      *projectContext
-	reference    *projectInfo
+	reference    *projectManifest
 	importType   projectInstanceImportType
 	unique       string
 	projectPath  string
@@ -51,7 +51,7 @@ type projectInstanceImportDeepContainer struct {
 	importsLoaded bool
 }
 
-func newProjectInstanceImportLocal(context *projectContext, reference *projectInfo, projectPath string) *projectInstanceImport {
+func newProjectInstanceImportLocal(context *projectContext, reference *projectManifest, projectPath string) *projectInstanceImport {
 	return &projectInstanceImport{
 		context:     context,
 		reference:   reference,
@@ -61,7 +61,7 @@ func newProjectInstanceImportLocal(context *projectContext, reference *projectIn
 	}
 }
 
-func newProjectInstanceImportGit(context *projectContext, reference *projectInfo, projectPath string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) *projectInstanceImport {
+func newProjectInstanceImportGit(context *projectContext, reference *projectManifest, projectPath string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) *projectInstanceImport {
 	return &projectInstanceImport{
 		context:      context,
 		reference:    reference,
@@ -79,13 +79,13 @@ func (imp *projectInstanceImport) load() error {
 	if imp.instance == nil {
 		workspace := imp.context.workspace
 		if imp.importType == projectInstanceImportTypeLocal {
-			info, err := workspace.loadLocalProjectInfo(imp.projectPath)
+			manifest, err := workspace.loadLocalProjectManifest(imp.projectPath)
 			if err != nil {
-				return dsh_utils.WrapError(err, "import local project info failed", map[string]any{
+				return dsh_utils.WrapError(err, "import local project manifest failed", map[string]any{
 					"projectPath": imp.projectPath,
 				})
 			}
-			instance, err := imp.context.newProjectInstance(info, nil)
+			instance, err := imp.context.newProjectInstance(manifest, nil)
 			if err != nil {
 				return dsh_utils.WrapError(err, "import local project instance failed", map[string]any{
 					"projectPath": imp.projectPath,
@@ -93,15 +93,15 @@ func (imp *projectInstanceImport) load() error {
 			}
 			imp.instance = instance
 		} else {
-			info, err := workspace.loadGitProjectInfo(imp.projectPath, imp.gitRawUrl, imp.gitParsedUrl, imp.gitRawRef, imp.gitParsedRef)
+			manifest, err := workspace.loadGitProjectManifest(imp.projectPath, imp.gitRawUrl, imp.gitParsedUrl, imp.gitRawRef, imp.gitParsedRef)
 			if err != nil {
-				return dsh_utils.WrapError(err, "import git project info failed", map[string]any{
+				return dsh_utils.WrapError(err, "import git project manifest failed", map[string]any{
 					"projectPath": imp.projectPath,
 					"gitUrl":      imp.gitRawUrl,
 					"gitRef":      imp.gitRawRef,
 				})
 			}
-			instance, err := imp.context.newProjectInstance(info, nil)
+			instance, err := imp.context.newProjectInstance(manifest, nil)
 			if err != nil {
 				return dsh_utils.WrapError(err, "import git project instance failed", map[string]any{
 					"projectPath": imp.projectPath,
@@ -123,22 +123,22 @@ func newProjectInstanceImportShallowContainer(context *projectContext, scope pro
 	}
 }
 
-func (container *projectInstanceImportShallowContainer) importLocal(context *projectContext, path string, reference *projectInfo) (err error) {
+func (container *projectInstanceImportShallowContainer) importLocal(context *projectContext, path string, reference *projectManifest) (err error) {
 	if !dsh_utils.IsDirExists(path) {
 		return dsh_utils.NewError("import local project dir not found", map[string]any{
 			"path": path,
 		})
 	}
-	importProjectPath, err := filepath.Abs(path)
+	projectPath, err := filepath.Abs(path)
 	if err != nil {
 		return dsh_utils.WrapError(err, "import load project abs-path get failed", map[string]any{
 			"path": path,
 		})
 	}
-	if importProjectPath == reference.path {
+	if projectPath == reference.projectPath {
 		return nil
 	}
-	imp := newProjectInstanceImportLocal(context, reference, importProjectPath)
+	imp := newProjectInstanceImportLocal(context, reference, projectPath)
 	if _, exist := container.importUniqueMap[imp.unique]; !exist {
 		container.importUniqueMap[imp.unique] = imp
 		container.imports = append(container.imports, imp)
@@ -146,7 +146,7 @@ func (container *projectInstanceImportShallowContainer) importLocal(context *pro
 	return nil
 }
 
-func (container *projectInstanceImportShallowContainer) importGit(context *projectContext, reference *projectInfo, rawUrl string, rawRef string) error {
+func (container *projectInstanceImportShallowContainer) importGit(context *projectContext, reference *projectManifest, rawUrl string, rawRef string) error {
 	parsedUrl, err := url.Parse(rawUrl)
 	if err != nil {
 		return dsh_utils.WrapError(err, "import git project url parse failed", map[string]any{
@@ -155,7 +155,7 @@ func (container *projectInstanceImportShallowContainer) importGit(context *proje
 	}
 	parsedRef := parseGitRef(rawRef)
 	projectPath := context.workspace.getGitProjectPath(parsedUrl, parsedRef)
-	if projectPath == reference.path {
+	if projectPath == reference.projectPath {
 		return nil
 	}
 	imp := newProjectInstanceImportGit(context, reference, projectPath, rawUrl, parsedUrl, rawRef, parsedRef)
@@ -216,7 +216,7 @@ func (container *projectInstanceImportDeepContainer) loadImports() (err error) {
 		sic1 := imp1.instance.getImportContainer(shallowContainer.scope)
 		for j := 0; j < len(sic1.imports); j++ {
 			imp2 := sic1.imports[j]
-			if imp2.projectPath == container.instance.info.path {
+			if imp2.projectPath == container.instance.manifest.projectPath {
 				continue
 			}
 			if _, exist := deepImportMap[imp2.unique]; !exist {

@@ -8,10 +8,10 @@ import (
 )
 
 type Workspace struct {
-	path               string
-	logger             *dsh_utils.Logger
-	projectInfoPathMap map[string]*projectInfo
-	projectInfoNameMap map[string]*projectInfo
+	path                   string
+	logger                 *dsh_utils.Logger
+	projectManifestPathMap map[string]*projectManifest
+	projectManifestNameMap map[string]*projectManifest
 }
 
 func GetWorkspaceDefaultPath() string {
@@ -42,10 +42,10 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 		})
 	}
 	workspace = &Workspace{
-		path:               path,
-		logger:             logger,
-		projectInfoPathMap: make(map[string]*projectInfo),
-		projectInfoNameMap: make(map[string]*projectInfo),
+		path:                   path,
+		logger:                 logger,
+		projectManifestPathMap: make(map[string]*projectManifest),
+		projectManifestNameMap: make(map[string]*projectManifest),
 	}
 	return workspace, nil
 }
@@ -54,7 +54,7 @@ func (workspace *Workspace) GetPath() string {
 	return workspace.path
 }
 
-func (workspace *Workspace) loadLocalProjectInfo(path string) (info *projectInfo, err error) {
+func (workspace *Workspace) loadLocalProjectManifest(path string) (manifest *projectManifest, err error) {
 	if !dsh_utils.IsDirExists(path) {
 		return nil, dsh_utils.NewError("project dir is not exists", map[string]any{
 			"path": path,
@@ -68,32 +68,32 @@ func (workspace *Workspace) loadLocalProjectInfo(path string) (info *projectInfo
 		})
 	}
 
-	if info, exist := workspace.projectInfoPathMap[path]; exist {
-		return info, nil
+	if manifest, exist := workspace.projectManifestPathMap[path]; exist {
+		return manifest, nil
 	}
 
-	workspace.logger.Debug("load project info: path=%s", path)
-	if info, err = loadProjectInfo(workspace, path); err != nil {
+	workspace.logger.Debug("load project manifest: path=%s", path)
+	if manifest, err = loadProjectManifest(path); err != nil {
 		return nil, err
 	}
 
-	if existProject, exist := workspace.projectInfoNameMap[info.name]; exist {
-		if existProject.path != info.path {
+	if existManifest, exist := workspace.projectManifestNameMap[manifest.Name]; exist {
+		if existManifest.projectPath != manifest.projectPath {
 			return nil, dsh_utils.NewError("project name is duplicated", map[string]any{
-				"projectName":  info.name,
-				"projectPath1": info.path,
-				"projectPath2": existProject.path,
+				"projectName":  manifest.Name,
+				"projectPath1": manifest.projectPath,
+				"projectPath2": existManifest.projectPath,
 			})
 		}
 	}
 
-	workspace.projectInfoPathMap[info.path] = info
-	workspace.projectInfoNameMap[info.name] = info
+	workspace.projectManifestPathMap[manifest.projectPath] = manifest
+	workspace.projectManifestNameMap[manifest.Name] = manifest
 
-	return info, nil
+	return manifest, nil
 }
 
-func (workspace *Workspace) loadGitProjectInfo(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) (info *projectInfo, err error) {
+func (workspace *Workspace) loadGitProjectManifest(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) (manifest *projectManifest, err error) {
 	if parsedUrl == nil {
 		if parsedUrl, err = url.Parse(rawUrl); err != nil {
 			return nil, dsh_utils.WrapError(err, "project git url parse failed", map[string]any{
@@ -110,21 +110,21 @@ func (workspace *Workspace) loadGitProjectInfo(path string, rawUrl string, parse
 	if err = workspace.downloadGitProject(path, rawUrl, parsedUrl, rawRef, parsedRef); err != nil {
 		return nil, err
 	}
-	return workspace.loadLocalProjectInfo(path)
+	return workspace.loadLocalProjectManifest(path)
 }
 
 func (workspace *Workspace) OpenLocalProject(path string, optionValues map[string]string) (*Project, error) {
-	info, err := workspace.loadLocalProjectInfo(path)
+	manifest, err := workspace.loadLocalProjectManifest(path)
 	if err != nil {
 		return nil, err
 	}
-	return openProject(workspace, info, optionValues)
+	return openProject(workspace, manifest, optionValues)
 }
 
 func (workspace *Workspace) OpenGitProject(url string, ref string, optionValues map[string]string) (*Project, error) {
-	info, err := workspace.loadGitProjectInfo("", url, nil, ref, nil)
+	manifest, err := workspace.loadGitProjectManifest("", url, nil, ref, nil)
 	if err != nil {
 		return nil, err
 	}
-	return openProject(workspace, info, optionValues)
+	return openProject(workspace, manifest, optionValues)
 }
