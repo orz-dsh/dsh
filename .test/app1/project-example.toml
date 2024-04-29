@@ -4,23 +4,49 @@ name = "app1"
 minVersion = "1.0.0"
 maxVersion = "2.0.0"
 
+[[option.items]]
+name = "test"
+default = "c"
+choices = ["a", "b", "c", "d"]
+
+[[option.items.links]]
+project = "lib1"
+option = "test"
+mapping = "value == 'a' ? '1234' : (value == 'b' ? '5678' : (value == 'c' ? '0000' : nil))"
+
+[[option.items.links]]
+project = "lib2"
+option = "test"
+mapping = "upper(value)"
+
+[option]
+verifies = [
+    "test != 'd'"
+]
+
 [[script.sources]]
 dir = "script"
+match = "test == 'a' || test == 'b'"
 
 [[script.imports]]
 local.dir = "./.test/lib1"
+match = "test == 'a'"
 
 [[script.imports]]
 local.dir = "./.test/lib2"
+match = "test == 'a'"
 
 [[config.sources]]
 dir = "config"
 files = [
     "test1.yml"
 ]
+match = "test == 'b'"
 
 [[config.imports]]
 local.dir = "./.test/lib1"
+match = "test == 'a' || test == 'b'"
 
 [[config.imports]]
 local.dir = "./.test/lib2"
+match = "test == 'a' || test == 'b'"

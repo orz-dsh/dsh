@@ -24,24 +24,24 @@ option:
 script:
   sources:
     - dir: script
-      match: test == "a" || test == "b"
+      match: test == 'a' || test == 'b'
   imports:
     - local:
         dir: ./.test/lib1
-      match: test == "a"
+      match: test == 'a'
     - local:
         dir: ./.test/lib2
-      match: test == "a"
+      match: test == 'a'
 config:
   sources:
     - dir: config
       files:
         - test1.yml
-      match: test == "b"
+      match: test == 'b'
   imports:
     - local:
         dir: ./.test/lib1
-      match: test == "a" || test == "b"
+      match: test == 'a' || test == 'b'
     - local:
         dir: ./.test/lib2
-      match: test == "a" || test == "b"
+      match: test == 'a' || test == 'b'

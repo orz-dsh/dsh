@@ -147,7 +147,7 @@ func (option *projectInstanceOption) addItem(item *projectManifestOptionItem) er
 		originalValue = *item.Default
 	}
 	if value == nil && !item.Optional {
-		return dsh_utils.NewError("option required", map[string]any{
+		return dsh_utils.NewError("option value is nil", map[string]any{
 			"projectName": manifest.Name,
 			"projectPath": manifest.projectPath,
 			"optionName":  item.Name,
