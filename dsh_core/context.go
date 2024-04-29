@@ -51,8 +51,9 @@ func (context *Context) addOptionLink(sourceProject string, sourceOption string,
 	sop := sourceProject + "." + sourceOption
 	top := targetProject + "." + targetOption
 	finalLink := &optionLink{
-		target: top,
-		mapper: mapper,
+		finalTarget: top,
+		target:      top,
+		mapper:      mapper,
 	}
 	if topLink, exist := context.optionLinks[top]; exist {
 		finalLink.finalTarget = topLink.finalTarget
