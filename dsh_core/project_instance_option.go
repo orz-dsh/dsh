@@ -172,7 +172,7 @@ func (option *projectInstanceOption) verify() error {
 	manifest := option.manifest
 	verifies := manifest.Option.verifies
 	for i := 0; i < len(verifies); i++ {
-		result, err := dsh_utils.EvalExprReturnBool(verifies[i], option.items)
+		result, err := dsh_utils.EvalExprReturnBool(verifies[i], option.context.globalOption.mergeItems(option.items))
 		if err != nil {
 			return err
 		}
@@ -188,5 +188,5 @@ func (option *projectInstanceOption) verify() error {
 }
 
 func (option *projectInstanceOption) match(matchExpr *vm.Program) (bool, error) {
-	return dsh_utils.EvalExprReturnBool(matchExpr, option.items)
+	return dsh_utils.EvalExprReturnBool(matchExpr, option.context.globalOption.mergeItems(option.items))
 }

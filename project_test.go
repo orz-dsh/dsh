@@ -13,6 +13,7 @@ func TestProject1(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	project, err := workspace.OpenLocalProject("./.test/app1", map[string]string{
+		"_os":  "linux",
 		"test": "a",
 	})
 	if err != nil {

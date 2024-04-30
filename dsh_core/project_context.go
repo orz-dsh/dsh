@@ -9,15 +9,17 @@ type projectContext struct {
 	workspace       *Workspace
 	logger          *dsh_utils.Logger
 	instanceNameMap map[string]*projectInstance
+	globalOption    *globalOption
 	optionLinks     map[string]*optionLink
 	optionValues    map[string]string
 }
 
-func newProjectContext(workspace *Workspace, logger *dsh_utils.Logger) *projectContext {
+func newProjectContext(workspace *Workspace, logger *dsh_utils.Logger, optionValues map[string]string) *projectContext {
 	return &projectContext{
 		workspace:       workspace,
 		logger:          logger,
 		instanceNameMap: make(map[string]*projectInstance),
+		globalOption:    newGlobalOption(optionValues, logger),
 		optionLinks:     make(map[string]*optionLink),
 		optionValues:    make(map[string]string),
 	}
@@ -82,9 +84,9 @@ func (context *projectContext) getOptionLinkValue(projectName string, optionName
 	if link, exist := context.optionLinks[name]; exist {
 		if value, exist := context.optionValues[link.target]; exist {
 			if link.mapping != nil {
-				result, err := dsh_utils.EvalExprReturnString(link.mapping, map[string]any{
+				result, err := dsh_utils.EvalExprReturnString(link.mapping, context.globalOption.mergeItems(map[string]any{
 					"value": value,
-				})
+				}))
 				if err != nil {
 					return nil, false, err
 				}

@@ -18,7 +18,7 @@ type Project struct {
 }
 
 func openProject(workspace *Workspace, manifest *projectManifest, optionValues map[string]string) (*Project, error) {
-	context := newProjectContext(workspace, workspace.logger)
+	context := newProjectContext(workspace, workspace.logger, optionValues)
 	context.logger.Info("open project: name=%s", manifest.Name)
 	instance, err := context.newProjectInstance(manifest, optionValues)
 	if err != nil {
