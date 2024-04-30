@@ -47,7 +47,7 @@ func newGlobalOption(optionValues map[string]string, logger *dsh_utils.Logger) *
 			"_shell":                _shell,
 			"_hostname":             _hostname,
 			"_username":             _username,
-			"_runtime_version_name": dsh_utils.GetRuntimeVersionName(),
+			"_runtime_version":      string(dsh_utils.GetRuntimeVersion()),
 			"_runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
 		},
 	}

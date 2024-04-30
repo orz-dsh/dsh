@@ -19,12 +19,12 @@ func init() {
 	}
 }
 
-func GetRuntimeVersionCode() int32 {
-	return runtimeVersionCode
+func GetRuntimeVersion() Version {
+	return runtimeVersion
 }
 
-func GetRuntimeVersionName() string {
-	return string(runtimeVersion)
+func GetRuntimeVersionCode() int32 {
+	return runtimeVersionCode
 }
 
 func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
