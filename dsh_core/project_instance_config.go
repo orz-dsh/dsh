@@ -25,8 +25,9 @@ type projectInstanceConfigSourceContainer struct {
 }
 
 type projectInstanceConfigSourceContent struct {
-	Order  int64
-	Config map[string]any
+	Order   int64
+	Merges  map[string]string
+	Configs map[string]any
 }
 
 type projectInstanceConfigSourceType string
@@ -35,6 +36,12 @@ const (
 	projectInstanceConfigSourceTypeYaml projectInstanceConfigSourceType = "yaml"
 	projectInstanceConfigSourceTypeToml projectInstanceConfigSourceType = "toml"
 	projectInstanceConfigSourceTypeJson projectInstanceConfigSourceType = "json"
+)
+
+const (
+	projectConfigMergeRoot        = "$root"
+	projectConfigMergeTypeReplace = "replace"
+	projectConfigMergeTypeInsert  = "insert"
 )
 
 func newProjectInstanceConfig(context *projectContext) *projectInstanceConfig {
@@ -117,50 +124,88 @@ func (container *projectInstanceConfigSourceContainer) loadSources() (err error)
 	return nil
 }
 
-func (content *projectInstanceConfigSourceContent) merge(target map[string]any) {
-	mergeMap(target, content.Config)
+func (content *projectInstanceConfigSourceContent) merge(target map[string]any) error {
+	if content.Merges[projectConfigMergeRoot] == projectConfigMergeTypeReplace {
+		clear(target)
+		if _, err := mergeMap(target, content.Configs, content.Merges, ""); err != nil {
+			return err
+		}
+	} else if _, err := mergeMap(target, content.Configs, content.Merges, ""); err != nil {
+		return err
+	}
+	return nil
 }
 
-func mergeMap(target map[string]any, source map[string]any) map[string]any {
+func mergeMap(target map[string]any, source map[string]any, merges map[string]string, key string) (_ map[string]any, err error) {
 	if target == nil {
 		target = make(map[string]any)
 	}
 	for k, v := range source {
-		if m, ok := v.(map[string]any); ok {
-			tm, tok := target[k].(map[string]any)
-			if !tok {
-				if tm != nil {
-					panic(fmt.Sprintf("target[%s] is not a map", k))
-				}
-				tm = make(map[string]any)
+		switch v.(type) {
+		case map[string]any:
+			sourceKey := k
+			if key != "" {
+				sourceKey = key + "." + k
 			}
-			target[k] = mergeMap(tm, m)
-		} else if a, ok := v.([]any); ok {
-			ta, tok := target[k].([]any)
-			if !tok {
-				if ta != nil {
-					panic(fmt.Sprintf("target[%s] is not an array", k))
+			sourceMap := v.(map[string]any)
+			targetValue := target[k]
+			if targetValue == nil {
+				if target[k], err = mergeMap(nil, sourceMap, merges, sourceKey); err != nil {
+					return nil, err
 				}
-				ta = make([]any, 0)
+			} else if targetMap, ok := targetValue.(map[string]any); ok {
+				if mergeKey, exist := merges[sourceKey]; exist {
+					if mergeKey == projectConfigMergeTypeReplace {
+						if target[k], err = mergeMap(nil, sourceMap, merges, sourceKey); err != nil {
+							return nil, err
+						}
+					} else {
+						if target[k], err = mergeMap(targetMap, sourceMap, merges, sourceKey); err != nil {
+							return nil, err
+						}
+					}
+				} else {
+					if target[k], err = mergeMap(targetMap, sourceMap, merges, sourceKey); err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				// TODO: error details
+				return nil, dsh_utils.NewError("target is not a map", map[string]any{
+					"key": sourceKey,
+				})
 			}
-			target[k] = mergeArray(ta, a)
-		} else {
+		case []any:
+			sourceKey := k
+			if key != "" {
+				sourceKey = key + "." + k
+			}
+			sourceList := v.([]any)
+			targetValue := target[k]
+			if targetValue == nil {
+				target[k] = sourceList
+			} else if targetList, ok := targetValue.([]any); ok {
+				if mergeKey, exist := merges[sourceKey]; exist {
+					if mergeKey == projectConfigMergeTypeReplace {
+						target[k] = sourceList
+					} else if mergeKey == projectConfigMergeTypeInsert {
+						target[k] = append(sourceList, targetList...)
+					} else {
+						target[k] = append(targetList, sourceList...)
+					}
+				} else {
+					target[k] = append(targetList, sourceList...)
+				}
+			} else {
+				// TODO: error details
+				return nil, dsh_utils.NewError("target is not a list", map[string]any{
+					"key": sourceKey,
+				})
+			}
+			break
+		default:
 			target[k] = v
 		}
 	}
-	return target
-}
-
-func mergeArray(target []any, source []any) []any {
-	for i := 0; i < len(source); i++ {
-		v := source[i]
-		if m, ok := v.(map[string]any); ok {
-			target = append(target, mergeMap(make(map[string]any), m))
-		} else if a, ok := v.([]any); ok {
-			target = append(target, mergeArray(make([]any, 0), a))
-		} else {
-			target = append(target, v)
-		}
-	}
-	return target
+	return target, nil
 }

@@ -38,7 +38,7 @@ config:
     - dir: config
       files:
         - test1.yml
-      match: test == 'b'
+      match: test == 'a' || test == 'b'
   imports:
     - local:
         dir: ./.test/lib1

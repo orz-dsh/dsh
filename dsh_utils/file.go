@@ -286,7 +286,7 @@ func WriteTemplate(t *template.Template, env any, targetPath string) (err error)
 	err = t.Execute(targetFile, env)
 	if err != nil {
 		return WrapError(err, "template execute failed", map[string]any{
-			"targetFile": targetFile,
+			"targetPath": targetPath,
 		})
 	}
 	return nil

@@ -1,5 +1,5 @@
 order: 1000
-config:
+configs:
   test:
     string: lib2_abcd
     map:
@@ -21,3 +21,4 @@ config:
     arrayList:
       - [ lib2_1, lib2_2, lib2_3, lib2_4, lib2_5 ]
       - [ lib2_6, lib2_7, lib2_8, lib2_9, lib2_10 ]
+  test2: "test2"

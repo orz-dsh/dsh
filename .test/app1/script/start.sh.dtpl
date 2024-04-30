@@ -2,10 +2,28 @@
 
 echo "get configs string: {{ .configs.test.string }}"
 echo "get configs map item: {{ .configs.test.map.key1 }}"
+
+echo "get configs deep map item: {{ .configs.test.deepMap.map1.map2.map3.key1 }}"
+{{ if index .configs.test.deepMap.map1.map2.map3 "key2" -}}
 echo "get configs deep map item: {{ .configs.test.deepMap.map1.map2.map3.key2 }}"
+{{- else -}}
+echo "get configs deep map item: not set"
+{{- end }}
+
 echo "get configs list item: {{ index .configs.test.list 1 }}"
+echo "get configs list size: {{ len .configs.test.list }}"
+
 echo "get configs object list item: {{ (index .configs.test.objectList 0).key }}"
+echo "get configs object list len: {{ len .configs.test.objectList }}"
+
 echo "get configs array list item: {{ index (index .configs.test.arrayList 0) 2 }}"
+echo "get configs array list len: {{ len .configs.test.arrayList }}"
+
+{{ if index .configs "test2" -}}
+echo "get configs test2: {{ .configs.test2 }}"
+{{- else -}}
+echo "get configs test2: not set"
+{{- end }}
 
 echo "get options['_os']: {{ .options._os }}"
 echo "get options['_arch']: {{ .options._arch }}"

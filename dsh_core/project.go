@@ -65,7 +65,9 @@ func (project *Project) MakeConfig() (map[string]any, error) {
 
 	for i := 0; i < len(sources); i++ {
 		source := sources[i]
-		source.content.merge(config)
+		if err = source.content.merge(config); err != nil {
+			return nil, err
+		}
 	}
 
 	project.config = config
