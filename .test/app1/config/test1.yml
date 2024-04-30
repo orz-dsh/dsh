@@ -1,6 +1,6 @@
 order: 100
 config:
-  TestConfig:
+  test:
     string: abcd
     map:
       key1: value1

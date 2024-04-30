@@ -1,6 +1,6 @@
 order: 1000
 config:
-  TestConfig:
+  test:
     string: lib2_abcd
     map:
       key1: lib2_value1

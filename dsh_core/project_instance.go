@@ -119,7 +119,10 @@ func (instance *projectInstance) loadImports(scope projectInstanceImportScope) e
 
 func (instance *projectInstance) makeScript(config map[string]any, funcs template.FuncMap, outputPath string) error {
 	projectOutputPath := filepath.Join(outputPath, instance.manifest.Name)
-	return instance.script.sourceContainer.make(config, funcs, projectOutputPath)
+	return instance.script.sourceContainer.make(map[string]any{
+		"options": instance.context.globalOption.mergeItems(instance.option.items),
+		"configs": config,
+	}, funcs, projectOutputPath)
 }
 
 func (instance *projectInstance) loadConfigSources() error {

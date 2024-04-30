@@ -1,8 +1,17 @@
 #!/bin/sh
 
-echo "get string: {{ .TestConfig.string }}"
-echo "get map item: {{ .TestConfig.map.key1 }}"
-echo "get deep map item: {{ .TestConfig.deepMap.map1.map2.map3.key2 }}"
-echo "get list item: {{ index .TestConfig.list 1 }}"
-echo "get object list item: {{ (index .TestConfig.objectList 0).key }}"
-echo "get array list item: {{ index (index .TestConfig.arrayList 0) 2 }}"
+echo "get configs string: {{ .configs.test.string }}"
+echo "get configs map item: {{ .configs.test.map.key1 }}"
+echo "get configs deep map item: {{ .configs.test.deepMap.map1.map2.map3.key2 }}"
+echo "get configs list item: {{ index .configs.test.list 1 }}"
+echo "get configs object list item: {{ (index .configs.test.objectList 0).key }}"
+echo "get configs array list item: {{ index (index .configs.test.arrayList 0) 2 }}"
+
+echo "get options['_os']: {{ .options._os }}"
+echo "get options['_arch']: {{ .options._arch }}"
+echo "get options['_shell']: {{ .options._shell }}"
+echo "get options['_hostname']: {{ .options._hostname }}"
+echo "get options['_username']: {{ .options._username }}"
+echo "get options['_runtime_version']: {{ .options._runtime_version }}"
+echo "get options['_runtime_version_code']: {{ .options._runtime_version_code }}"
+echo "get options['test']: {{ .options.test }}"

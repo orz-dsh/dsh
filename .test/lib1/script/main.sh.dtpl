@@ -1,0 +1,13 @@
+#!/bin/sh
+
+lib1_test() {
+  echo "lib1 test"
+  echo "lib1 get options['_os']: {{ .options._os }}"
+  echo "lib1 get options['_arch']: {{ .options._arch }}"
+  echo "lib1 get options['_shell']: {{ .options._shell }}"
+  echo "lib1 get options['_hostname']: {{ .options._hostname }}"
+  echo "lib1 get options['_username']: {{ .options._username }}"
+  echo "lib1 get options['_runtime_version']: {{ .options._runtime_version }}"
+  echo "lib1 get options['_runtime_version_code']: {{ .options._runtime_version_code }}"
+  echo "lib1 get options['test']: {{ .options.test }}"
+}
