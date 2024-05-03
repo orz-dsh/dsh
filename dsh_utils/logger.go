@@ -45,6 +45,12 @@ func (l *Logger) Debug(format string, v ...any) {
 	}
 }
 
+func (l *Logger) DebugDesc(title string, kvs ...DescKeyValue) {
+	if l.IsDebugEnabled() {
+		l.normalLogger.Printf("[DEBUG] %+v", NewDesc(title, kvs).ToString("", "\t\t"))
+	}
+}
+
 func (l *Logger) IsInfoEnabled() bool {
 	return l.Level <= LogLevelInfo
 }
@@ -56,6 +62,12 @@ func (l *Logger) GetInfoWriter() io.Writer {
 func (l *Logger) Info(format string, v ...any) {
 	if l.IsInfoEnabled() {
 		l.normalLogger.Printf("[INFO ] "+format, v...)
+	}
+}
+
+func (l *Logger) InfoDesc(title string, kvs ...DescKeyValue) {
+	if l.IsInfoEnabled() {
+		l.normalLogger.Printf("[INFO ] %+v", NewDesc(title, kvs).ToString("", "\t\t"))
 	}
 }
 
@@ -73,6 +85,12 @@ func (l *Logger) Warn(format string, v ...any) {
 	}
 }
 
+func (l *Logger) WarnDesc(title string, kvs ...DescKeyValue) {
+	if l.IsWarnEnabled() {
+		l.normalLogger.Printf("[WARN ] %+v", NewDesc(title, kvs).ToString("", "\t\t"))
+	}
+}
+
 func (l *Logger) IsErrorEnabled() bool {
 	return l.Level <= LogLevelError
 }
@@ -87,6 +105,12 @@ func (l *Logger) Error(format string, v ...any) {
 	}
 }
 
+func (l *Logger) ErrorDesc(title string, kvs ...DescKeyValue) {
+	if l.IsErrorEnabled() {
+		l.errorLogger.Printf("[ERROR] %+v", NewDesc(title, kvs).ToString("", "\t\t"))
+	}
+}
+
 func (l *Logger) GetFatalWriter() io.Writer {
 	return l.errorLogger.Writer()
 }
@@ -95,10 +119,18 @@ func (l *Logger) Fatal(format string, v ...any) {
 	l.errorLogger.Fatalf("[FATAL] "+format, v...)
 }
 
+func (l *Logger) FatalDesc(title string, kvs ...DescKeyValue) {
+	l.errorLogger.Fatalf("[FATAL] %+v", NewDesc(title, kvs).ToString("", "\t\t"))
+}
+
 func (l *Logger) GetPanicWriter() io.Writer {
 	return l.errorLogger.Writer()
 }
 
 func (l *Logger) Panic(format string, v ...any) {
 	l.errorLogger.Panicf("[PANIC] "+format, v...)
+}
+
+func (l *Logger) PanicDesc(title string, kvs ...DescKeyValue) {
+	l.errorLogger.Panicf("[PANIC] %+v", NewDesc(title, kvs).ToString("", "\t\t"))
 }

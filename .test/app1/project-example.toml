@@ -9,12 +9,12 @@ name = "test"
 default = "c"
 choices = ["a", "b", "c", "d"]
 
-[[option.items.links]]
+[[option.items.assigns]]
 project = "lib1"
 option = "test"
 mapping = "value == 'a' ? '1234' : (value == 'b' ? '5678' : (value == 'c' ? '0000' : nil))"
 
-[[option.items.links]]
+[[option.items.assigns]]
 project = "lib2"
 option = "test"
 mapping = "upper(value)"

@@ -32,50 +32,56 @@ func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
 	if minVersion != "" {
 		minVersionCode, err = minVersion.GetVersionCode()
 		if err != nil {
-			return WrapError(err, "min version get code failed", map[string]any{
-				"minVersion": minVersion,
-			})
+			return errW(err, "check runtime version error",
+				reason("get min version code error"),
+				kv("minVersion", minVersion),
+			)
 		}
 	}
 	maxVersionCode := int32(999999999)
 	if maxVersion != "" {
 		maxVersionCode, err = maxVersion.GetVersionCode()
 		if err != nil {
-			return WrapError(err, "max version get code failed", map[string]any{
-				"maxVersion": maxVersion,
-			})
+			return errW(err, "check runtime version error",
+				reason("get max version code error"),
+				kv("maxVersion", maxVersion),
+			)
 		}
 	}
 	if runtimeVersionCode >= minVersionCode && runtimeVersionCode <= maxVersionCode {
 		return nil
 	}
-	return NewError("runtime version check failed", map[string]any{
-		"runtimeVersion": runtimeVersion,
-		"minVersion":     minVersion,
-		"maxVersion":     maxVersion,
-	})
+	return errN("check runtime version error",
+		reason("runtime version incompatible"),
+		kv("runtimeVersion", runtimeVersion),
+		kv("minVersion", minVersion),
+		kv("maxVersion", maxVersion),
+	)
 }
 
 func (v Version) GetVersionCode() (versionCode int32, err error) {
 	versionStr := string(v)
 	fragmentStr := strings.Split(versionStr, ".")
 	if len(fragmentStr) < 1 || len(fragmentStr) > 3 {
-		return 0, NewError("version format invalid", map[string]any{
-			"version": versionStr,
-		})
+		return 0, errN("get version code error",
+			reason("format error"),
+			kv("version", versionStr),
+		)
 	}
 	var fragmentCode []int32
 	for i := 0; i < len(fragmentStr); i++ {
 		code, err := strconv.Atoi(fragmentStr[i])
 		if err != nil {
-			return 0, NewError("version format invalid", map[string]any{
-				"version": versionStr,
-			})
+			return 0, errN("get version code error",
+				reason("format error"),
+				kv("version", versionStr),
+			)
 		}
 		if code > 999 {
-			return 0, NewError("version format invalid", map[string]any{
-				"version": versionStr,
-			})
+			return 0, errN("get version code error",
+				reason("format error"),
+				kv("version", versionStr),
+			)
 		}
 		fragmentCode = append(fragmentCode, int32(code))
 	}

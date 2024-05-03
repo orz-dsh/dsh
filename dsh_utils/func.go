@@ -1,14 +1,14 @@
 package dsh_utils
 
-func TernaryFunc[T any](boolExpr bool, trueFunc func() T, falseFunc func() T) T {
-	if boolExpr {
+func TernaryFunc[T any](expr bool, trueFunc func() T, falseFunc func() T) T {
+	if expr {
 		return trueFunc()
 	}
 	return falseFunc()
 }
 
-func Ternary[T any](boolExpr bool, trueValue T, falseValue T) T {
-	if boolExpr {
+func Ternary[T any](expr bool, trueValue T, falseValue T) T {
+	if expr {
 		return trueValue
 	}
 	return falseValue

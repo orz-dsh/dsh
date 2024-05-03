@@ -12,14 +12,14 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	project, err := workspace.OpenLocalProject("./.test/app1", map[string]string{
+	project, err := workspace.OpenLocalApp("./.test/app1", map[string]string{
 		"_os":  "linux",
 		"test": "a",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = project.MakeScript("")
+	err = project.MakeScripts("")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -31,7 +31,7 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = workspace.OpenGitProject("https://github.com/orz-dsh/not-exist-project.git", "main", map[string]string{
+	_, err = workspace.OpenGitApp("https://github.com/orz-dsh/not-exist-project.git", "main", map[string]string{
 		"option1": "value1",
 	})
 	if err != nil {

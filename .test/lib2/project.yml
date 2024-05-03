@@ -7,7 +7,7 @@ option:
         - B
         - C
         - D
-      links:
+      assigns:
         - project: lib1
           option: test
 script:

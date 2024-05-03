@@ -15,12 +15,10 @@ func test12() error {
 }
 
 func test13() error {
-	return WrapError(
+	return errW(
 		errors.Join(errors.New("error1"), errors.New("error2"), errors.New("error3")),
 		"test error",
-		map[string]any{
-			"a": "aaa",
-		},
+		kv("a", "aaa"),
 	)
 }
 
@@ -33,12 +31,10 @@ func test22() error {
 }
 
 func test23() error {
-	return WrapError(
+	return errW(
 		errors2.Wrap(errors2.Wrap(errors2.Wrap(errors.New("error1"), "error2"), "error3"), "error4"),
 		"test error",
-		map[string]any{
-			"a": "aaa",
-		},
+		kv("a", "aaa"),
 	)
 }
 
@@ -51,11 +47,9 @@ func test32() error {
 }
 
 func test33() error {
-	return NewError(
+	return errN(
 		"test error",
-		map[string]any{
-			"a": "aaa",
-		},
+		kv("a", "aaa"),
 	)
 }
 
@@ -68,25 +62,20 @@ func test42() error {
 }
 
 func test43() error {
-	return WrapError(
-		WrapError(
-			NewError(
+	return errW(
+		errW(
+			errN(
 				"test error1",
-				map[string]any{
-					"a": "aaa",
-					"i": 1,
-					"obj": map[string]any{
-						"b": "bb\nb",
-					},
-				},
+				kv("a", "aaa"),
+				kv("i", 1),
+				kv("obj", map[string]any{
+					"b": "bb\nb",
+				}),
 			),
 			"test error2",
-			map[string]any{
-				"b": "bbb",
-			},
+			kv("b", "bbb"),
 		),
 		"test error3",
-		nil,
 	)
 }
 

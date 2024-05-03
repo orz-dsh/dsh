@@ -15,7 +15,7 @@
           "c",
           "d"
         ],
-        "links": [
+        "assigns": [
           {
             "project": "lib1",
             "option": "test",

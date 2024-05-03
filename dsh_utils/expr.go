@@ -8,12 +8,10 @@ import (
 	"strconv"
 )
 
-func CompileExpr(code string) (*vm.Program, error) {
-	program, err := expr.Compile(code)
+func CompileExpr(content string) (*vm.Program, error) {
+	program, err := expr.Compile(content)
 	if err != nil {
-		return nil, WrapError(err, "expr compile failed", map[string]any{
-			"code": code,
-		})
+		return nil, errW(err, "compile expr error", kv("content", content))
 	}
 	return program, nil
 }
@@ -21,10 +19,11 @@ func CompileExpr(code string) (*vm.Program, error) {
 func EvalExprReturnBool(program *vm.Program, env map[string]any) (bool, error) {
 	result, err := expr.Run(program, env)
 	if err != nil {
-		return false, WrapError(err, "expr eval failed", map[string]any{
-			"program": program.Source().Content(),
-			"env":     env,
-		})
+		return false, errW(err, "eval expr return bool error",
+			reason("eval expr error"),
+			kv("program", program.Source().Content()),
+			kv("env", env),
+		)
 	}
 	if result != nil {
 		switch result.(type) {
@@ -43,10 +42,11 @@ func EvalExprReturnBool(program *vm.Program, env map[string]any) (bool, error) {
 		case map[string]any:
 			return len(result.(map[string]any)) > 0, nil
 		default:
-			return false, NewError("unsupported type", map[string]any{
-				"result":     result,
-				"resultType": reflect.TypeOf(result),
-			})
+			return false, errN("eval expr return bool error",
+				reason("unsupported result type"),
+				kv("result", result),
+				kv("resultType", reflect.TypeOf(result)),
+			)
 		}
 	}
 	return false, nil
@@ -55,10 +55,11 @@ func EvalExprReturnBool(program *vm.Program, env map[string]any) (bool, error) {
 func EvalExprReturnString(program *vm.Program, env map[string]any) (*string, error) {
 	result, err := expr.Run(program, env)
 	if err != nil {
-		return nil, WrapError(err, "expr eval failed", map[string]any{
-			"program": program.Source().Content(),
-			"env":     env,
-		})
+		return nil, errW(err, "eval expr return string error",
+			reason("eval expr error"),
+			kv("program", program.Source().Content()),
+			kv("env", env),
+		)
 	}
 	if result != nil {
 		var str string
@@ -75,25 +76,28 @@ func EvalExprReturnString(program *vm.Program, env map[string]any) (*string, err
 			str = strconv.FormatFloat(result.(float64), 'f', -1, 64)
 		case []any:
 			if bytes, err := json.Marshal(result.([]any)); err != nil {
-				return nil, WrapError(err, "expr eval array result marshal json failed", map[string]any{
-					"result": result,
-				})
+				return nil, errW(err, "eval expr return string error",
+					reason("array result marshal json error"),
+					kv("result", result),
+				)
 			} else {
 				str = string(bytes)
 			}
 		case map[string]any:
 			if bytes, err := json.Marshal(result.(map[string]any)); err != nil {
-				return nil, WrapError(err, "expr eval map result marshal json failed", map[string]any{
-					"result": result,
-				})
+				return nil, errW(err, "eval expr return string error",
+					reason("map result marshal json error"),
+					kv("result", result),
+				)
 			} else {
 				str = string(bytes)
 			}
 		default:
-			return nil, NewError("unsupported type", map[string]any{
-				"result":     result,
-				"resultType": reflect.TypeOf(result),
-			})
+			return nil, errN("eval expr return string error",
+				reason("unsupported result type"),
+				kv("result", result),
+				kv("resultType", reflect.TypeOf(result)),
+			)
 		}
 		return &str, nil
 	}

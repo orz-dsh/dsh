@@ -40,56 +40,63 @@ func IsDirExists(path string) bool {
 
 func RemakeDir(path string) (err error) {
 	if err = os.RemoveAll(path); err != nil {
-		return WrapError(err, "dir remove failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "remake dir error",
+			reason("remove dir error"),
+			kv("path", path),
+		)
 	}
 	if err = os.MkdirAll(path, os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "remake dir error",
+			reason("make dir error"),
+			kv("path", path),
+		)
 	}
 	return nil
 }
 
 func LinkFile(sourcePath string, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]any{
-			"path": targetPath,
-		})
+		return errW(err, "link file error",
+			reason("make dir error"),
+			kv("path", targetPath),
+		)
 	}
 	return os.Link(sourcePath, targetPath)
 }
 
 func CopyFile(sourcePath string, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]any{
-			"path": targetPath,
-		})
+		return errW(err, "copy file error",
+			reason("make dir error"),
+			kv("path", targetPath),
+		)
 	}
 
 	targetFile, err := os.Create(targetPath)
 	if err != nil {
-		return WrapError(err, "file create failed", map[string]any{
-			"path": targetPath,
-		})
+		return errW(err, "copy file error",
+			reason("create target file error"),
+			kv("path", targetPath),
+		)
 	}
 	defer targetFile.Close()
 
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
-		return WrapError(err, "file open failed", map[string]any{
-			"path": sourcePath,
-		})
+		return errW(err, "copy file error",
+			reason("open source file error"),
+			kv("path", sourcePath),
+		)
 	}
 	defer sourceFile.Close()
 
 	_, err = io.Copy(targetFile, sourceFile)
 	if err != nil {
-		return WrapError(err, "file copy failed", map[string]any{
-			"targetFile": targetFile,
-			"sourceFile": sourceFile,
-		})
+		return errW(err, "copy file error",
+			reason("io copy error"),
+			kv("targetFile", targetFile),
+			kv("sourceFile", sourceFile),
+		)
 	}
 	return nil
 }
@@ -99,10 +106,11 @@ func LinkOrCopyFile(sourcePath string, targetPath string) (err error) {
 	if err != nil {
 		err = CopyFile(sourcePath, targetPath)
 		if err != nil {
-			return WrapError(err, "link or copy failed", map[string]any{
-				"sourcePath": sourcePath,
-				"targetPath": targetPath,
-			})
+			return errW(err, "link or copy file error",
+				reason("copy file error"),
+				kv("sourcePath", sourcePath),
+				kv("targetPath", targetPath),
+			)
 		}
 	}
 	return nil
@@ -111,15 +119,17 @@ func LinkOrCopyFile(sourcePath string, targetPath string) (err error) {
 func ReadYamlFile(path string, model any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return WrapError(err, "file read failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "read yaml file error",
+			reason("read file error"),
+			kv("path", path),
+		)
 	}
 	err = yaml.Unmarshal(data, model)
 	if err != nil {
-		return WrapError(err, "yaml unmarshal failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "read yaml file error",
+			reason("yaml unmarshal error"),
+			kv("path", path),
+		)
 	}
 	return nil
 }
@@ -127,15 +137,17 @@ func ReadYamlFile(path string, model any) error {
 func ReadTomlFile(path string, model any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return WrapError(err, "file read failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "read toml file error",
+			reason("read file error"),
+			kv("path", path),
+		)
 	}
 	err = toml.Unmarshal(data, model)
 	if err != nil {
-		return WrapError(err, "toml unmarshal failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "read toml file error",
+			reason("toml unmarshal error"),
+			kv("path", path),
+		)
 	}
 	return nil
 }
@@ -143,15 +155,17 @@ func ReadTomlFile(path string, model any) error {
 func ReadJsonFile(path string, model any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return WrapError(err, "file read failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "read json file error",
+			reason("read file error"),
+			kv("path", path),
+		)
 	}
 	err = json.Unmarshal(data, model)
 	if err != nil {
-		return WrapError(err, "json unmarshal failed", map[string]any{
-			"path": path,
-		})
+		return errW(err, "read json file error",
+			reason("json unmarshal error"),
+			kv("path", path),
+		)
 	}
 	return nil
 }
@@ -229,28 +243,30 @@ func SelectFile(sourceDir string, files []string, fileTypes []FileType) (string,
 }
 
 func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
-	var includeFileMap = make(map[string]bool)
+	var includeFilesByPath = make(map[string]bool)
 	for i := 0; i < len(includeFiles); i++ {
-		includeFileMap[filepath.Join(sourceDir, includeFiles[i])] = true
+		includeFilesByPath[filepath.Join(sourceDir, includeFiles[i])] = true
 	}
 	err = filepath.WalkDir(sourceDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return WrapError(err, "dir walk failed", map[string]any{
-				"dir": sourceDir,
-			})
+			return errW(err, "scan files error",
+				reason("walk dir error"),
+				kv("dir", sourceDir),
+			)
 		}
 		if !d.IsDir() {
-			if len(includeFileMap) > 0 {
-				if _, exist := includeFileMap[path]; !exist {
+			if len(includeFilesByPath) > 0 {
+				if _, exist := includeFilesByPath[path]; !exist {
 					return nil
 				}
 			}
 			relPath, err := filepath.Rel(sourceDir, path)
 			if err != nil {
-				return WrapError(err, "file rel-path get failed", map[string]any{
-					"dir":  sourceDir,
-					"path": path,
-				})
+				return errW(err, "scan files error",
+					reason("get rel-path error"),
+					kv("dir", sourceDir),
+					kv("path", path),
+				)
 			}
 			fileType := GetFileType(relPath, includeFileTypes)
 			if fileType != "" {
@@ -261,33 +277,34 @@ func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileT
 		return nil
 	})
 	if err != nil {
-		return nil, nil, WrapError(err, "files scan failed", map[string]any{
-			"sourceDir": sourceDir,
-		})
+		return nil, nil, err
 	}
 	return filePaths, fileTypes, nil
 }
 
 func WriteTemplate(t *template.Template, env any, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return WrapError(err, "dir make failed", map[string]any{
-			"path": targetPath,
-		})
+		return errW(err, "write template error",
+			reason("make dir error"),
+			kv("path", targetPath),
+		)
 	}
 
 	targetFile, err := os.Create(targetPath)
 	if err != nil {
-		return WrapError(err, "file create failed", map[string]any{
-			"path": targetPath,
-		})
+		return errW(err, "write template error",
+			reason("create target file error"),
+			kv("path", targetPath),
+		)
 	}
 	defer targetFile.Close()
 
 	err = t.Execute(targetFile, env)
 	if err != nil {
-		return WrapError(err, "template execute failed", map[string]any{
-			"targetPath": targetPath,
-		})
+		return errW(err, "write template error",
+			reason("execute template error"),
+			kv("targetPath", targetPath),
+		)
 	}
 	return nil
 }
