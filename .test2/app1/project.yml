@@ -1,0 +1,7 @@
+name: app1
+script:
+  sources:
+    - dir: script
+  imports:
+    - local:
+        dir: ../shell-lib

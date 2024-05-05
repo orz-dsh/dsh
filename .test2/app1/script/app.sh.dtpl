@@ -1,0 +1,49 @@
+#!/bin/sh
+set -o errexit
+
+{{ SH_INIT_APP }}
+
+{{ SH_IMPORT "dsh_shell_lib" }}
+
+app_main_task() {
+  dsh_log_debug "debug message"
+  dsh_log_info "info message"
+  dsh_log_warn "warn message"
+  dsh_log_error "error message"
+  dsh_exec_cmd ls -l "$1"
+  dsh_exec_task app_sub_task "$1"
+
+  dsh_log_info "info message"
+  dsh_log_warn "warn message"
+}
+
+app_sub_task() {
+  dsh_log_debug "debug message"
+  dsh_log_info "info message"
+  dsh_log_warn "warn message"
+  dsh_log_error "error message"
+  dsh_exec_cmd ls -l "$1"
+
+  test_value="1234
+  5678
+
+  \r"
+  dsh_log_check_values "test_value" "DSH_APP_DIR"
+#  return 1
+}
+
+dsh_add_log_sensitive "1234" "sensitive message"
+dsh_add_log_sensitive "orz-dsh/dsh"
+
+dsh_log_debug "debug message"
+dsh_log_info "info message"
+dsh_log_warn "warn message"
+dsh_log_error "error sensitive message"
+#dsh_log_fatal "fatal message"
+
+dsh_exec_task app_main_task "../../test space dir"
+
+dsh_log_debug "sensitive message"
+dsh_log_info "info message"
+dsh_log_warn "warn message"
+dsh_log_error "error message"
