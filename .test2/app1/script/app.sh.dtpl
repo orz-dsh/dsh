@@ -47,3 +47,16 @@ dsh_log_debug "sensitive message"
 dsh_log_info "info message"
 dsh_log_warn "warn message"
 dsh_log_error "error message"
+
+dsh_try_source "${DSH_APP_DIR}/test.sh"
+dsh_log_debug "try source test.sh success: ${DSH_TRY_SOURCE_SUCCESS}"
+dsh_try_source "${DSH_APP_DIR}/app1/test.sh"
+dsh_log_debug "try source app1/test.sh success: ${DSH_TRY_SOURCE_SUCCESS}"
+
+dsh_exec_task app_test_download
+dsh_exec_task app_test_upload
+
+dsh_log_debug "sensitive message"
+dsh_log_info "info message"
+dsh_log_warn "warn message"
+dsh_log_error "error message"
