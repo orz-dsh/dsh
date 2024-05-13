@@ -6,6 +6,9 @@ set -o errexit
 {{ SH_IMPORT "dsh_shell_lib" }}
 
 app_main_task() {
+  dsh_exec_cmd app_test_args -a "a a a" -b "b b b" -c "c = c" --test1="\"t e s t 1\"" --test2 "t e s t 2" --test3 "test = 3" --test4 "\$(echo \"\$(echo \"t e s t 4\")\")"
+  dsh_exec_task app_test_args -a "a a a" -b "b b b" -c "c = c" --test1="\"t e s t 1\"" --test2 "t e s t 2" --test3 "test = 3" --test4 "\$(echo \"\$(echo \"t e s t 4\")\")"
+
   dsh_log_debug "debug message"
   dsh_log_info "info message"
   dsh_log_warn "warn message"
@@ -28,8 +31,52 @@ app_sub_task() {
   5678
 
   \r"
-  dsh_log_check_values "test_value" "DSH_APP_DIR"
+  dsh_log_check_values test_value DSH_APP_DIR
 #  return 1
+}
+
+app_test_args() {
+  args="$(getopt --options "a:b:c:" --longoptions "test1:,test2:,test3:,test4:" -- "$@")"
+  eval set -- "$args"
+  dsh_log_check_values "args"
+  while [ true ]; do
+    case "$1" in
+      -a)
+        args_a="$2"
+        shift
+        ;;
+      -b)
+        args_b="$2"
+        shift
+        ;;
+      -c)
+        args_c="$2"
+        shift
+        ;;
+      --test1)
+        args_test1="$2"
+        shift
+        ;;
+      --test2)
+        args_test2="$2"
+        shift
+        ;;
+      --test3)
+        args_test3="$2"
+        shift
+        ;;
+      --test4)
+        args_test4="$2"
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+    esac
+  shift
+  done
+  dsh_log_check_values args_a args_b args_c args_test1 args_test2 args_test3 args_test4
 }
 
 dsh_add_log_sensitive "1234" "sensitive message"
@@ -41,7 +88,7 @@ dsh_log_warn "warn message"
 dsh_log_error "error sensitive message"
 #dsh_log_fatal "fatal message"
 
-dsh_exec_task app_main_task "../../test space dir"
+dsh_exec_task app_main_task "${DSH_APP_DIR}/../../test space dir"
 
 dsh_log_debug "sensitive message"
 dsh_log_info "info message"
