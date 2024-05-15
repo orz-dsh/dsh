@@ -1,0 +1,8 @@
+shell:
+  powershell:
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -NoProfile
+      - -File
+      - "{{.target.path}}"

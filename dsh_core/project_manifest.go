@@ -18,7 +18,7 @@ type projectManifest struct {
 	Script       *projectManifestScript
 	Config       *projectManifestConfig
 	manifestPath string
-	manifestType projectManifestType
+	manifestType manifestMetadataType
 	projectPath  string
 }
 
@@ -86,14 +86,6 @@ type projectManifestImportGit struct {
 	ref *gitRef
 }
 
-type projectManifestType string
-
-const (
-	projectManifestTypeYaml projectManifestType = "yaml"
-	projectManifestTypeToml projectManifestType = "toml"
-	projectManifestTypeJson projectManifestType = "json"
-)
-
 type projectManifestOptionItemType string
 
 const (
@@ -103,115 +95,82 @@ const (
 	projectManifestOptionItemTypeDecimal projectManifestOptionItemType = "decimal"
 )
 
-func loadProjectManifest(projectPath string) (pm *projectManifest, err error) {
-	manifestPath, manifestFileType := dsh_utils.SelectFile(projectPath, []string{
-		"project.yml",
-		"project.yaml",
-		"project.toml",
-		"project.json",
-	}, []dsh_utils.FileType{
-		dsh_utils.FileTypeYaml,
-		dsh_utils.FileTypeToml,
-		dsh_utils.FileTypeJson,
-	})
-	if manifestPath == "" {
-		return nil, errN("load project manifest error",
-			reason("manifest file not found"),
-			kv("projectPath", projectPath),
-		)
-	}
-	pm = &projectManifest{
+func loadProjectManifest(projectPath string) (m *projectManifest, err error) {
+	m = &projectManifest{
 		Runtime: &projectManifestRuntime{},
 		Option:  &projectManifestOption{},
 		Script:  &projectManifestScript{},
 		Config:  &projectManifestConfig{},
 	}
-	var manifestType projectManifestType
-	switch manifestFileType {
-	case dsh_utils.FileTypeYaml:
-		manifestType = projectManifestTypeYaml
-		err = dsh_utils.ReadYamlFile(manifestPath, pm)
-	case dsh_utils.FileTypeToml:
-		manifestType = projectManifestTypeToml
-		err = dsh_utils.ReadTomlFile(manifestPath, pm)
-	case dsh_utils.FileTypeJson:
-		manifestType = projectManifestTypeJson
-		err = dsh_utils.ReadJsonFile(manifestPath, pm)
-	default:
-		// impossible
-		panic(desc("project manifest file type not supported",
-			kv("manifestPath", manifestPath),
-			kv("manifestFileType", manifestFileType),
-		))
-	}
+	metadata, err := loadManifest(projectPath, []string{"project"}, m, true)
 	if err != nil {
 		return nil, errW(err, "load project manifest error",
-			reason("read manifest file error"),
-			kv("manifestPath", manifestPath),
+			reason("load manifest error"),
+			kv("projectPath", projectPath),
 		)
 	}
-	pm.manifestPath = manifestPath
-	pm.manifestType = manifestType
-	pm.projectPath = projectPath
-	if err = pm.init(); err != nil {
+	m.manifestPath = metadata.manifestPath
+	m.manifestType = metadata.manifestType
+	m.projectPath = projectPath
+	if err = m.init(); err != nil {
 		return nil, err
 	}
-	return pm, nil
+	return m, nil
 }
 
-func (pm *projectManifest) init() (err error) {
-	if pm.Name == "" {
+func (m *projectManifest) init() (err error) {
+	if m.Name == "" {
 		return errN("project manifest invalid",
 			reason("name empty"),
-			kv("path", pm.manifestPath),
+			kv("path", m.manifestPath),
 			kv("field", "name"),
 		)
 	}
-	if checked := projectNameCheckRegex.MatchString(pm.Name); !checked {
+	if checked := projectNameCheckRegex.MatchString(m.Name); !checked {
 		return errN("project manifest invalid",
 			reason("value invalid"),
-			kv("path", pm.manifestPath),
+			kv("path", m.manifestPath),
 			kv("field", "name"),
-			kv("value", pm.Name),
+			kv("value", m.Name),
 		)
 	}
 
-	err = dsh_utils.CheckRuntimeVersion(pm.Runtime.MinVersion, pm.Runtime.MaxVersion)
+	err = dsh_utils.CheckRuntimeVersion(m.Runtime.MinVersion, m.Runtime.MaxVersion)
 	if err != nil {
 		return errW(err, "project manifest invalid",
 			reason("runtime incompatible"),
-			kv("path", pm.manifestPath),
+			kv("path", m.manifestPath),
 			kv("field", "runtime"),
 		)
 	}
 
-	optionsByName := make(map[string]bool)
-	for i := 0; i < len(pm.Option.Items); i++ {
-		option := pm.Option.Items[i]
+	optionNamesDict := make(map[string]bool)
+	for i := 0; i < len(m.Option.Items); i++ {
+		option := m.Option.Items[i]
 		if option.Name == "" {
 			return errN("project manifest invalid",
 				reason("name empty"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("option.items[%d].name", i)),
 			)
 		}
 		if checked := projectNameCheckRegex.MatchString(option.Name); !checked {
 			return errN("project manifest invalid",
 				reason("value invalid"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("option.items[%d].name", i)),
 				kv("value", option.Name),
 			)
 		}
-		if _, exist := optionsByName[option.Name]; exist {
+		if _, exist := optionNamesDict[option.Name]; exist {
 			return errN("project manifest invalid",
 				reason("name duplicated"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("option.items[%d].name", i)),
 				kv("value", option.Name),
 			)
 		}
-		optionsByName[option.Name] = true
+		optionNamesDict[option.Name] = true
 		if option.Type == "" {
 			option.Type = projectManifestOptionItemTypeString
 		}
@@ -224,7 +183,7 @@ func (pm *projectManifest) init() (err error) {
 			default:
 				return errN("project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("option.items[%d].type", i)),
 					kv("value", option.Type),
 				)
@@ -235,7 +194,7 @@ func (pm *projectManifest) init() (err error) {
 			if err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("option.items[%d].default", i)),
 					kv("value", defaultRawValue),
 				)
@@ -243,45 +202,45 @@ func (pm *projectManifest) init() (err error) {
 			option.defaultRawValue = defaultRawValue
 			option.defaultParsedValue = defaultParsedValue
 		}
-		assignsByTarget := make(map[string]bool)
+		assignTargetsDict := make(map[string]bool)
 		for j := 0; j < len(option.Assigns); j++ {
 			if option.Assigns[j].Project == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("option.items[%d].assigns[%d].project", i, j)),
 				)
 			}
-			if option.Assigns[j].Project == pm.Name {
+			if option.Assigns[j].Project == m.Name {
 				return errN("project manifest invalid",
 					reason("can not assign to self project option"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("option.items[%d].assigns[%d].project", i, j)),
 				)
 			}
 			if option.Assigns[j].Option == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("option.items[%d].assigns[%d].option", i, j)),
 				)
 			}
 			assignTarget := option.Assigns[j].Project + "." + option.Assigns[j].Option
-			if _, exists := assignsByTarget[assignTarget]; exists {
+			if _, exists := assignTargetsDict[assignTarget]; exists {
 				return errN("project manifest invalid",
 					reason("option assign target duplicated"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("option.items[%d].assigns[%d]", i, j)),
 					kv("target", assignTarget),
 				)
 			}
-			assignsByTarget[assignTarget] = true
+			assignTargetsDict[assignTarget] = true
 			if option.Assigns[j].Mapping != "" {
 				option.Assigns[j].mapping, err = dsh_utils.CompileExpr(option.Assigns[j].Mapping)
 				if err != nil {
 					return errW(err, "project manifest invalid",
 						reason("value invalid"),
-						kv("path", pm.manifestPath),
+						kv("path", m.manifestPath),
 						kv("field", fmt.Sprintf("option.items[%d].assigns[%d].mapping", i, j)),
 						kv("value", option.Assigns[j].Mapping),
 					)
@@ -289,32 +248,32 @@ func (pm *projectManifest) init() (err error) {
 			}
 		}
 	}
-	for i := 0; i < len(pm.Option.Verifies); i++ {
-		if pm.Option.Verifies[i] == "" {
+	for i := 0; i < len(m.Option.Verifies); i++ {
+		if m.Option.Verifies[i] == "" {
 			return errN("project manifest invalid",
 				reason("value empty"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("option.verifies[%d]", i)),
 			)
 		}
-		verify, err := dsh_utils.CompileExpr(pm.Option.Verifies[i])
+		verify, err := dsh_utils.CompileExpr(m.Option.Verifies[i])
 		if err != nil {
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("option.verifies[%d]", i)),
-				kv("value", pm.Option.Verifies[i]),
+				kv("value", m.Option.Verifies[i]),
 			)
 		}
-		pm.Option.verifies = append(pm.Option.verifies, verify)
+		m.Option.verifies = append(m.Option.verifies, verify)
 	}
 
-	for i := 0; i < len(pm.Script.Sources); i++ {
-		src := pm.Script.Sources[i]
+	for i := 0; i < len(m.Script.Sources); i++ {
+		src := m.Script.Sources[i]
 		if src.Dir == "" {
 			return errN("project manifest invalid",
 				reason("value empty"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("script.sources[%d].dir", i)),
 			)
 		}
@@ -323,32 +282,32 @@ func (pm *projectManifest) init() (err error) {
 			if err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.sources[%d].match", i)),
 					kv("value", src.Match),
 				)
 			}
 		}
 	}
-	for i := 0; i < len(pm.Script.Imports); i++ {
-		imp := pm.Script.Imports[i]
+	for i := 0; i < len(m.Script.Imports); i++ {
+		imp := m.Script.Imports[i]
 		if imp.Local == nil && imp.Git == nil {
 			return errN("project manifest invalid",
 				reason("local and git are both nil"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("script.imports[%d]", i)),
 			)
 		} else if imp.Local != nil && imp.Git != nil {
 			return errN("project manifest invalid",
 				reason("local and git are both not nil"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("script.imports[%d]", i)),
 			)
 		} else if imp.Local != nil {
 			if imp.Local.Dir == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.imports[%d].local.dir", i)),
 				)
 			}
@@ -356,21 +315,21 @@ func (pm *projectManifest) init() (err error) {
 			if imp.Git.Url == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.imports[%d].git.url", i)),
 				)
 			}
 			if imp.Git.Ref == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.imports[%d].git.ref", i)),
 				)
 			}
 			if imp.Git.url, err = url.Parse(imp.Git.Url); err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.imports[%d].git.url", i)),
 					kv("value", imp.Git.Url),
 				)
@@ -382,7 +341,7 @@ func (pm *projectManifest) init() (err error) {
 			if err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.imports[%d].match", i)),
 					kv("value", imp.Match),
 				)
@@ -390,12 +349,12 @@ func (pm *projectManifest) init() (err error) {
 		}
 	}
 
-	for i := 0; i < len(pm.Config.Sources); i++ {
-		src := pm.Config.Sources[i]
+	for i := 0; i < len(m.Config.Sources); i++ {
+		src := m.Config.Sources[i]
 		if src.Dir == "" {
 			return errN("project manifest invalid",
 				reason("value empty"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("config.sources[%d].dir", i)),
 			)
 		}
@@ -404,32 +363,32 @@ func (pm *projectManifest) init() (err error) {
 			if err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("config.sources[%d].match", i)),
 					kv("value", src.Match),
 				)
 			}
 		}
 	}
-	for i := 0; i < len(pm.Config.Imports); i++ {
-		imp := pm.Config.Imports[i]
+	for i := 0; i < len(m.Config.Imports); i++ {
+		imp := m.Config.Imports[i]
 		if imp.Local == nil && imp.Git == nil {
 			return errN("project manifest invalid",
 				reason("local and git are both nil"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("config.imports[%d]", i)),
 			)
 		} else if imp.Local != nil && imp.Git != nil {
 			return errN("project manifest invalid",
 				reason("local and git are both not nil"),
-				kv("path", pm.manifestPath),
+				kv("path", m.manifestPath),
 				kv("field", fmt.Sprintf("config.imports[%d]", i)),
 			)
 		} else if imp.Local != nil {
 			if imp.Local.Dir == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("config.imports[%d].local.dir", i)),
 				)
 			}
@@ -437,21 +396,21 @@ func (pm *projectManifest) init() (err error) {
 			if imp.Git.Url == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("config.imports[%d].git.url", i)),
 				)
 			}
 			if imp.Git.Ref == "" {
 				return errN("project manifest invalid",
 					reason("value empty"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("config.imports[%d].git.ref", i)),
 				)
 			}
 			if imp.Git.url, err = url.Parse(imp.Git.Url); err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("script.imports[%d].git.url", i)),
 					kv("value", imp.Git.Url),
 				)
@@ -463,7 +422,7 @@ func (pm *projectManifest) init() (err error) {
 			if err != nil {
 				return errW(err, "project manifest invalid",
 					reason("value invalid"),
-					kv("path", pm.manifestPath),
+					kv("path", m.manifestPath),
 					kv("field", fmt.Sprintf("config.imports[%d].match", i)),
 					kv("value", imp.Match),
 				)
@@ -473,17 +432,17 @@ func (pm *projectManifest) init() (err error) {
 	return nil
 }
 
-func (item *projectManifestOptionItem) parseValue(rawValue string) (any, error) {
-	if len(item.Choices) > 0 && !slices.Contains(item.Choices, rawValue) {
+func (i *projectManifestOptionItem) parseValue(rawValue string) (any, error) {
+	if len(i.Choices) > 0 && !slices.Contains(i.Choices, rawValue) {
 		return nil, errN("option parse value error",
 			reason("not in choices"),
-			kv("name", item.Name),
+			kv("name", i.Name),
 			kv("value", rawValue),
-			kv("choices", item.Choices),
+			kv("choices", i.Choices),
 		)
 	}
 	var parsedValue any = nil
-	switch item.Type {
+	switch i.Type {
 	case projectManifestOptionItemTypeString:
 		parsedValue = rawValue
 	case projectManifestOptionItemTypeBool:
@@ -493,7 +452,7 @@ func (item *projectManifestOptionItem) parseValue(rawValue string) (any, error) 
 		if err != nil {
 			return nil, errW(err, "option parse value error",
 				reason("parse integer error"),
-				kv("name", item.Name),
+				kv("name", i.Name),
 				kv("value", rawValue),
 			)
 		}
@@ -503,7 +462,7 @@ func (item *projectManifestOptionItem) parseValue(rawValue string) (any, error) 
 		if err != nil {
 			return nil, errW(err, "option parse value error",
 				reason("parse decimal error"),
-				kv("name", item.Name),
+				kv("name", i.Name),
 				kv("value", rawValue),
 			)
 		}
@@ -511,8 +470,8 @@ func (item *projectManifestOptionItem) parseValue(rawValue string) (any, error) 
 	default:
 		// impossible
 		panic(desc("option type not supported",
-			kv("optionName", item.Name),
-			kv("optionType", item.Type),
+			kv("optionName", i.Name),
+			kv("optionType", i.Type),
 		))
 	}
 	return parsedValue, nil

@@ -86,7 +86,7 @@ func loadProjectConfigSourceContainer(context *appContext, manifest *projectMani
 	return sc, nil
 }
 
-func (sc *projectConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
+func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
 	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypeYaml,
 		dsh_utils.FileTypeToml,
@@ -118,7 +118,7 @@ func (sc *projectConfigSourceContainer) scanSources(sourceDir string, includeFil
 			sourceName: dsh_utils.RemoveFileExt(filePath),
 			sourceType: sourceType,
 		}
-		if existSource, exist := sc.sourcesByName[source.sourcePath]; exist {
+		if existSource, exist := c.sourcesByName[source.sourcePath]; exist {
 			if existSource.sourcePath == source.sourcePath {
 				continue
 			}
@@ -129,15 +129,15 @@ func (sc *projectConfigSourceContainer) scanSources(sourceDir string, includeFil
 				kv("sourcePath2", existSource.sourcePath),
 			)
 		}
-		sc.sources = append(sc.sources, source)
-		sc.sourcesByName[source.sourceName] = source
+		c.sources = append(c.sources, source)
+		c.sourcesByName[source.sourceName] = source
 	}
 	return nil
 }
 
-func (sc *projectConfigSourceContainer) loadSources() (err error) {
-	for i := 0; i < len(sc.sources); i++ {
-		source := sc.sources[i]
+func (c *projectConfigSourceContainer) loadSources() (err error) {
+	for i := 0; i < len(c.sources); i++ {
+		source := c.sources[i]
 		if source.content == nil {
 			content := &projectConfigSourceContent{}
 			switch source.sourceType {

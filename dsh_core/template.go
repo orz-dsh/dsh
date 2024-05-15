@@ -1,7 +1,7 @@
 package dsh_core
 
 import (
-	"dsh/dsh_utils"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -30,21 +30,74 @@ func newTemplateFuncs() template.FuncMap {
 	}
 }
 
-func makeTemplate(env map[string]any, funcs template.FuncMap, templateSourcePath string, templateLibSourcePaths []string, outputTargetPath string) error {
-	templateFiles := append([]string{templateSourcePath}, templateLibSourcePaths...)
-	tpl, err := template.New(filepath.Base(templateSourcePath)).Funcs(funcs).Option("missingkey=error").ParseFiles(templateFiles...)
+func executeFileTemplate(sourcePath string, libPaths []string, targetPath string, data map[string]any, funcs template.FuncMap) error {
+	tpl := template.New(filepath.Base(sourcePath)).Option("missingkey=error")
+	if funcs != nil {
+		tpl = tpl.Funcs(funcs)
+	}
+	files := append([]string{sourcePath}, libPaths...)
+	tpl, err := tpl.ParseFiles(files...)
 	if err != nil {
-		return errW(err, "make template error",
+		return errW(err, "execute file template error",
 			reason("parse template error"),
-			kv("templateSourcePath", templateSourcePath),
-			kv("templateLibSourcePaths", templateLibSourcePaths),
+			kv("sourcePath", sourcePath),
+			kv("libPaths", libPaths),
 		)
 	}
-	if err = dsh_utils.WriteTemplate(tpl, env, outputTargetPath); err != nil {
-		return errW(err, "make template error",
-			reason("write template error"),
-			kv("outputTargetPath", outputTargetPath),
+
+	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+		return errW(err, "execute file template error",
+			reason("make target dir error"),
+			kv("targetPath", targetPath),
+		)
+	}
+
+	targetFile, err := os.Create(targetPath)
+	if err != nil {
+		return errW(err, "execute file template error",
+			reason("create target file error"),
+			kv("targetPath", targetPath),
+		)
+	}
+	defer targetFile.Close()
+
+	err = tpl.Execute(targetFile, data)
+	if err != nil {
+		return errW(err, "execute file template error",
+			reason("execute template error"),
+			kv("sourcePath", sourcePath),
+			kv("libPaths", libPaths),
+			kv("targetPath", targetPath),
+			kv("data", data),
+			kv("funcs", funcs),
 		)
 	}
 	return nil
+}
+
+func executeStringTemplate(str string, data map[string]any, funcs template.FuncMap) (string, error) {
+	tpl := template.New("StringTemplate").Option("missingkey=error")
+	if funcs != nil {
+		tpl = tpl.Funcs(funcs)
+	}
+	tpl, err := tpl.Parse(str)
+	if err != nil {
+		return "", errW(err, "execute string template error",
+			reason("parse template error"),
+			kv("str", str),
+			kv("data", data),
+			kv("funcs", funcs),
+		)
+	}
+	var writer strings.Builder
+	err = tpl.Execute(&writer, data)
+	if err != nil {
+		return "", errW(err, "execute string template error",
+			reason("execute template error"),
+			kv("str", str),
+			kv("data", data),
+			kv("funcs", funcs),
+		)
+	}
+	return writer.String(), nil
 }

@@ -3,23 +3,24 @@ package main
 import (
 	"dsh/dsh_core"
 	"dsh/dsh_utils"
+	"runtime"
 	"testing"
 )
 
 func TestProject1(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace("", logger)
+	workspace, err := dsh_core.OpenWorkspace("./.test_workspace", logger)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	project, err := workspace.OpenLocalApp("./.test1/app1", map[string]string{
+	app, err := workspace.OpenLocalApp("./.test1/app1", map[string]string{
 		"_os":  "linux",
 		"test": "a",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = project.MakeScripts("")
+	_, err = app.MakeScripts("")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -27,7 +28,7 @@ func TestProject1(t *testing.T) {
 
 func TestProject2(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace("", logger)
+	workspace, err := dsh_core.OpenWorkspace("./.test_workspace", logger)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -41,18 +42,31 @@ func TestProject2(t *testing.T) {
 
 func TestProject3(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace("", logger)
+	workspace, err := dsh_core.OpenWorkspace("./.test_workspace", logger)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	project, err := workspace.OpenLocalApp("./.test2/app1", map[string]string{
-		"_os": "linux",
-	})
+	options := make(map[string]string)
+	if runtime.GOOS == "windows" {
+		options["_shell"] = "powershell"
+	}
+	app, err := workspace.OpenLocalApp("./.test2/app1", options)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = project.MakeScripts("")
+	artifact, err := app.MakeScripts("")
 	if err != nil {
 		logger.Panic("%+v", err)
+	}
+	exit, err := artifact.ExecuteInChildProcess("app")
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	logger.Info("exit code: %d", exit)
+	if runtime.GOOS != "windows" {
+		err = artifact.ExecuteInThisProcess("app")
+		if err != nil {
+			logger.Panic("%+v", err)
+		}
 	}
 }

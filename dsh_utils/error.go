@@ -61,7 +61,7 @@ func WrapError(skip int, err error, title string, kvs ...DescKeyValue) *Error {
 	var err_ *Error
 	if errors.As(err, &err_) {
 		return &Error{
-			Details: append(DescList{NewDesc(title, kvs)}, err_.Details...),
+			Details: append(err_.Details, NewDesc(title, kvs)),
 			Stacks:  err_.Stacks,
 			cause:   err_.cause,
 		}

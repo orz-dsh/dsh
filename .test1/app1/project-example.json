@@ -43,13 +43,13 @@
     "imports": [
       {
         "local": {
-          "dir": "./.test/lib1"
+          "dir": "./.test1/lib1"
         },
         "match": "test == 'a'"
       },
       {
         "local": {
-          "dir": "./.test/lib2"
+          "dir": "./.test1/lib2"
         },
         "match": "test == 'a'"
       }
@@ -68,13 +68,13 @@
     "imports": [
       {
         "local": {
-          "dir": "./.test/lib1"
+          "dir": "./.test1/lib1"
         },
         "match": "test == 'a' || test == 'b'"
       },
       {
         "local": {
-          "dir": "./.test/lib2"
+          "dir": "./.test1/lib2"
         },
         "match": "test == 'a' || test == 'b'"
       }

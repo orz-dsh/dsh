@@ -21,4 +21,4 @@ script:
     - dir: script
   imports:
     - local:
-        dir: ./.test/lib2
+        dir: ./.test1/lib2

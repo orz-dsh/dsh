@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
 )
 
 type FileType string
@@ -232,20 +231,20 @@ func RemoveFileExt(path string) string {
 	return path[:len(path)-len(ext)]
 }
 
-func SelectFile(sourceDir string, files []string, fileTypes []FileType) (string, FileType) {
-	for i := 0; i < len(files); i++ {
-		path := filepath.Join(sourceDir, files[i])
-		if IsFileExists(path) {
-			return path, GetFileType(path, fileTypes)
+func FindFileName(path string, fileNames []string, fileTypes []FileType) (string, FileType) {
+	for i := 0; i < len(fileNames); i++ {
+		filePath := filepath.Join(path, fileNames[i])
+		if IsFileExists(filePath) {
+			return filePath, GetFileType(filePath, fileTypes)
 		}
 	}
 	return "", ""
 }
 
 func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
-	var includeFilesByPath = make(map[string]bool)
+	var includeFilePathsDict = make(map[string]bool)
 	for i := 0; i < len(includeFiles); i++ {
-		includeFilesByPath[filepath.Join(sourceDir, includeFiles[i])] = true
+		includeFilePathsDict[filepath.Join(sourceDir, includeFiles[i])] = true
 	}
 	err = filepath.WalkDir(sourceDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -255,8 +254,8 @@ func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileT
 			)
 		}
 		if !d.IsDir() {
-			if len(includeFilesByPath) > 0 {
-				if _, exist := includeFilesByPath[path]; !exist {
+			if len(includeFilePathsDict) > 0 {
+				if _, exist := includeFilePathsDict[path]; !exist {
 					return nil
 				}
 			}
@@ -280,31 +279,4 @@ func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileT
 		return nil, nil, err
 	}
 	return filePaths, fileTypes, nil
-}
-
-func WriteTemplate(t *template.Template, env any, targetPath string) (err error) {
-	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		return errW(err, "write template error",
-			reason("make dir error"),
-			kv("path", targetPath),
-		)
-	}
-
-	targetFile, err := os.Create(targetPath)
-	if err != nil {
-		return errW(err, "write template error",
-			reason("create target file error"),
-			kv("path", targetPath),
-		)
-	}
-	defer targetFile.Close()
-
-	err = t.Execute(targetFile, env)
-	if err != nil {
-		return errW(err, "write template error",
-			reason("execute template error"),
-			kv("targetPath", targetPath),
-		)
-	}
-	return nil
 }

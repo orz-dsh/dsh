@@ -4,11 +4,11 @@ script:
     - dir: script
   imports:
     - local:
-        dir: ./.test/lib2
+        dir: ./.test1/lib2
     - local:
-        dir: ./.test/app1
+        dir: ./.test1/app1
 #    - local:
-#        dir: ./.test/lib-err
+#        dir: ./.test1/lib-err
 #    - git:
 #        url: https://github.com/orz-dsh/dsh
 #        ref: main

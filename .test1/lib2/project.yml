@@ -15,9 +15,9 @@ script:
     - dir: script
   imports:
     - local:
-        dir: ./.test/lib1
+        dir: ./.test1/lib1
     - local:
-        dir: ./.test/lib3
+        dir: ./.test1/lib3
 config:
   sources:
     - dir: config

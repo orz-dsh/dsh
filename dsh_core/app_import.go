@@ -21,18 +21,18 @@ func newAppImportContainer(project *project, scope projectImportScope) *appImpor
 	}
 }
 
-func (ic *appImportContainer) loadImports() (err error) {
-	if ic.importsLoaded {
+func (c *appImportContainer) loadImports() (err error) {
+	if c.importsLoaded {
 		return nil
 	}
-	if err = ic.project.loadImports(ic.scope); err != nil {
+	if err = c.project.loadImports(c.scope); err != nil {
 		return err
 	}
 
 	var imports []*projectImport
 	var importsByUnique = make(map[string]*projectImport)
 
-	pic := ic.project.getImportContainer(ic.scope)
+	pic := c.project.getImportContainer(c.scope)
 	for i := 0; i < len(pic.imports); i++ {
 		imp := pic.imports[i]
 		imports = append(imports, imp)
@@ -48,7 +48,7 @@ func (ic *appImportContainer) loadImports() (err error) {
 		pic1 := imp1.project.getImportContainer(pic.scope)
 		for j := 0; j < len(pic1.imports); j++ {
 			imp2 := pic1.imports[j]
-			if imp2.projectPath == ic.project.manifest.projectPath {
+			if imp2.projectPath == c.project.manifest.projectPath {
 				continue
 			}
 			if _, exist := importsByUnique[imp2.unique]; !exist {
@@ -59,50 +59,50 @@ func (ic *appImportContainer) loadImports() (err error) {
 		}
 	}
 
-	ic.imports = imports
-	ic.importsLoaded = true
+	c.imports = imports
+	c.importsLoaded = true
 	return nil
 }
 
-func (ic *appImportContainer) makeConfigs() (configs map[string]any, err error) {
-	if ic.scope != projectImportScopeConfig {
+func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
+	if c.scope != projectImportScopeConfig {
 		panic(desc("make configs only support scope config",
-			kv("scope", ic.scope),
+			kv("scope", c.scope),
 		))
 	}
-	if err = ic.loadImports(); err != nil {
+	if err = c.loadImports(); err != nil {
 		return nil, errW(err, "make configs error",
 			reason("load imports error"),
-			kv("projectName", ic.project.manifest.Name),
-			kv("projectPath", ic.project.manifest.projectPath),
+			kv("projectName", c.project.manifest.Name),
+			kv("projectPath", c.project.manifest.projectPath),
 		)
 	}
-	for i := 0; i < len(ic.imports); i++ {
-		if err = ic.imports[i].project.loadConfigSources(); err != nil {
+	for i := 0; i < len(c.imports); i++ {
+		if err = c.imports[i].project.loadConfigSources(); err != nil {
 			return nil, errW(err, "make configs error",
 				reason("load config sources error"),
-				kv("projectName", ic.imports[i].project.manifest.Name),
-				kv("projectPath", ic.imports[i].project.manifest.projectPath),
+				kv("projectName", c.imports[i].project.manifest.Name),
+				kv("projectPath", c.imports[i].project.manifest.projectPath),
 			)
 		}
 	}
-	if err = ic.project.loadConfigSources(); err != nil {
+	if err = c.project.loadConfigSources(); err != nil {
 		return nil, errW(err, "make configs error",
 			reason("load config sources error"),
-			kv("projectName", ic.project.manifest.Name),
-			kv("projectPath", ic.project.manifest.projectPath),
+			kv("projectName", c.project.manifest.Name),
+			kv("projectPath", c.project.manifest.projectPath),
 		)
 	}
 
 	var sources []*projectConfigSource
-	for i := 0; i < len(ic.imports); i++ {
-		for j := 0; j < len(ic.imports[i].project.config.sourceContainer.sources); j++ {
-			source := ic.imports[i].project.config.sourceContainer.sources[j]
+	for i := 0; i < len(c.imports); i++ {
+		for j := 0; j < len(c.imports[i].project.config.sourceContainer.sources); j++ {
+			source := c.imports[i].project.config.sourceContainer.sources[j]
 			sources = append(sources, source)
 		}
 	}
-	for i := 0; i < len(ic.project.config.sourceContainer.sources); i++ {
-		source := ic.project.config.sourceContainer.sources[i]
+	for i := 0; i < len(c.project.config.sourceContainer.sources); i++ {
+		source := c.project.config.sourceContainer.sources[i]
 		sources = append(sources, source)
 	}
 
@@ -130,26 +130,31 @@ func (ic *appImportContainer) makeConfigs() (configs map[string]any, err error) 
 	return configs, nil
 }
 
-func (ic *appImportContainer) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string) (err error) {
-	if ic.scope != projectImportScopeScript {
+func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string) ([]string, error) {
+	if c.scope != projectImportScopeScript {
 		panic(desc("make scripts only support scope script",
-			kv("scope", ic.scope),
+			kv("scope", c.scope),
 		))
 	}
-	if err = ic.loadImports(); err != nil {
-		return errW(err, "make scripts error",
+	if err := c.loadImports(); err != nil {
+		return nil, errW(err, "make scripts error",
 			reason("load imports error"),
-			kv("projectName", ic.project.manifest.Name),
-			kv("projectPath", ic.project.manifest.projectPath),
+			kv("projectName", c.project.manifest.Name),
+			kv("projectPath", c.project.manifest.projectPath),
 		)
 	}
-	for i := 0; i < len(ic.imports); i++ {
-		if err = ic.imports[i].project.makeScripts(configs, funcs, outputPath); err != nil {
-			return err
+	var targetNames []string
+	for i := 0; i < len(c.imports); i++ {
+		iTargetNames, err := c.imports[i].project.makeScripts(configs, funcs, outputPath)
+		if err != nil {
+			return nil, err
 		}
+		targetNames = append(targetNames, iTargetNames...)
 	}
-	if err = ic.project.makeScripts(configs, funcs, outputPath); err != nil {
-		return err
+	pTargetNames, err := c.project.makeScripts(configs, funcs, outputPath)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	targetNames = append(targetNames, pTargetNames...)
+	return targetNames, nil
 }

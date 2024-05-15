@@ -433,3 +433,11 @@ func (o *appOption) findResult(manifest *projectManifest, item *projectManifestO
 	}
 	return result, nil
 }
+
+func (o *appOption) getGlobalOptionsOs() string {
+	return o.globalOptions[GlobalOptionNameOs].(string)
+}
+
+func (o *appOption) getGlobalOptionsShell() string {
+	return o.globalOptions[GlobalOptionNameShell].(string)
+}

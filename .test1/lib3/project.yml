@@ -4,4 +4,4 @@ script:
     - dir: script
   imports:
     - local:
-        dir: ./.test/lib4
+        dir: ./.test1/lib4

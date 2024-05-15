@@ -10,6 +10,7 @@ import (
 type Workspace struct {
 	path                   string
 	logger                 *dsh_utils.Logger
+	manifest               *workspaceManifest
 	projectManifestsByPath map[string]*projectManifest
 	projectManifestsByName map[string]*projectManifest
 }
@@ -43,9 +44,17 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (w *Workspace, err err
 			kv("path", path),
 		)
 	}
+	manifest, err := loadWorkspaceManifest(path)
+	if err != nil {
+		return nil, errW(err, "open workspace error",
+			reason("load manifest error"),
+			kv("path", path),
+		)
+	}
 	w = &Workspace{
 		path:                   path,
 		logger:                 logger,
+		manifest:               manifest,
 		projectManifestsByPath: make(map[string]*projectManifest),
 		projectManifestsByName: make(map[string]*projectManifest),
 	}

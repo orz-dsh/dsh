@@ -1,7 +1,6 @@
 package dsh_core
 
 import (
-	"path/filepath"
 	"text/template"
 )
 
@@ -64,18 +63,18 @@ func (p *project) loadConfigSources() error {
 	return p.config.sourceContainer.loadSources()
 }
 
-func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string) error {
-	env := map[string]any{
+func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string) ([]string, error) {
+	data := map[string]any{
 		"options": p.context.option.getProjectOptions(p.manifest),
 		"configs": configs,
 	}
-	err := p.script.sourceContainer.makeSources(env, funcs, filepath.Join(outputPath, p.manifest.Name))
+	targetNames, err := p.script.sourceContainer.makeSources(data, funcs, outputPath)
 	if err != nil {
-		return errW(err, "make scripts error",
+		return nil, errW(err, "make scripts error",
 			reason("make sources error"),
 			kv("projectName", p.manifest.Name),
 			kv("projectPath", p.manifest.projectPath),
 		)
 	}
-	return nil
+	return targetNames, nil
 }

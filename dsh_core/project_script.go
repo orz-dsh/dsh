@@ -3,6 +3,7 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -19,6 +20,7 @@ type projectScriptSource struct {
 
 type projectScriptSourceContainer struct {
 	context            *appContext
+	manifest           *projectManifest
 	plainSources       []*projectScriptSource
 	templateSources    []*projectScriptSource
 	templateLibSources []*projectScriptSource
@@ -44,6 +46,7 @@ func loadProjectScript(context *appContext, manifest *projectManifest) (ps *proj
 func loadProjectScriptSourceContainer(context *appContext, manifest *projectManifest) (container *projectScriptSourceContainer, err error) {
 	container = &projectScriptSourceContainer{
 		context:       context,
+		manifest:      manifest,
 		sourcesByName: make(map[string]*projectScriptSource),
 	}
 	for i := 0; i < len(manifest.Script.Sources); i++ {
@@ -66,7 +69,7 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	return container, nil
 }
 
-func (sc *projectScriptSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
+func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
 	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypePlain,
 		dsh_utils.FileTypeTemplate,
@@ -85,7 +88,7 @@ func (sc *projectScriptSourceContainer) scanSources(sourceDir string, includeFil
 		if fileType == dsh_utils.FileTypeTemplate {
 			source.sourceName = source.sourceName[:len(source.sourceName)-len(".dtpl")]
 		}
-		if existSource, exist := sc.sourcesByName[source.sourceName]; exist {
+		if existSource, exist := c.sourcesByName[source.sourceName]; exist {
 			if existSource.sourcePath == source.sourcePath {
 				continue
 			}
@@ -98,11 +101,11 @@ func (sc *projectScriptSourceContainer) scanSources(sourceDir string, includeFil
 		}
 		switch fileType {
 		case dsh_utils.FileTypePlain:
-			sc.plainSources = append(sc.plainSources, source)
+			c.plainSources = append(c.plainSources, source)
 		case dsh_utils.FileTypeTemplate:
-			sc.templateSources = append(sc.templateSources, source)
+			c.templateSources = append(c.templateSources, source)
 		case dsh_utils.FileTypeTemplateLib:
-			sc.templateLibSources = append(sc.templateLibSources, source)
+			c.templateLibSources = append(c.templateLibSources, source)
 		default:
 			// impossible
 			panic(desc("script source type unsupported",
@@ -110,58 +113,62 @@ func (sc *projectScriptSourceContainer) scanSources(sourceDir string, includeFil
 				kv("fileType", fileType),
 			))
 		}
-		sc.sourcesByName[source.sourceName] = source
+		c.sourcesByName[source.sourceName] = source
 	}
 	return nil
 }
 
-func (sc *projectScriptSourceContainer) makeSources(env map[string]any, funcs template.FuncMap, outputPath string) (err error) {
-	for i := 0; i < len(sc.plainSources); i++ {
+func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs template.FuncMap, outputPath string) (targetNames []string, err error) {
+	for i := 0; i < len(c.plainSources); i++ {
 		startTime := time.Now()
-		source := sc.plainSources[i]
-		outputTargetPath := filepath.Join(outputPath, source.sourceName)
-		sc.context.logger.InfoDesc("make script sources start",
+		source := c.plainSources[i]
+		target := filepath.Join(c.manifest.Name, source.sourceName)
+		targetPath := filepath.Join(outputPath, target)
+		c.context.logger.InfoDesc("make script sources start",
 			kv("sourceType", dsh_utils.FileTypePlain),
 			kv("sourcePath", source.sourcePath),
-			kv("targetPath", outputTargetPath),
+			kv("targetPath", targetPath),
 		)
-		err = dsh_utils.LinkOrCopyFile(source.sourcePath, outputTargetPath)
+		err = dsh_utils.LinkOrCopyFile(source.sourcePath, targetPath)
 		if err != nil {
-			return errW(err, "make script sources error",
+			return nil, errW(err, "make script sources error",
 				reason("link or copy file error"),
 				kv("sourceType", dsh_utils.FileTypePlain),
 				kv("sourcePath", source.sourcePath),
-				kv("targetPath", outputTargetPath),
+				kv("targetPath", targetPath),
 			)
 		}
-		sc.context.logger.InfoDesc("make script sources finish",
+		targetNames = append(targetNames, strings.ReplaceAll(target, "\\", "/"))
+		c.context.logger.InfoDesc("make script sources finish",
 			kv("elapsed", time.Since(startTime)),
 		)
 	}
 	var templateLibSourcePaths []string
-	for i := 0; i < len(sc.templateLibSources); i++ {
-		templateLibSourcePaths = append(templateLibSourcePaths, sc.templateLibSources[i].sourcePath)
+	for i := 0; i < len(c.templateLibSources); i++ {
+		templateLibSourcePaths = append(templateLibSourcePaths, c.templateLibSources[i].sourcePath)
 	}
-	for i := 0; i < len(sc.templateSources); i++ {
+	for i := 0; i < len(c.templateSources); i++ {
 		startTime := time.Now()
-		source := sc.templateSources[i]
-		outputTargetPath := filepath.Join(outputPath, source.sourceName)
-		sc.context.logger.InfoDesc("make script sources start",
+		source := c.templateSources[i]
+		target := filepath.Join(c.manifest.Name, source.sourceName)
+		targetPath := filepath.Join(outputPath, target)
+		c.context.logger.InfoDesc("make script sources start",
 			kv("sourceType", dsh_utils.FileTypeTemplate),
 			kv("sourcePath", source.sourcePath),
-			kv("targetPath", outputTargetPath),
+			kv("targetPath", targetPath),
 		)
-		if err = makeTemplate(env, funcs, source.sourcePath, templateLibSourcePaths, outputTargetPath); err != nil {
-			return errW(err, "make script sources error",
+		if err = executeFileTemplate(source.sourcePath, templateLibSourcePaths, targetPath, data, funcs); err != nil {
+			return nil, errW(err, "make script sources error",
 				reason("make template error"),
 				kv("sourceType", dsh_utils.FileTypeTemplate),
 				kv("sourcePath", source.sourcePath),
-				kv("targetPath", outputTargetPath),
+				kv("targetPath", targetPath),
 			)
 		}
-		sc.context.logger.InfoDesc("make script sources finish",
+		targetNames = append(targetNames, strings.ReplaceAll(target, "\\", "/"))
+		c.context.logger.InfoDesc("make script sources finish",
 			kv("elapsed", time.Since(startTime)),
 		)
 	}
-	return nil
+	return targetNames, nil
 }

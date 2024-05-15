@@ -65,45 +65,45 @@ func newGitProjectImport(context *appContext, reference *projectManifest, projec
 	}
 }
 
-func (imp *projectImport) loadProject() error {
-	if imp.project == nil {
-		w := imp.context.workspace
-		if imp.importType == projectImportTypeLocal {
-			pm, err := w.loadProjectManifest(imp.projectPath)
+func (i *projectImport) loadProject() error {
+	if i.project == nil {
+		w := i.context.workspace
+		if i.importType == projectImportTypeLocal {
+			pm, err := w.loadProjectManifest(i.projectPath)
 			if err != nil {
 				return errW(err, "load import project error",
 					kv("reason", "load project manifest error"),
-					kv("projectPath", imp.projectPath),
+					kv("projectPath", i.projectPath),
 				)
 			}
-			p, err := imp.context.loadProject(pm)
+			p, err := i.context.loadProject(pm)
 			if err != nil {
 				return errW(err, "load import project error",
 					kv("reason", "load project error"),
-					kv("projectPath", imp.projectPath),
+					kv("projectPath", i.projectPath),
 				)
 			}
-			imp.project = p
+			i.project = p
 		} else {
-			pm, err := w.loadGitProjectManifest(imp.projectPath, imp.gitRawUrl, imp.gitParsedUrl, imp.gitRawRef, imp.gitParsedRef)
+			pm, err := w.loadGitProjectManifest(i.projectPath, i.gitRawUrl, i.gitParsedUrl, i.gitRawRef, i.gitParsedRef)
 			if err != nil {
 				return errW(err, "load import project error",
 					kv("reason", "load git project manifest error"),
-					kv("projectPath", imp.projectPath),
-					kv("gitUrl", imp.gitRawUrl),
-					kv("gitRef", imp.gitRawRef),
+					kv("projectPath", i.projectPath),
+					kv("gitUrl", i.gitRawUrl),
+					kv("gitRef", i.gitRawRef),
 				)
 			}
-			p, err := imp.context.loadProject(pm)
+			p, err := i.context.loadProject(pm)
 			if err != nil {
 				return errW(err, "load import project error",
 					kv("reason", "load project error"),
-					kv("projectPath", imp.projectPath),
-					kv("gitUrl", imp.gitRawUrl),
-					kv("gitRef", imp.gitRawRef),
+					kv("projectPath", i.projectPath),
+					kv("gitUrl", i.gitRawUrl),
+					kv("gitRef", i.gitRawRef),
 				)
 			}
-			imp.project = p
+			i.project = p
 		}
 	}
 	return nil
@@ -156,11 +156,11 @@ func loadProjectImportContainer(context *appContext, manifest *projectManifest, 
 	return ic, nil
 }
 
-func (ic *projectImportContainer) addLocalImport(context *appContext, path string, reference *projectManifest) (err error) {
+func (c *projectImportContainer) addLocalImport(context *appContext, path string, reference *projectManifest) (err error) {
 	if !dsh_utils.IsDirExists(path) {
 		return errN("add local import error",
 			reason("dir not exists"),
-			kv("scope", ic.scope),
+			kv("scope", c.scope),
 			kv("path", path),
 		)
 	}
@@ -168,7 +168,7 @@ func (ic *projectImportContainer) addLocalImport(context *appContext, path strin
 	if err != nil {
 		return errW(err, "add local import error",
 			reason("get abs-path error"),
-			kv("scope", ic.scope),
+			kv("scope", c.scope),
 			kv("path", path),
 		)
 	}
@@ -176,38 +176,38 @@ func (ic *projectImportContainer) addLocalImport(context *appContext, path strin
 		return nil
 	}
 	imp := newLocalProjectImport(context, reference, path)
-	if _, exist := ic.importsByUnique[imp.unique]; !exist {
-		ic.imports = append(ic.imports, imp)
-		ic.importsByUnique[imp.unique] = imp
+	if _, exist := c.importsByUnique[imp.unique]; !exist {
+		c.imports = append(c.imports, imp)
+		c.importsByUnique[imp.unique] = imp
 	}
 	return nil
 }
 
-func (ic *projectImportContainer) addGitImport(context *appContext, reference *projectManifest, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) error {
+func (c *projectImportContainer) addGitImport(context *appContext, reference *projectManifest, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) error {
 	path := context.workspace.getGitProjectPath(parsedUrl, parsedRef)
 	if path == reference.projectPath {
 		return nil
 	}
 	imp := newGitProjectImport(context, reference, path, rawUrl, parsedUrl, rawRef, parsedRef)
-	if _, exist := ic.importsByUnique[imp.unique]; !exist {
-		ic.imports = append(ic.imports, imp)
-		ic.importsByUnique[imp.unique] = imp
+	if _, exist := c.importsByUnique[imp.unique]; !exist {
+		c.imports = append(c.imports, imp)
+		c.importsByUnique[imp.unique] = imp
 	}
 	return nil
 }
 
-func (ic *projectImportContainer) loadImports() (err error) {
-	if ic.importsLoaded {
+func (c *projectImportContainer) loadImports() (err error) {
+	if c.importsLoaded {
 		return nil
 	}
-	for i := 0; i < len(ic.imports); i++ {
-		if err = ic.imports[i].loadProject(); err != nil {
+	for i := 0; i < len(c.imports); i++ {
+		if err = c.imports[i].loadProject(); err != nil {
 			return errW(err, "load imports error",
 				reason("load import project error"),
-				kv("scope", ic.scope),
+				kv("scope", c.scope),
 			)
 		}
 	}
-	ic.importsLoaded = true
+	c.importsLoaded = true
 	return nil
 }

@@ -44,49 +44,50 @@ func loadApp(workspace *Workspace, manifest *projectManifest, options map[string
 	return app, nil
 }
 
-func (app *App) MakeConfigs() (map[string]any, error) {
-	if app.configsMade {
-		return app.configs, nil
+func (a *App) MakeConfigs() (map[string]any, error) {
+	if a.configsMade {
+		return a.configs, nil
 	}
 
 	startTime := time.Now()
-	app.context.logger.Info("make configs start")
+	a.context.logger.Info("make configs start")
 
-	configs, err := app.configImportContainer.makeConfigs()
+	configs, err := a.configImportContainer.makeConfigs()
 	if err != nil {
 		return nil, err
 	}
 
-	app.configs = configs
-	app.configsMade = true
+	a.configs = configs
+	a.configsMade = true
 
-	app.context.logger.InfoDesc("make configs finish", kv("elapsed", time.Since(startTime)))
-	return app.configs, nil
+	a.context.logger.InfoDesc("make configs finish", kv("elapsed", time.Since(startTime)))
+	return a.configs, nil
 }
 
-func (app *App) MakeScripts(outputPath string) (err error) {
-	configs, err := app.MakeConfigs()
+func (a *App) MakeScripts(outputPath string) (artifact *AppArtifact, err error) {
+	configs, err := a.MakeConfigs()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	startTime := time.Now()
-	app.context.logger.Info("make scripts start")
+	a.context.logger.Info("make scripts start")
 	if outputPath == "" {
-		outputPath = filepath.Join(app.project.manifest.projectPath, "output")
+		outputPath = filepath.Join(a.project.manifest.projectPath, "output")
 		// TODO: build to workspace path
 		//outputPath = filepath.Join(project.context.workspace.path, "output", project.manifest.Name)
 	}
 	funcs := newTemplateFuncs()
 
 	if err = dsh_utils.RemakeDir(outputPath); err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = app.scriptImportContainer.makeScripts(configs, funcs, outputPath); err != nil {
-		return err
+	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath)
+	if err != nil {
+		return nil, err
 	}
 
-	app.context.logger.InfoDesc("make scripts finish", kv("elapsed", time.Since(startTime)))
-	return nil
+	a.context.logger.InfoDesc("make scripts finish", kv("elapsed", time.Since(startTime)))
+	return newAppArtifact(a, targetNames, outputPath), nil
 }
