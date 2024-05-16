@@ -95,27 +95,27 @@ const (
 	projectManifestOptionItemTypeDecimal projectManifestOptionItemType = "decimal"
 )
 
-func loadProjectManifest(projectPath string) (m *projectManifest, err error) {
-	m = &projectManifest{
+func loadProjectManifest(projectPath string) (manifest *projectManifest, err error) {
+	manifest = &projectManifest{
 		Runtime: &projectManifestRuntime{},
 		Option:  &projectManifestOption{},
 		Script:  &projectManifestScript{},
 		Config:  &projectManifestConfig{},
 	}
-	metadata, err := loadManifest(projectPath, []string{"project"}, m, true)
+	metadata, err := loadManifest(projectPath, []string{"project"}, manifest, true)
 	if err != nil {
 		return nil, errW(err, "load project manifest error",
 			reason("load manifest error"),
 			kv("projectPath", projectPath),
 		)
 	}
-	m.manifestPath = metadata.manifestPath
-	m.manifestType = metadata.manifestType
-	m.projectPath = projectPath
-	if err = m.init(); err != nil {
+	manifest.manifestPath = metadata.manifestPath
+	manifest.manifestType = metadata.manifestType
+	manifest.projectPath = projectPath
+	if err = manifest.init(); err != nil {
 		return nil, err
 	}
-	return m, nil
+	return manifest, nil
 }
 
 func (m *projectManifest) init() (err error) {

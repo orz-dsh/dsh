@@ -15,7 +15,7 @@ const (
 	manifestMetadataTypeJson manifestMetadataType = "json"
 )
 
-func loadManifest(findPath string, fileNames []string, manifestEntity any, required bool) (metadata *manifestMetadata, err error) {
+func loadManifest(dir string, fileNames []string, manifestEntity any, required bool) (metadata *manifestMetadata, err error) {
 	var findFileNames []string
 	for i := 0; i < len(fileNames); i++ {
 		fileName := fileNames[i]
@@ -25,7 +25,7 @@ func loadManifest(findPath string, fileNames []string, manifestEntity any, requi
 		findFileNames = append(findFileNames, fileName+".json")
 	}
 
-	manifestPath, manifestFileType := dsh_utils.FindFileName(findPath, findFileNames, []dsh_utils.FileType{
+	manifestPath, manifestFileType := dsh_utils.FindFile(dir, findFileNames, []dsh_utils.FileType{
 		dsh_utils.FileTypeYaml,
 		dsh_utils.FileTypeToml,
 		dsh_utils.FileTypeJson,
@@ -34,8 +34,8 @@ func loadManifest(findPath string, fileNames []string, manifestEntity any, requi
 		if required {
 			return nil, errN("load manifest error",
 				reason("manifest file not found"),
-				kv("findPath", findPath),
-				kv("findFileNames", findFileNames),
+				kv("dir", dir),
+				kv("fileNames", findFileNames),
 			)
 		} else {
 			return nil, nil

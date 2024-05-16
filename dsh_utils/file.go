@@ -231,9 +231,9 @@ func RemoveFileExt(path string) string {
 	return path[:len(path)-len(ext)]
 }
 
-func FindFileName(path string, fileNames []string, fileTypes []FileType) (string, FileType) {
+func FindFile(dir string, fileNames []string, fileTypes []FileType) (string, FileType) {
 	for i := 0; i < len(fileNames); i++ {
-		filePath := filepath.Join(path, fileNames[i])
+		filePath := filepath.Join(dir, fileNames[i])
 		if IsFileExists(filePath) {
 			return filePath, GetFileType(filePath, fileTypes)
 		}
@@ -241,29 +241,30 @@ func FindFileName(path string, fileNames []string, fileTypes []FileType) (string
 	return "", ""
 }
 
-func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
+func ScanFiles(dir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
 	var includeFilePathsDict = make(map[string]bool)
 	for i := 0; i < len(includeFiles); i++ {
-		includeFilePathsDict[filepath.Join(sourceDir, includeFiles[i])] = true
+		includeFilePathsDict[filepath.Join(dir, includeFiles[i])] = true
 	}
-	err = filepath.WalkDir(sourceDir, func(path string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return errW(err, "scan files error",
 				reason("walk dir error"),
-				kv("dir", sourceDir),
+				kv("dir", dir),
+				kv("path", path),
 			)
 		}
-		if !d.IsDir() {
+		if !entry.IsDir() {
 			if len(includeFilePathsDict) > 0 {
 				if _, exist := includeFilePathsDict[path]; !exist {
 					return nil
 				}
 			}
-			relPath, err := filepath.Rel(sourceDir, path)
+			relPath, err := filepath.Rel(dir, path)
 			if err != nil {
 				return errW(err, "scan files error",
 					reason("get rel-path error"),
-					kv("dir", sourceDir),
+					kv("dir", dir),
 					kv("path", path),
 				)
 			}
@@ -279,4 +280,21 @@ func ScanFiles(sourceDir string, includeFiles []string, includeFileTypes []FileT
 		return nil, nil, err
 	}
 	return filePaths, fileTypes, nil
+}
+
+func ListChildDirs(dir string) (names []string, err error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, errW(err, "list child dirs error",
+			reason("read dir error"),
+			kv("dir", dir),
+		)
+	}
+	for i := 0; i < len(entries); i++ {
+		entry := entries[i]
+		if entry.IsDir() {
+			names = append(names, entry.Name())
+		}
+	}
+	return names, nil
 }

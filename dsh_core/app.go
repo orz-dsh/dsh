@@ -15,6 +15,11 @@ type App struct {
 	configsMade           bool
 }
 
+type AppMakeScriptsOptions struct {
+	OutputPath      string
+	ClearOutputPath bool
+}
+
 func loadApp(workspace *Workspace, manifest *projectManifest, options map[string]string) (app *App, err error) {
 	workspace.logger.InfoDesc("load app", kv("name", manifest.Name))
 	option, err := loadAppOption(manifest, options)
@@ -64,7 +69,7 @@ func (a *App) MakeConfigs() (map[string]any, error) {
 	return a.configs, nil
 }
 
-func (a *App) MakeScripts(outputPath string) (artifact *AppArtifact, err error) {
+func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact, err error) {
 	configs, err := a.MakeConfigs()
 	if err != nil {
 		return nil, err
@@ -72,16 +77,33 @@ func (a *App) MakeScripts(outputPath string) (artifact *AppArtifact, err error) 
 
 	startTime := time.Now()
 	a.context.logger.Info("make scripts start")
+	outputPath := options.OutputPath
 	if outputPath == "" {
-		outputPath = filepath.Join(a.project.manifest.projectPath, "output")
-		// TODO: build to workspace path
-		//outputPath = filepath.Join(project.context.workspace.path, "output", project.manifest.Name)
+		outputPath, err = a.context.workspace.makeOutputDir(a.project.manifest.Name)
+		if err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("make output path error"),
+			)
+		}
+	} else {
+		absPath, err := filepath.Abs(outputPath)
+		if err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("get abs-path error"),
+				kv("outputPath", outputPath),
+			)
+		}
+		outputPath = absPath
+		if options.ClearOutputPath {
+			if err = dsh_utils.RemakeDir(outputPath); err != nil {
+				return nil, errW(err, "make scripts error",
+					reason("clear output path error"),
+					kv("outputPath", outputPath),
+				)
+			}
+		}
 	}
 	funcs := newTemplateFuncs()
-
-	if err = dsh_utils.RemakeDir(outputPath); err != nil {
-		return nil, err
-	}
 
 	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath)
 	if err != nil {

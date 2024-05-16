@@ -27,7 +27,7 @@ type projectScriptSourceContainer struct {
 	sourcesByName      map[string]*projectScriptSource
 }
 
-func loadProjectScript(context *appContext, manifest *projectManifest) (ps *projectScript, err error) {
+func loadProjectScript(context *appContext, manifest *projectManifest) (script *projectScript, err error) {
 	sc, err := loadProjectScriptSourceContainer(context, manifest)
 	if err != nil {
 		return nil, err
@@ -36,11 +36,11 @@ func loadProjectScript(context *appContext, manifest *projectManifest) (ps *proj
 	if err != nil {
 		return nil, err
 	}
-	ps = &projectScript{
+	script = &projectScript{
 		sourceContainer: sc,
 		importContainer: ic,
 	}
-	return ps, nil
+	return script, nil
 }
 
 func loadProjectScriptSourceContainer(context *appContext, manifest *projectManifest) (container *projectScriptSourceContainer, err error) {

@@ -109,7 +109,7 @@ func (i *projectImport) loadProject() error {
 	return nil
 }
 
-func loadProjectImportContainer(context *appContext, manifest *projectManifest, scope projectImportScope) (ic *projectImportContainer, err error) {
+func loadProjectImportContainer(context *appContext, manifest *projectManifest, scope projectImportScope) (container *projectImportContainer, err error) {
 	var imports []*projectManifestImport
 	if scope == projectImportScopeScript {
 		imports = manifest.Script.Imports
@@ -118,7 +118,7 @@ func loadProjectImportContainer(context *appContext, manifest *projectManifest, 
 	} else {
 		panic(desc("invalid import scope", kv("scope", scope)))
 	}
-	ic = &projectImportContainer{
+	container = &projectImportContainer{
 		context:         context,
 		scope:           scope,
 		importsByUnique: make(map[string]*projectImport),
@@ -135,7 +135,7 @@ func loadProjectImportContainer(context *appContext, manifest *projectManifest, 
 					continue
 				}
 			}
-			if err = ic.addLocalImport(context, imp.Local.Dir, manifest); err != nil {
+			if err = container.addLocalImport(context, imp.Local.Dir, manifest); err != nil {
 				return nil, err
 			}
 		} else if imp.Git != nil && imp.Git.Url != "" && imp.Git.Ref != "" {
@@ -148,12 +148,12 @@ func loadProjectImportContainer(context *appContext, manifest *projectManifest, 
 					continue
 				}
 			}
-			if err = ic.addGitImport(context, manifest, imp.Git.Url, imp.Git.url, imp.Git.Ref, imp.Git.ref); err != nil {
+			if err = container.addGitImport(context, manifest, imp.Git.Url, imp.Git.url, imp.Git.Ref, imp.Git.ref); err != nil {
 				return nil, err
 			}
 		}
 	}
-	return ic, nil
+	return container, nil
 }
 
 func (c *projectImportContainer) addLocalImport(context *appContext, path string, reference *projectManifest) (err error) {
@@ -164,7 +164,7 @@ func (c *projectImportContainer) addLocalImport(context *appContext, path string
 			kv("path", path),
 		)
 	}
-	path, err = filepath.Abs(path)
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return errW(err, "add local import error",
 			reason("get abs-path error"),
@@ -172,6 +172,7 @@ func (c *projectImportContainer) addLocalImport(context *appContext, path string
 			kv("path", path),
 		)
 	}
+	path = absPath
 	if path == reference.projectPath {
 		return nil
 	}

@@ -20,7 +20,15 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = app.MakeScripts("")
+	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsOptions{
+		OutputPath: "./.test1/app1/output",
+	})
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	err = workspace.Clean(dsh_core.WorkspaceCleanOptions{
+		ExcludeOutputPath: artifact.OutputPath,
+	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -54,7 +62,15 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	artifact, err := app.MakeScripts("")
+	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsOptions{
+		OutputPath: "./.test2/app1/output",
+	})
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	err = workspace.Clean(dsh_core.WorkspaceCleanOptions{
+		ExcludeOutputPath: artifact.OutputPath,
+	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

@@ -45,7 +45,7 @@ const (
 	projectConfigMergeTypeInsert  = "insert"
 )
 
-func loadProjectConfig(context *appContext, manifest *projectManifest) (pc *projectConfig, err error) {
+func loadProjectConfig(context *appContext, manifest *projectManifest) (config *projectConfig, err error) {
 	sc, err := loadProjectConfigSourceContainer(context, manifest)
 	if err != nil {
 		return nil, err
@@ -54,15 +54,15 @@ func loadProjectConfig(context *appContext, manifest *projectManifest) (pc *proj
 	if err != nil {
 		return nil, err
 	}
-	pc = &projectConfig{
+	config = &projectConfig{
 		sourceContainer: sc,
 		importContainer: ic,
 	}
-	return pc, nil
+	return config, nil
 }
 
-func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest) (sc *projectConfigSourceContainer, err error) {
-	sc = &projectConfigSourceContainer{
+func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest) (container *projectConfigSourceContainer, err error) {
+	container = &projectConfigSourceContainer{
 		context:       context,
 		sourcesByName: make(map[string]*projectConfigSource),
 	}
@@ -78,12 +78,12 @@ func loadProjectConfigSourceContainer(context *appContext, manifest *projectMani
 					continue
 				}
 			}
-			if err = sc.scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
+			if err = container.scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
 				return nil, err
 			}
 		}
 	}
-	return sc, nil
+	return container, nil
 }
 
 func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {

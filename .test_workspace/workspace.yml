@@ -1,3 +1,7 @@
+clean:
+  output:
+    count: 1
+    expires: 24h
 shell:
   powershell:
     args:

@@ -15,7 +15,7 @@ type AppArtifact struct {
 	context         *appContext
 	targetNames     []string
 	targetNamesDict map[string]bool
-	outputPath      string
+	OutputPath      string
 }
 
 type appArtifactExecutor struct {
@@ -28,18 +28,6 @@ type appArtifactExecutor struct {
 	targetPhrase string
 }
 
-var appArtifactExecuteDefaultShellExts = map[string][]string{
-	"cmd":        {".cmd", ".bat"},
-	"pwsh":       {".ps1"},
-	"powershell": {".ps1"},
-}
-
-var appArtifactExecuteDefaultShellArgs = map[string][]string{
-	"cmd":        {"/C", "{{.target.path}}"},
-	"pwsh":       {"-NoProfile", "-File", "{{.target.path}}"},
-	"powershell": {"-NoProfile", "-File", "{{.target.path}}"},
-}
-
 func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtifact {
 	var targetNamesDict = make(map[string]bool)
 	for i := 0; i < len(targetNames); i++ {
@@ -50,7 +38,7 @@ func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtif
 		context:         app.context,
 		targetNames:     targetNames,
 		targetNamesDict: targetNamesDict,
-		outputPath:      outputPath,
+		OutputPath:      outputPath,
 	}
 }
 
@@ -102,7 +90,7 @@ func (a *AppArtifact) createExecutor(targetPhrase string) (executor *appArtifact
 			kv("targetPhrase", targetPhrase),
 		)
 	}
-	targetPath := filepath.Join(a.outputPath, targetName)
+	targetPath := filepath.Join(a.OutputPath, targetName)
 
 	shellArgs, err := a.getShellArgs(shellName, shellPath, targetName, targetPath, targetPhrase)
 	if err != nil {
@@ -174,17 +162,6 @@ func (a *AppArtifact) getTargetName(shellName string, targetPhrase string) (targ
 		}
 	}
 
-	exts, exist := appArtifactExecuteDefaultShellExts[shellName]
-	if !exist {
-		exts = []string{".sh"}
-	}
-	for i := 0; i < len(exts); i++ {
-		targetName = targetPhrase + exts[i]
-		if a.targetNamesDict[targetName] {
-			return targetName, nil
-		}
-	}
-
 	return "", errN("get target name error",
 		reason("target name not found"),
 		kv("shellName", shellName),
@@ -194,9 +171,6 @@ func (a *AppArtifact) getTargetName(shellName string, targetPhrase string) (targ
 
 func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetName string, targetPath string, targetPhrase string) (shellArgs []string, err error) {
 	args := a.context.workspace.manifest.getShellArgs(shellName)
-	if len(args) == 0 {
-		args = appArtifactExecuteDefaultShellArgs[shellName]
-	}
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {
