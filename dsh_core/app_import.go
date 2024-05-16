@@ -130,7 +130,7 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 	return configs, nil
 }
 
-func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string) ([]string, error) {
+func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) ([]string, error) {
 	if c.scope != projectImportScopeScript {
 		panic(desc("make scripts only support scope script",
 			kv("scope", c.scope),
@@ -145,13 +145,13 @@ func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.
 	}
 	var targetNames []string
 	for i := 0; i < len(c.imports); i++ {
-		iTargetNames, err := c.imports[i].project.makeScripts(configs, funcs, outputPath)
+		iTargetNames, err := c.imports[i].project.makeScripts(configs, funcs, outputPath, useHardLink)
 		if err != nil {
 			return nil, err
 		}
 		targetNames = append(targetNames, iTargetNames...)
 	}
-	pTargetNames, err := c.project.makeScripts(configs, funcs, outputPath)
+	pTargetNames, err := c.project.makeScripts(configs, funcs, outputPath, useHardLink)
 	if err != nil {
 		return nil, err
 	}

@@ -53,6 +53,35 @@ func RemakeDir(path string) (err error) {
 	return nil
 }
 
+func ClearDir(path string) (err error) {
+	children, err := os.ReadDir(path)
+	if err != nil {
+		return errW(err, "clear dir error",
+			reason("read dir error"),
+			kv("path", path),
+		)
+	}
+	for i := 0; i < len(children); i++ {
+		childPath := filepath.Join(path, children[i].Name())
+		if children[i].IsDir() {
+			if err = os.RemoveAll(childPath); err != nil {
+				return errW(err, "clear dir error",
+					reason("remove dir error"),
+					kv("path", childPath),
+				)
+			}
+		} else {
+			if err = os.Remove(childPath); err != nil {
+				return errW(err, "clear dir error",
+					reason("remove file error"),
+					kv("path", childPath),
+				)
+			}
+		}
+	}
+	return nil
+}
+
 func LinkFile(sourcePath string, targetPath string) (err error) {
 	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
 		return errW(err, "link file error",
@@ -282,12 +311,12 @@ func ScanFiles(dir string, includeFiles []string, includeFileTypes []FileType) (
 	return filePaths, fileTypes, nil
 }
 
-func ListChildDirs(dir string) (names []string, err error) {
-	entries, err := os.ReadDir(dir)
+func ListChildDirs(path string) (names []string, err error) {
+	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, errW(err, "list child dirs error",
 			reason("read dir error"),
-			kv("dir", dir),
+			kv("path", path),
 		)
 	}
 	for i := 0; i < len(entries); i++ {

@@ -17,7 +17,8 @@ type App struct {
 
 type AppMakeScriptsOptions struct {
 	OutputPath      string
-	ClearOutputPath bool
+	OutputPathClear bool
+	UseHardLink     bool
 }
 
 func loadApp(workspace *Workspace, manifest *projectManifest, options map[string]string) (app *App, err error) {
@@ -90,22 +91,22 @@ func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact,
 		if err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("get abs-path error"),
-				kv("outputPath", outputPath),
+				kv("path", outputPath),
 			)
 		}
 		outputPath = absPath
-		if options.ClearOutputPath {
-			if err = dsh_utils.RemakeDir(outputPath); err != nil {
+		if options.OutputPathClear {
+			if err = dsh_utils.ClearDir(outputPath); err != nil {
 				return nil, errW(err, "make scripts error",
-					reason("clear output path error"),
-					kv("outputPath", outputPath),
+					reason("clear output dir error"),
+					kv("path", outputPath),
 				)
 			}
 		}
 	}
 	funcs := newTemplateFuncs()
 
-	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath)
+	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath, options.UseHardLink)
 	if err != nil {
 		return nil, err
 	}

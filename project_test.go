@@ -21,7 +21,9 @@ func TestProject1(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsOptions{
-		OutputPath: "./.test1/app1/output",
+		OutputPath:      "./.test1/app1/output",
+		OutputPathClear: true,
+		UseHardLink:     true,
 	})
 	if err != nil {
 		logger.Panic("%+v", err)

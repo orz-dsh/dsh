@@ -63,12 +63,12 @@ func (p *project) loadConfigSources() error {
 	return p.config.sourceContainer.loadSources()
 }
 
-func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string) ([]string, error) {
+func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) ([]string, error) {
 	data := map[string]any{
 		"options": p.context.option.getProjectOptions(p.manifest),
 		"configs": configs,
 	}
-	targetNames, err := p.script.sourceContainer.makeSources(data, funcs, outputPath)
+	targetNames, err := p.script.sourceContainer.makeSources(data, funcs, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("make sources error"),

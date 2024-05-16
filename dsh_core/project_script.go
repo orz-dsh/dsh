@@ -118,7 +118,7 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 	return nil
 }
 
-func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs template.FuncMap, outputPath string) (targetNames []string, err error) {
+func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) (targetNames []string, err error) {
 	for i := 0; i < len(c.plainSources); i++ {
 		startTime := time.Now()
 		source := c.plainSources[i]
@@ -129,14 +129,26 @@ func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs te
 			kv("sourcePath", source.sourcePath),
 			kv("targetPath", targetPath),
 		)
-		err = dsh_utils.LinkOrCopyFile(source.sourcePath, targetPath)
-		if err != nil {
-			return nil, errW(err, "make script sources error",
-				reason("link or copy file error"),
-				kv("sourceType", dsh_utils.FileTypePlain),
-				kv("sourcePath", source.sourcePath),
-				kv("targetPath", targetPath),
-			)
+		if useHardLink {
+			err = dsh_utils.LinkOrCopyFile(source.sourcePath, targetPath)
+			if err != nil {
+				return nil, errW(err, "make script sources error",
+					reason("link or copy file error"),
+					kv("sourceType", dsh_utils.FileTypePlain),
+					kv("sourcePath", source.sourcePath),
+					kv("targetPath", targetPath),
+				)
+			}
+		} else {
+			err = dsh_utils.CopyFile(source.sourcePath, targetPath)
+			if err != nil {
+				return nil, errW(err, "make script sources error",
+					reason("copy file error"),
+					kv("sourceType", dsh_utils.FileTypePlain),
+					kv("sourcePath", source.sourcePath),
+					kv("targetPath", targetPath),
+				)
+			}
 		}
 		targetNames = append(targetNames, strings.ReplaceAll(target, "\\", "/"))
 		c.context.logger.InfoDesc("make script sources finish",
