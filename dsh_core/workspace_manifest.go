@@ -3,12 +3,14 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"fmt"
+	"slices"
 	"time"
 )
 
 type workspaceManifest struct {
 	Clean         *workspaceManifestClean
 	Shell         map[string]*workspaceManifestShell
+	Registry      *workspaceManifestRegistry
 	manifestPath  string
 	manifestType  manifestMetadataType
 	workspacePath string
@@ -29,6 +31,33 @@ type workspaceManifestShell struct {
 	Path string
 	Exts []string
 	Args []string
+}
+
+type workspaceManifestRegistry struct {
+	Scopes []*workspaceManifestRegistryScope
+	Alters []*workspaceManifestRegistryAlter
+	alters []*workspaceManifestRegistryAlter
+}
+
+type workspaceManifestRegistryScope struct {
+	Name  string
+	Local *workspaceManifestRegistryLocal
+	Git   *workspaceManifestRegistryGit
+}
+
+type workspaceManifestRegistryAlter struct {
+	Prefix string
+	Local  *workspaceManifestRegistryLocal
+	Git    *workspaceManifestRegistryGit
+}
+
+type workspaceManifestRegistryLocal struct {
+	Dir string
+}
+
+type workspaceManifestRegistryGit struct {
+	Url string
+	Ref string
 }
 
 const workspaceDefaultCleanOutputCount = 3
@@ -53,7 +82,8 @@ func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, e
 		Clean: &workspaceManifestClean{
 			Output: &workspaceManifestCleanOutput{},
 		},
-		Shell: make(map[string]*workspaceManifestShell),
+		Shell:    make(map[string]*workspaceManifestShell),
+		Registry: &workspaceManifestRegistry{},
 	}
 	metadata, err := loadManifest(workspacePath, []string{"workspace"}, manifest, false)
 	if err != nil {
@@ -131,6 +161,117 @@ func (m *workspaceManifest) init() (err error) {
 			}
 		}
 	}
+
+	scopeNamesDict := make(map[string]bool)
+	for i := 0; i < len(m.Registry.Scopes); i++ {
+		scope := m.Registry.Scopes[i]
+		if scope.Name == "" {
+			return errN("workspace manifest invalid",
+				reason("value empty"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.scopes[%d].name", i)),
+			)
+		}
+		if _, exist := scopeNamesDict[scope.Name]; exist {
+			return errN("workspace manifest invalid",
+				reason("value duplicate"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.scopes[%d].name", i)),
+				kv("value", scope.Name),
+			)
+		}
+		scopeNamesDict[scope.Name] = true
+		if scope.Local == nil && scope.Git == nil {
+			return errN("workspace manifest invalid",
+				reason("local and git are both nil"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.scopes[%d]", i)),
+			)
+		} else if scope.Local != nil && scope.Git != nil {
+			return errN("workspace manifest invalid",
+				reason("local and git are both not nil"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.scopes[%d]", i)),
+			)
+		} else if scope.Local != nil {
+			if scope.Local.Dir == "" {
+				return errN("workspace manifest invalid",
+					reason("value empty"),
+					kv("path", m.manifestPath),
+					kv("field", fmt.Sprintf("registry.scopes[%d].local.dir", i)),
+				)
+			}
+		} else if scope.Git != nil {
+			if scope.Git.Url == "" {
+				return errN("workspace manifest invalid",
+					reason("value empty"),
+					kv("path", m.manifestPath),
+					kv("field", fmt.Sprintf("registry.scopes[%d].git.url", i)),
+				)
+			}
+			if scope.Git.Ref == "" {
+				scope.Git.Ref = "main"
+			}
+		}
+	}
+
+	alterPrefixesDict := make(map[string]bool)
+	for i := 0; i < len(m.Registry.Alters); i++ {
+		alter := m.Registry.Alters[i]
+		if alter.Prefix == "" {
+			return errN("workspace manifest invalid",
+				reason("value empty"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.alters[%d].prefix", i)),
+			)
+		}
+		if _, exist := alterPrefixesDict[alter.Prefix]; exist {
+			return errN("workspace manifest invalid",
+				reason("value duplicate"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.alters[%d].prefix", i)),
+				kv("value", alter.Prefix),
+			)
+		}
+		alterPrefixesDict[alter.Prefix] = true
+		if alter.Local == nil && alter.Git == nil {
+			return errN("workspace manifest invalid",
+				reason("local and git are both nil"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.alters[%d]", i)),
+			)
+		} else if alter.Local != nil && alter.Git != nil {
+			return errN("workspace manifest invalid",
+				reason("local and git are both not nil"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("registry.alters[%d]", i)),
+			)
+		} else if alter.Local != nil {
+			if alter.Local.Dir == "" {
+				return errN("workspace manifest invalid",
+					reason("value empty"),
+					kv("path", m.manifestPath),
+					kv("field", fmt.Sprintf("registry.alters[%d].local.dir", i)),
+				)
+			}
+		} else if alter.Git != nil {
+			if alter.Git.Url == "" {
+				return errN("workspace manifest invalid",
+					reason("value empty"),
+					kv("path", m.manifestPath),
+					kv("field", fmt.Sprintf("registry.alters[%d].git.url", i)),
+				)
+			}
+		}
+	}
+	if len(m.Registry.Alters) > 0 {
+		m.Registry.alters = make([]*workspaceManifestRegistryAlter, len(m.Registry.Alters))
+		copy(m.Registry.alters, m.Registry.Alters)
+		slices.SortStableFunc(m.Registry.alters, func(l, r *workspaceManifestRegistryAlter) int {
+			return len(r.Prefix) - len(l.Prefix)
+		})
+	}
+
 	return nil
 }
 

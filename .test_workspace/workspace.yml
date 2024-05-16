@@ -10,3 +10,19 @@ shell:
       - -NoProfile
       - -File
       - "{{.target.path}}"
+registry:
+  scopes:
+    - name: orz-dsh
+      git:
+        url: "https://github.com/orz-dsh/{{.name}}.git"
+        ref: main
+  alters:
+    - prefix: "https://github.com/orz-dsh/"
+      git:
+        url: "https://gitee.com/orz-dsh/{{.path}}"
+    - prefix: "https://github.com/orz-dsh/shell-lib"
+      local:
+        dir: "{{.workdir}}/.test1/lib3"
+    - prefix: "/some/local/path"
+      git:
+        url: "https://github.com/orz-dsh/some-remote-repo.git"

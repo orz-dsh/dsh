@@ -270,163 +270,105 @@ func (m *projectManifest) init() (err error) {
 
 	for i := 0; i < len(m.Script.Sources); i++ {
 		src := m.Script.Sources[i]
-		if src.Dir == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("script.sources[%d].dir", i)),
-			)
-		}
-		if src.Match != "" {
-			src.match, err = dsh_utils.CompileExpr(src.Match)
-			if err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.sources[%d].match", i)),
-					kv("value", src.Match),
-				)
-			}
+		if err = src.init(m, "script", i); err != nil {
+			return err
 		}
 	}
 	for i := 0; i < len(m.Script.Imports); i++ {
 		imp := m.Script.Imports[i]
-		if imp.Local == nil && imp.Git == nil {
-			return errN("project manifest invalid",
-				reason("local and git are both nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("script.imports[%d]", i)),
-			)
-		} else if imp.Local != nil && imp.Git != nil {
-			return errN("project manifest invalid",
-				reason("local and git are both not nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("script.imports[%d]", i)),
-			)
-		} else if imp.Local != nil {
-			if imp.Local.Dir == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.imports[%d].local.dir", i)),
-				)
-			}
-		} else if imp.Git != nil {
-			if imp.Git.Url == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.imports[%d].git.url", i)),
-				)
-			}
-			if imp.Git.Ref == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.imports[%d].git.ref", i)),
-				)
-			}
-			if imp.Git.url, err = url.Parse(imp.Git.Url); err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.imports[%d].git.url", i)),
-					kv("value", imp.Git.Url),
-				)
-			}
-			imp.Git.ref = parseGitRef(imp.Git.Ref)
-		}
-		if imp.Match != "" {
-			imp.match, err = dsh_utils.CompileExpr(imp.Match)
-			if err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.imports[%d].match", i)),
-					kv("value", imp.Match),
-				)
-			}
+		if err = imp.init(m, "script", i); err != nil {
+			return err
 		}
 	}
 
 	for i := 0; i < len(m.Config.Sources); i++ {
 		src := m.Config.Sources[i]
-		if src.Dir == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("config.sources[%d].dir", i)),
-			)
-		}
-		if src.Match != "" {
-			src.match, err = dsh_utils.CompileExpr(src.Match)
-			if err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("config.sources[%d].match", i)),
-					kv("value", src.Match),
-				)
-			}
+		if err = src.init(m, "config", i); err != nil {
+			return err
 		}
 	}
 	for i := 0; i < len(m.Config.Imports); i++ {
 		imp := m.Config.Imports[i]
-		if imp.Local == nil && imp.Git == nil {
-			return errN("project manifest invalid",
-				reason("local and git are both nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("config.imports[%d]", i)),
-			)
-		} else if imp.Local != nil && imp.Git != nil {
-			return errN("project manifest invalid",
-				reason("local and git are both not nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("config.imports[%d]", i)),
-			)
-		} else if imp.Local != nil {
-			if imp.Local.Dir == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("config.imports[%d].local.dir", i)),
-				)
-			}
-		} else if imp.Git != nil {
-			if imp.Git.Url == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("config.imports[%d].git.url", i)),
-				)
-			}
-			if imp.Git.Ref == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("config.imports[%d].git.ref", i)),
-				)
-			}
-			if imp.Git.url, err = url.Parse(imp.Git.Url); err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("script.imports[%d].git.url", i)),
-					kv("value", imp.Git.Url),
-				)
-			}
-			imp.Git.ref = parseGitRef(imp.Git.Ref)
+		if err = imp.init(m, "config", i); err != nil {
+			return err
 		}
-		if imp.Match != "" {
-			imp.match, err = dsh_utils.CompileExpr(imp.Match)
-			if err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("config.imports[%d].match", i)),
-					kv("value", imp.Match),
-				)
-			}
+	}
+	return nil
+}
+
+func (s *projectManifestSource) init(manifest *projectManifest, scope string, index int) (err error) {
+	if s.Dir == "" {
+		return errN("project manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("%s.sources[%d].dir", scope, index)),
+		)
+	}
+	if s.Match != "" {
+		s.match, err = dsh_utils.CompileExpr(s.Match)
+		if err != nil {
+			return errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.sources[%d].match", scope, index)),
+				kv("value", s.Match),
+			)
+		}
+	}
+	return nil
+}
+
+func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (err error) {
+	if i.Local == nil && i.Git == nil {
+		return errN("project manifest invalid",
+			reason("local and git are both nil"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
+		)
+	} else if i.Local != nil && i.Git != nil {
+		return errN("project manifest invalid",
+			reason("local and git are both not nil"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
+		)
+	} else if i.Local != nil {
+		if i.Local.Dir == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].local.dir", scope, index)),
+			)
+		}
+	} else if i.Git != nil {
+		if i.Git.Url == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
+			)
+		}
+		if i.Git.Ref == "" {
+			i.Git.Ref = "main"
+		}
+		if i.Git.url, err = url.Parse(i.Git.Url); err != nil {
+			return errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
+				kv("value", i.Git.Url),
+			)
+		}
+		i.Git.ref = parseGitRef(i.Git.Ref)
+	}
+	if i.Match != "" {
+		i.match, err = dsh_utils.CompileExpr(i.Match)
+		if err != nil {
+			return errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].match", scope, index)),
+				kv("value", i.Match),
+			)
 		}
 	}
 	return nil
