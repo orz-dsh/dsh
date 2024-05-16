@@ -19,13 +19,13 @@ type AppArtifact struct {
 }
 
 type appArtifactExecutor struct {
-	context      *appContext
-	shellName    string
-	shellPath    string
-	shellArgs    []string
-	targetName   string
-	targetPath   string
-	targetPhrase string
+	context    *appContext
+	shellName  string
+	shellPath  string
+	shellArgs  []string
+	targetGlob string
+	targetName string
+	targetPath string
 }
 
 func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtifact {
@@ -42,12 +42,12 @@ func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtif
 	}
 }
 
-func (a *AppArtifact) ExecuteInChildProcess(targetPhrase string) (exitCode int, err error) {
-	executor, err := a.createExecutor(targetPhrase)
+func (a *AppArtifact) ExecuteInChildProcess(targetGlob string) (exitCode int, err error) {
+	executor, err := a.createExecutor(targetGlob)
 	if err != nil {
 		return -1, errW(err, "execute artifact in child process error",
 			reason("create executor error"),
-			kv("targetPhrase", targetPhrase),
+			kv("targetGlob", targetGlob),
 		)
 	}
 	exitCode, err = executor.executeInChildProcess()
@@ -57,12 +57,12 @@ func (a *AppArtifact) ExecuteInChildProcess(targetPhrase string) (exitCode int, 
 	return exitCode, nil
 }
 
-func (a *AppArtifact) ExecuteInThisProcess(targetPhrase string) (err error) {
-	executor, err := a.createExecutor(targetPhrase)
+func (a *AppArtifact) ExecuteInThisProcess(targetGlob string) (err error) {
+	executor, err := a.createExecutor(targetGlob)
 	if err != nil {
-		return errW(err, "execute artifact in child process error",
+		return errW(err, "execute artifact in this process error",
 			reason("create executor error"),
-			kv("targetPhrase", targetPhrase),
+			kv("targetGlob", targetGlob),
 		)
 	}
 	err = executor.executeInThisProcess()
@@ -72,7 +72,7 @@ func (a *AppArtifact) ExecuteInThisProcess(targetPhrase string) (err error) {
 	return nil
 }
 
-func (a *AppArtifact) createExecutor(targetPhrase string) (executor *appArtifactExecutor, err error) {
+func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactExecutor, err error) {
 	shellName := a.app.context.option.getGlobalOptionsShell()
 	shellPath, err := a.getShellPath(shellName)
 	if err != nil {
@@ -82,36 +82,36 @@ func (a *AppArtifact) createExecutor(targetPhrase string) (executor *appArtifact
 		)
 	}
 
-	targetName, err := a.getTargetName(shellName, targetPhrase)
+	targetName, err := a.getTargetName(shellName, targetGlob)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get target name error"),
 			kv("shellName", shellName),
-			kv("targetPhrase", targetPhrase),
+			kv("targetGlob", targetGlob),
 		)
 	}
 	targetPath := filepath.Join(a.OutputPath, targetName)
 
-	shellArgs, err := a.getShellArgs(shellName, shellPath, targetName, targetPath, targetPhrase)
+	shellArgs, err := a.getShellArgs(shellName, shellPath, targetGlob, targetName, targetPath)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get shell args error"),
 			kv("shellName", shellName),
 			kv("shellPath", shellPath),
+			kv("targetGlob", targetGlob),
 			kv("targetName", targetName),
 			kv("targetPath", targetPath),
-			kv("targetPhrase", targetPhrase),
 		)
 	}
 
 	executor = &appArtifactExecutor{
-		context:      a.context,
-		shellName:    shellName,
-		shellPath:    shellPath,
-		shellArgs:    shellArgs,
-		targetName:   targetName,
-		targetPath:   targetPath,
-		targetPhrase: targetPhrase,
+		context:    a.context,
+		shellName:  shellName,
+		shellPath:  shellPath,
+		shellArgs:  shellArgs,
+		targetGlob: targetGlob,
+		targetName: targetName,
+		targetPath: targetPath,
 	}
 	return executor, nil
 }
@@ -132,31 +132,31 @@ func (a *AppArtifact) getShellPath(shellName string) (shellPath string, err erro
 	return shellPath, nil
 }
 
-func (a *AppArtifact) getTargetName(shellName string, targetPhrase string) (targetName string, err error) {
-	if targetPhrase == "" {
+func (a *AppArtifact) getTargetName(shellName string, targetGlob string) (targetName string, err error) {
+	if targetGlob == "" {
 		return "", errN("get target name error",
-			reason("targetPhrase empty"),
+			reason("target glob empty"),
 		)
 	}
-	targetPhrase = strings.ReplaceAll(targetPhrase, "\\", "/")
-	slashCount := strings.Count(targetPhrase, "/")
+	targetGlob = strings.ReplaceAll(targetGlob, "\\", "/")
+	slashCount := strings.Count(targetGlob, "/")
 	if slashCount == 0 {
-		targetPhrase = a.app.project.manifest.Name + "/" + targetPhrase
+		targetGlob = a.app.project.manifest.Name + "/" + targetGlob
 	} else if slashCount > 1 {
 		return "", errN("get target name error",
-			reason("targetPhrase invalid"),
-			kv("targetPhrase", targetPhrase),
+			reason("target glob invalid"),
+			kv("targetGlob", targetGlob),
 		)
 	}
 
-	targetName = targetPhrase
+	targetName = targetGlob
 	if a.targetNamesDict[targetName] {
 		return targetName, nil
 	}
 
 	exts := a.context.workspace.manifest.getShellExts(shellName)
 	for i := 0; i < len(exts); i++ {
-		targetName = targetPhrase + exts[i]
+		targetName = targetGlob + exts[i]
 		if a.targetNamesDict[targetName] {
 			return targetName, nil
 		}
@@ -165,11 +165,11 @@ func (a *AppArtifact) getTargetName(shellName string, targetPhrase string) (targ
 	return "", errN("get target name error",
 		reason("target name not found"),
 		kv("shellName", shellName),
-		kv("targetPhrase", targetPhrase),
+		kv("targetGlob", targetGlob),
 	)
 }
 
-func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetName string, targetPath string, targetPhrase string) (shellArgs []string, err error) {
+func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
 	args := a.context.workspace.manifest.getShellArgs(shellName)
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
@@ -180,9 +180,9 @@ func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetNam
 				"path": shellPath,
 			},
 			"target": map[string]any{
-				"name":   targetName,
-				"path":   targetPath,
-				"phrase": targetPhrase,
+				"glob": targetGlob,
+				"name": targetName,
+				"path": targetPath,
 			},
 		}
 		for i := 0; i < len(args); i++ {
@@ -219,9 +219,9 @@ func (e *appArtifactExecutor) executeInChildProcess() (exitCode int, err error) 
 		kv("shellName", e.shellName),
 		kv("shellPath", e.shellPath),
 		kv("shellArgs", e.shellArgs),
+		kv("targetGlob", e.targetGlob),
 		kv("targetName", e.targetName),
 		kv("targetPath", e.targetPath),
-		kv("targetPhrase", e.targetPhrase),
 		kv("childPid", pid),
 	)
 	err = cmd.Wait()
@@ -252,9 +252,9 @@ func (e *appArtifactExecutor) executeInThisProcess() (err error) {
 		kv("shellName", e.shellName),
 		kv("shellPath", e.shellPath),
 		kv("shellArgs", e.shellArgs),
+		kv("targetGlob", e.targetGlob),
 		kv("targetName", e.targetName),
 		kv("targetPath", e.targetPath),
-		kv("targetPhrase", e.targetPhrase),
 		kv("execArgs", execArgs),
 	)
 	err = syscall.Exec(e.shellPath, execArgs, os.Environ())
