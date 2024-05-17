@@ -88,7 +88,7 @@ dsh_log_warn "warn message"
 dsh_log_error "error sensitive message"
 #dsh_log_fatal "fatal message"
 
-dsh_exec_task app_main_task "${DSH_APP_DIR}/../../test space dir"
+dsh_exec_task app_main_task "${PWD}/.test2/test space dir"
 
 dsh_log_debug "sensitive message"
 dsh_log_info "info message"
