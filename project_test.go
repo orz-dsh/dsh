@@ -64,9 +64,7 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsOptions{
-		OutputPath: "./.test2/app1/output",
-	})
+	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsOptions{})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

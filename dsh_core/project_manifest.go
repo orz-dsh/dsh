@@ -69,10 +69,17 @@ type projectManifestSource struct {
 }
 
 type projectManifestImport struct {
-	Local *projectManifestImportLocal
-	Git   *projectManifestImportGit
-	Match string
-	match *vm.Program
+	Registry *projectManifestImportRegistry
+	Local    *projectManifestImportLocal
+	Git      *projectManifestImportGit
+	Match    string
+	match    *vm.Program
+}
+
+type projectManifestImportRegistry struct {
+	Name string
+	Path string
+	Ref  string
 }
 
 type projectManifestImportLocal struct {
@@ -319,18 +326,37 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 }
 
 func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (err error) {
-	if i.Local == nil && i.Git == nil {
+	importMethodCount := 0
+	if i.Registry != nil {
+		importMethodCount++
+	}
+	if i.Local != nil {
+		importMethodCount++
+	}
+	if i.Git != nil {
+		importMethodCount++
+	}
+	if importMethodCount != 1 {
 		return errN("project manifest invalid",
-			reason("local and git are both nil"),
+			reason("[registry, local, git] must have only one"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
 		)
-	} else if i.Local != nil && i.Git != nil {
-		return errN("project manifest invalid",
-			reason("local and git are both not nil"),
-			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
-		)
+	} else if i.Registry != nil {
+		if i.Registry.Name == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].registry.name", scope, index)),
+			)
+		}
+		if i.Registry.Path == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].registry.path", scope, index)),
+			)
+		}
 	} else if i.Local != nil {
 		if i.Local.Dir == "" {
 			return errN("project manifest invalid",

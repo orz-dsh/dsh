@@ -3,6 +3,6 @@ script:
   sources:
     - dir: script
   imports:
-    - git:
-        url: https://github.com/orz-dsh/shell-lib.git
-        ref: main
+    - registry:
+        name: orz-dsh
+        path: shell-lib

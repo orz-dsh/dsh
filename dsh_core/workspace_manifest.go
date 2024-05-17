@@ -4,13 +4,14 @@ import (
 	"dsh/dsh_utils"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 )
 
 type workspaceManifest struct {
 	Clean         *workspaceManifestClean
 	Shell         map[string]*workspaceManifestShell
-	Registry      *workspaceManifestRegistry
+	Import        *workspaceManifestImport
 	manifestPath  string
 	manifestType  manifestMetadataType
 	workspacePath string
@@ -33,29 +34,30 @@ type workspaceManifestShell struct {
 	Args []string
 }
 
-type workspaceManifestRegistry struct {
-	Scopes []*workspaceManifestRegistryScope
-	Alters []*workspaceManifestRegistryAlter
-	alters []*workspaceManifestRegistryAlter
+type workspaceManifestImport struct {
+	Registries       []*workspaceManifestImportRegistry
+	Redirects        []*workspaceManifestImportRedirect
+	registriesByName map[string]*workspaceManifestImportRegistry
+	redirectsSorted  []*workspaceManifestImportRedirect
 }
 
-type workspaceManifestRegistryScope struct {
+type workspaceManifestImportRegistry struct {
 	Name  string
-	Local *workspaceManifestRegistryLocal
-	Git   *workspaceManifestRegistryGit
+	Local *workspaceManifestImportLocal
+	Git   *workspaceManifestImportGit
 }
 
-type workspaceManifestRegistryAlter struct {
+type workspaceManifestImportRedirect struct {
 	Prefix string
-	Local  *workspaceManifestRegistryLocal
-	Git    *workspaceManifestRegistryGit
+	Local  *workspaceManifestImportLocal
+	Git    *workspaceManifestImportGit
 }
 
-type workspaceManifestRegistryLocal struct {
+type workspaceManifestImportLocal struct {
 	Dir string
 }
 
-type workspaceManifestRegistryGit struct {
+type workspaceManifestImportGit struct {
 	Url string
 	Ref string
 }
@@ -77,13 +79,30 @@ var workspaceDefaultShellArgs = map[string][]string{
 	"powershell": {"-NoProfile", "-File", "{{.target.path}}"},
 }
 
+var workspaceDefaultImportRegistries = map[string]*workspaceManifestImportRegistry{
+	"orz-dsh": {
+		Name: "orz-dsh",
+		Git: &workspaceManifestImportGit{
+			Url: "https://github.com/orz-dsh/{{.path}}.git",
+			Ref: "main",
+		},
+	},
+	"orz-ops": {
+		Name: "orz-ops",
+		Git: &workspaceManifestImportGit{
+			Url: "https://github.com/orz-ops/{{.path}}.git",
+			Ref: "main",
+		},
+	},
+}
+
 func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, err error) {
 	manifest = &workspaceManifest{
 		Clean: &workspaceManifestClean{
 			Output: &workspaceManifestCleanOutput{},
 		},
-		Shell:    make(map[string]*workspaceManifestShell),
-		Registry: &workspaceManifestRegistry{},
+		Shell:  make(map[string]*workspaceManifestShell),
+		Import: &workspaceManifestImport{},
 	}
 	metadata, err := loadManifest(workspacePath, []string{"workspace"}, manifest, false)
 	if err != nil {
@@ -162,116 +181,101 @@ func (m *workspaceManifest) init() (err error) {
 		}
 	}
 
-	scopeNamesDict := make(map[string]bool)
-	for i := 0; i < len(m.Registry.Scopes); i++ {
-		scope := m.Registry.Scopes[i]
-		if scope.Name == "" {
+	registriesByName := make(map[string]*workspaceManifestImportRegistry)
+	for i := 0; i < len(m.Import.Registries); i++ {
+		registry := m.Import.Registries[i]
+		if registry.Name == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
 				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.scopes[%d].name", i)),
+				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
 			)
 		}
-		if _, exist := scopeNamesDict[scope.Name]; exist {
+		if _, exist := registriesByName[registry.Name]; exist {
 			return errN("workspace manifest invalid",
 				reason("value duplicate"),
 				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.scopes[%d].name", i)),
-				kv("value", scope.Name),
+				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
+				kv("value", registry.Name),
 			)
 		}
-		scopeNamesDict[scope.Name] = true
-		if scope.Local == nil && scope.Git == nil {
-			return errN("workspace manifest invalid",
-				reason("local and git are both nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.scopes[%d]", i)),
-			)
-		} else if scope.Local != nil && scope.Git != nil {
-			return errN("workspace manifest invalid",
-				reason("local and git are both not nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.scopes[%d]", i)),
-			)
-		} else if scope.Local != nil {
-			if scope.Local.Dir == "" {
-				return errN("workspace manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("registry.scopes[%d].local.dir", i)),
-				)
-			}
-		} else if scope.Git != nil {
-			if scope.Git.Url == "" {
-				return errN("workspace manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("registry.scopes[%d].git.url", i)),
-				)
-			}
-			if scope.Git.Ref == "" {
-				scope.Git.Ref = "main"
+		registriesByName[registry.Name] = registry
+		if err = m.checkImportMethod(registry.Local, registry.Git, "registries", i); err != nil {
+			return err
+		}
+		if registry.Git != nil {
+			if registry.Git.Ref == "" {
+				registry.Git.Ref = "main"
 			}
 		}
 	}
+	m.Import.registriesByName = registriesByName
 
-	alterPrefixesDict := make(map[string]bool)
-	for i := 0; i < len(m.Registry.Alters); i++ {
-		alter := m.Registry.Alters[i]
-		if alter.Prefix == "" {
+	redirectPrefixesDict := make(map[string]bool)
+	for i := 0; i < len(m.Import.Redirects); i++ {
+		redirect := m.Import.Redirects[i]
+		if redirect.Prefix == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
 				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.alters[%d].prefix", i)),
+				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
 			)
 		}
-		if _, exist := alterPrefixesDict[alter.Prefix]; exist {
+		if _, exist := redirectPrefixesDict[redirect.Prefix]; exist {
 			return errN("workspace manifest invalid",
 				reason("value duplicate"),
 				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.alters[%d].prefix", i)),
-				kv("value", alter.Prefix),
+				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
+				kv("value", redirect.Prefix),
 			)
 		}
-		alterPrefixesDict[alter.Prefix] = true
-		if alter.Local == nil && alter.Git == nil {
-			return errN("workspace manifest invalid",
-				reason("local and git are both nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.alters[%d]", i)),
-			)
-		} else if alter.Local != nil && alter.Git != nil {
-			return errN("workspace manifest invalid",
-				reason("local and git are both not nil"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("registry.alters[%d]", i)),
-			)
-		} else if alter.Local != nil {
-			if alter.Local.Dir == "" {
-				return errN("workspace manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("registry.alters[%d].local.dir", i)),
-				)
-			}
-		} else if alter.Git != nil {
-			if alter.Git.Url == "" {
-				return errN("workspace manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("registry.alters[%d].git.url", i)),
-				)
-			}
+		redirectPrefixesDict[redirect.Prefix] = true
+		if err = m.checkImportMethod(redirect.Local, redirect.Git, "redirects", i); err != nil {
+			return err
 		}
 	}
-	if len(m.Registry.Alters) > 0 {
-		m.Registry.alters = make([]*workspaceManifestRegistryAlter, len(m.Registry.Alters))
-		copy(m.Registry.alters, m.Registry.Alters)
-		slices.SortStableFunc(m.Registry.alters, func(l, r *workspaceManifestRegistryAlter) int {
+	if len(m.Import.Redirects) > 0 {
+		m.Import.redirectsSorted = make([]*workspaceManifestImportRedirect, len(m.Import.Redirects))
+		copy(m.Import.redirectsSorted, m.Import.Redirects)
+		slices.SortStableFunc(m.Import.redirectsSorted, func(l, r *workspaceManifestImportRedirect) int {
 			return len(r.Prefix) - len(l.Prefix)
 		})
 	}
 
+	return nil
+}
+
+func (m *workspaceManifest) checkImportMethod(local *workspaceManifestImportLocal, git *workspaceManifestImportGit, scope string, index int) error {
+	importMethodCount := 0
+	if local != nil {
+		importMethodCount++
+	}
+	if git != nil {
+		importMethodCount++
+	}
+	if importMethodCount != 1 {
+		return errN("workspace manifest invalid",
+			reason("[local, git] must have only one"),
+			kv("path", m.manifestPath),
+			kv("field", fmt.Sprintf("import.%s[%d]", scope, index)),
+		)
+	} else if local != nil {
+		if local.Dir == "" {
+			return errN("workspace manifest invalid",
+				reason("value empty"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("import.%s[%d].local.dir", scope, index)),
+			)
+		}
+	} else {
+		if git.Url == "" {
+			return errN("workspace manifest invalid",
+				reason("value empty"),
+				kv("path", m.manifestPath),
+				kv("field", fmt.Sprintf("import.%s[%d].git.url", scope, index)),
+			)
+		}
+	}
 	return nil
 }
 
@@ -305,6 +309,26 @@ func (m *workspaceManifest) getShellArgs(shell string) []string {
 	if args, exist := workspaceDefaultShellArgs[shell]; exist {
 		if args != nil {
 			return args
+		}
+	}
+	return nil
+}
+
+func (m *workspaceManifest) getImportRegistry(name string) *workspaceManifestImportRegistry {
+	if registry, exist := m.Import.registriesByName[name]; exist {
+		return registry
+	}
+	if registry, exist := workspaceDefaultImportRegistries[name]; exist {
+		return registry
+	}
+	return nil
+}
+
+func (m *workspaceManifest) getImportRedirect(path string) *workspaceManifestImportRedirect {
+	for i := 0; i < len(m.Import.redirectsSorted); i++ {
+		redirect := m.Import.redirectsSorted[i]
+		if strings.HasPrefix(path, redirect.Prefix) {
+			return redirect
 		}
 	}
 	return nil
