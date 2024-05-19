@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+// region option
+
 const (
 	GlobalOptionNameOs                 = "_os"
 	GlobalOptionNameArch               = "_arch"
@@ -27,34 +29,12 @@ var globalOptionDefaultHostname string
 var globalOptionDefaultUsername string
 
 type appOption struct {
-	globalOptions  map[string]any
-	specifyOptions map[string]map[string]string
-	projectOptions map[string]map[string]any
-	assigns        map[string]*appOptionAssign
-	results        map[string]*appOptionResult
+	GlobalOptions  map[string]any
+	SpecifyOptions map[string]map[string]string
+	ProjectOptions map[string]map[string]any
+	Assigns        map[string]*appOptionAssign
+	Results        map[string]*appOptionResult
 }
-
-type appOptionAssign struct {
-	source      string
-	finalSource string
-	mapping     *vm.Program
-}
-
-type appOptionResult struct {
-	rawValue    string
-	parsedValue any
-	source      appOptionResultSource
-	assign      *appOptionAssign
-}
-
-type appOptionResultSource string
-
-const (
-	appOptionResultSourceUnset   = "unset"
-	appOptionResultSourceSpecify = "specify"
-	appOptionResultSourceAssign  = "assign"
-	appOptionResultSourceDefault = "default"
-)
 
 func getGlobalOptionDefaultOs() string {
 	if globalOptionDefaultOs == "" {
@@ -161,7 +141,7 @@ func loadAppOption(manifest *projectManifest, options map[string]string) (*appOp
 		specifyOptions[k] = v
 	}
 	option := &appOption{
-		globalOptions: map[string]any{
+		GlobalOptions: map[string]any{
 			GlobalOptionNameOs:                 _os,
 			GlobalOptionNameArch:               _arch,
 			GlobalOptionNameShell:              _shell,
@@ -170,19 +150,19 @@ func loadAppOption(manifest *projectManifest, options map[string]string) (*appOp
 			globalOptionNameRuntimeVersion:     string(dsh_utils.GetRuntimeVersion()),
 			globalOptionNameRuntimeVersionCode: dsh_utils.GetRuntimeVersionCode(),
 		},
-		specifyOptions: map[string]map[string]string{
+		SpecifyOptions: map[string]map[string]string{
 			manifest.Name: specifyOptions,
 		},
-		projectOptions: make(map[string]map[string]any),
-		results:        make(map[string]*appOptionResult),
-		assigns:        make(map[string]*appOptionAssign),
+		ProjectOptions: make(map[string]map[string]any),
+		Results:        make(map[string]*appOptionResult),
+		Assigns:        make(map[string]*appOptionAssign),
 	}
 	return option, nil
 }
 
 func (o *appOption) mergeGlobalOptions(options map[string]any) map[string]any {
 	result := make(map[string]any)
-	maps.Copy(result, o.globalOptions)
+	maps.Copy(result, o.GlobalOptions)
 	if options != nil {
 		maps.Copy(result, options)
 	}
@@ -190,7 +170,7 @@ func (o *appOption) mergeGlobalOptions(options map[string]any) map[string]any {
 }
 
 func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
-	if _, exist := o.projectOptions[manifest.Name]; exist {
+	if _, exist := o.ProjectOptions[manifest.Name]; exist {
 		return nil
 	}
 	options := make(map[string]any)
@@ -213,7 +193,7 @@ func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
 				kv("optionName", item.Name),
 			)
 		}
-		options[item.Name] = result.parsedValue
+		options[item.Name] = result.ParsedValue
 	}
 
 	verifies := manifest.Option.verifies
@@ -254,12 +234,12 @@ func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
 			}
 		}
 	}
-	o.projectOptions[manifest.Name] = options
+	o.ProjectOptions[manifest.Name] = options
 	return nil
 }
 
 func (o *appOption) getProjectOptions(manifest *projectManifest) map[string]any {
-	return o.mergeGlobalOptions(o.projectOptions[manifest.Name])
+	return o.mergeGlobalOptions(o.ProjectOptions[manifest.Name])
 }
 
 func (o *appOption) evalProjectMatchExpr(manifest *projectManifest, expr *vm.Program) (bool, error) {
@@ -279,51 +259,51 @@ func (o *appOption) addAssign(sourceProject string, sourceOption string, assignP
 	source := sourceProject + "." + sourceOption
 	target := assignProject + "." + assignOption
 	assign := &appOptionAssign{
-		source:      source,
-		finalSource: source,
+		Source:      source,
+		FinalSource: source,
 		mapping:     assignMapping,
 	}
-	if sourceAssign, exist := o.assigns[source]; exist {
-		assign.finalSource = sourceAssign.finalSource
+	if sourceAssign, exist := o.Assigns[source]; exist {
+		assign.FinalSource = sourceAssign.FinalSource
 	}
-	if existAssign, exist := o.assigns[target]; exist {
-		if existAssign.finalSource != assign.finalSource {
+	if existAssign, exist := o.Assigns[target]; exist {
+		if existAssign.FinalSource != assign.FinalSource {
 			return errN("add option assign error",
 				reason("option assign conflict"),
 				kv("target", target),
-				kv("assign1", assign.source),
-				kv("assign2", existAssign.source),
+				kv("assign1", assign.Source),
+				kv("assign2", existAssign.Source),
 			)
 		}
 	} else {
-		o.assigns[target] = assign
+		o.Assigns[target] = assign
 	}
 	return nil
 }
 
 func (o *appOption) addResult(projectName string, optionName string, result *appOptionResult) error {
 	target := projectName + "." + optionName
-	if existResult, exist := o.results[target]; exist {
+	if existResult, exist := o.Results[target]; exist {
 		return errN("add option result error",
 			reason("option result exists"),
 			kv("target", target),
 			kv("result1", result),
 			kv("result2", existResult),
-			kv("result1Assign", result.assign),
-			kv("result2assign", existResult.assign),
+			kv("result1Assign", result.Assign),
+			kv("result2assign", existResult.Assign),
 		)
 	}
-	o.results[target] = result
+	o.Results[target] = result
 	return nil
 }
 
 func (o *appOption) findAssignValue(projectName string, optionName string) (*appOptionAssign, *string, error) {
 	target := projectName + "." + optionName
-	if assign, exist := o.assigns[target]; exist {
-		if result, exist := o.results[assign.source]; exist {
+	if assign, exist := o.Assigns[target]; exist {
+		if result, exist := o.Results[assign.Source]; exist {
 			if assign.mapping != nil {
 				mappingResult, err := dsh_utils.EvalExprReturnString(assign.mapping, o.mergeGlobalOptions(map[string]any{
-					"value": result.parsedValue,
+					"value": result.ParsedValue,
 				}))
 				if err != nil {
 					return assign, nil, errW(err, "find option assign value error",
@@ -332,12 +312,12 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 						kv("targetAssign", assign),
 						kv("targetAssignMapping", assign.mapping.Source().Content()),
 						kv("sourceResult", result),
-						kv("sourceResultAssign", result.assign),
+						kv("sourceResultAssign", result.Assign),
 					)
 				}
 				return assign, mappingResult, nil
 			} else {
-				return assign, &result.rawValue, nil
+				return assign, &result.RawValue, nil
 			}
 		} else {
 			return assign, nil, errN("find option assign value error",
@@ -357,7 +337,7 @@ func (o *appOption) findResult(manifest *projectManifest, item *projectManifestO
 	var source appOptionResultSource = appOptionResultSourceUnset
 	var assign *appOptionAssign = nil
 
-	if specifyOptions, exist := o.specifyOptions[manifest.Name]; exist {
+	if specifyOptions, exist := o.SpecifyOptions[manifest.Name]; exist {
 		if value, exist := specifyOptions[item.Name]; exist {
 			rawValue = value
 			parsedValue, err = item.parseValue(rawValue)
@@ -426,18 +406,56 @@ func (o *appOption) findResult(manifest *projectManifest, item *projectManifestO
 	}
 
 	result = &appOptionResult{
-		rawValue:    rawValue,
-		parsedValue: parsedValue,
-		source:      source,
-		assign:      assign,
+		RawValue:    rawValue,
+		ParsedValue: parsedValue,
+		Source:      source,
+		Assign:      assign,
 	}
 	return result, nil
 }
 
 func (o *appOption) getGlobalOptionsOs() string {
-	return o.globalOptions[GlobalOptionNameOs].(string)
+	return o.GlobalOptions[GlobalOptionNameOs].(string)
 }
 
 func (o *appOption) getGlobalOptionsShell() string {
-	return o.globalOptions[GlobalOptionNameShell].(string)
+	return o.GlobalOptions[GlobalOptionNameShell].(string)
 }
+
+// endregion
+
+// region assign
+
+type appOptionAssign struct {
+	Source      string
+	FinalSource string
+	mapping     *vm.Program
+}
+
+func (a *appOptionAssign) DescExtraKeyValues() KVS {
+	return KVS{
+		kv("mapping", a.mapping.Source().Content()),
+	}
+}
+
+// endregion
+
+// region result
+
+type appOptionResult struct {
+	RawValue    string
+	ParsedValue any
+	Source      appOptionResultSource
+	Assign      *appOptionAssign
+}
+
+type appOptionResultSource string
+
+const (
+	appOptionResultSourceUnset   = "unset"
+	appOptionResultSourceSpecify = "specify"
+	appOptionResultSourceAssign  = "assign"
+	appOptionResultSourceDefault = "default"
+)
+
+// endregion

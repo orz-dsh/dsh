@@ -66,6 +66,13 @@ func getWorkspaceDefaultPath() string {
 	return filepath.Join(os.TempDir(), "dsh")
 }
 
+func (w *Workspace) DescExtraKeyValues() KVS {
+	return KVS{
+		kv("path", w.path),
+		kv("manifest", w.manifest),
+	}
+}
+
 func (w *Workspace) GetPath() string {
 	return w.path
 }

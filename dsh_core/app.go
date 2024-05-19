@@ -50,6 +50,15 @@ func loadApp(workspace *Workspace, manifest *projectManifest, options map[string
 	return app, nil
 }
 
+func (a *App) DescExtraKeyValues() KVS {
+	return KVS{
+		kv("context", a.context),
+		kv("project", a.project),
+		kv("scriptImportContainer", a.scriptImportContainer),
+		kv("configImportContainer", a.configImportContainer),
+	}
+}
+
 func (a *App) MakeConfigs() (map[string]any, error) {
 	if a.configsMade {
 		return a.configs, nil
@@ -80,7 +89,7 @@ func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact,
 	a.context.logger.Info("make scripts start")
 	outputPath := options.OutputPath
 	if outputPath == "" {
-		outputPath, err = a.context.workspace.makeOutputDir(a.project.manifest.Name)
+		outputPath, err = a.context.workspace.makeOutputDir(a.project.Manifest.Name)
 		if err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("make output path error"),

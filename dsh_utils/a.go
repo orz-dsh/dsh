@@ -1,5 +1,7 @@
 package dsh_utils
 
+type KVS = DescKeyValues
+
 func kv(key string, value any) DescKeyValue {
 	return NewDescKeyValue(key, value)
 }
@@ -20,6 +22,14 @@ func reason(reason any) DescKeyValue {
 	return kv("reason", reason)
 }
 
+func t[T any](expr bool, trueValue T, falseValue T) T {
+	return Ternary(expr, trueValue, falseValue)
+}
+
 func tfn[T any](expr bool, trueFunc func() T, falseFunc func() T) T {
 	return TernaryFunc(expr, trueFunc, falseFunc)
+}
+
+func impossible() {
+	panic("impossible")
 }

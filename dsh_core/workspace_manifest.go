@@ -8,14 +8,68 @@ import (
 	"time"
 )
 
+// region manifest
+
 type workspaceManifest struct {
 	Clean         *workspaceManifestClean
-	Shell         map[string]*workspaceManifestShell
+	Shell         workspaceManifestShell
 	Import        *workspaceManifestImport
 	manifestPath  string
 	manifestType  manifestMetadataType
 	workspacePath string
 }
+
+func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, err error) {
+	manifest = &workspaceManifest{
+		Clean: &workspaceManifestClean{
+			Output: &workspaceManifestCleanOutput{},
+		},
+		Shell:  make(map[string]*workspaceManifestShellItem),
+		Import: &workspaceManifestImport{},
+	}
+	metadata, err := loadManifest(workspacePath, []string{"workspace"}, manifest, false)
+	if err != nil {
+		return nil, errW(err, "load workspace manifest error",
+			reason("load manifest error"),
+			kv("workspacePath", workspacePath),
+		)
+	}
+	if metadata != nil {
+		manifest.manifestPath = metadata.manifestPath
+		manifest.manifestType = metadata.manifestType
+	}
+	manifest.workspacePath = workspacePath
+	if err = manifest.init(); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func (m *workspaceManifest) DescExtraKeyValues() KVS {
+	return KVS{
+		kv("manifestPath", m.manifestPath),
+		kv("manifestType", m.manifestType),
+		kv("workspacePath", m.workspacePath),
+	}
+}
+
+func (m *workspaceManifest) init() (err error) {
+	if err = m.Clean.init(m); err != nil {
+		return err
+	}
+	if err = m.Shell.init(m); err != nil {
+		return err
+	}
+	if err = m.Import.init(m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// endregion
+
+// region clean
 
 type workspaceManifestClean struct {
 	Output *workspaceManifestCleanOutput
@@ -28,11 +82,139 @@ type workspaceManifestCleanOutput struct {
 	expires time.Duration
 }
 
-type workspaceManifestShell struct {
+const workspaceDefaultCleanOutputCount = 3
+const workspaceDefaultCleanOutputExpires = 24 * time.Hour
+
+func (c *workspaceManifestClean) init(manifest *workspaceManifest) (err error) {
+	if c.Output.Expires != "" {
+		c.Output.expires, err = time.ParseDuration(c.Output.Expires)
+		if err != nil {
+			return errN("workspace manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", "clean.output.expires"),
+				kv("value", c.Output.Expires),
+			)
+		}
+	} else {
+		c.Output.expires = workspaceDefaultCleanOutputExpires
+	}
+
+	if c.Output.Count != nil {
+		value := *c.Output.Count
+		if value <= 0 {
+			return errN("workspace manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", "clean.output.count"),
+				kv("value", value),
+			)
+		}
+		c.Output.count = value
+	} else {
+		c.Output.count = workspaceDefaultCleanOutputCount
+	}
+
+	return nil
+}
+
+// endregion
+
+// region shell
+
+type workspaceManifestShell map[string]*workspaceManifestShellItem
+
+type workspaceManifestShellItem struct {
 	Path string
 	Exts []string
 	Args []string
 }
+
+var workspaceDefaultShellExts = map[string][]string{
+	"cmd":        {".cmd", ".bat"},
+	"pwsh":       {".ps1"},
+	"powershell": {".ps1"},
+}
+
+var workspaceDefaultShellExtsFallback = []string{".sh"}
+
+var workspaceDefaultShellArgs = map[string][]string{
+	"cmd":        {"/C", "{{.target.path}}"},
+	"pwsh":       {"-NoProfile", "-File", "{{.target.path}}"},
+	"powershell": {"-NoProfile", "-File", "{{.target.path}}"},
+}
+
+func (s workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
+	for k, v := range s {
+		if v.Path != "" && !dsh_utils.IsFileExists(v.Path) {
+			return errN("workspace manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("shell.%s.path", k)),
+				kv("value", v.Path),
+			)
+		}
+		for i := 0; i < len(v.Exts); i++ {
+			if v.Exts[i] == "" {
+				return errN("workspace manifest invalid",
+					reason("value empty"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("shell.%s.exts[%d]", k, i)),
+				)
+			}
+		}
+		for i := 0; i < len(v.Args); i++ {
+			if v.Args[i] == "" {
+				return errN("workspace manifest invalid",
+					reason("value empty"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("shell.%s.args[%d]", k, i)),
+				)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s workspaceManifestShell) getShellPath(shell string) string {
+	if i, exist := s[shell]; exist {
+		return i.Path
+	}
+	return ""
+}
+
+func (s workspaceManifestShell) getShellExts(shell string) []string {
+	if i, exist := s[shell]; exist {
+		if i.Exts != nil {
+			return i.Exts
+		}
+	}
+	if exts, exist := workspaceDefaultShellExts[shell]; exist {
+		if exts != nil {
+			return exts
+		}
+	}
+	return workspaceDefaultShellExtsFallback
+}
+
+func (s workspaceManifestShell) getShellArgs(shell string) []string {
+	if i, ok := s[shell]; ok {
+		if i.Args != nil {
+			return i.Args
+		}
+	}
+	if args, exist := workspaceDefaultShellArgs[shell]; exist {
+		if args != nil {
+			return args
+		}
+	}
+	return nil
+}
+
+// endregion
+
+// region import
 
 type workspaceManifestImport struct {
 	Registries       []*workspaceManifestImportRegistry
@@ -62,23 +244,6 @@ type workspaceManifestImportGit struct {
 	Ref string
 }
 
-const workspaceDefaultCleanOutputCount = 3
-const workspaceDefaultCleanOutputExpires = 24 * time.Hour
-
-var workspaceDefaultShellExts = map[string][]string{
-	"cmd":        {".cmd", ".bat"},
-	"pwsh":       {".ps1"},
-	"powershell": {".ps1"},
-}
-
-var workspaceDefaultShellExtsFallback = []string{".sh"}
-
-var workspaceDefaultShellArgs = map[string][]string{
-	"cmd":        {"/C", "{{.target.path}}"},
-	"pwsh":       {"-NoProfile", "-File", "{{.target.path}}"},
-	"powershell": {"-NoProfile", "-File", "{{.target.path}}"},
-}
-
 var workspaceDefaultImportRegistries = map[string]*workspaceManifestImportRegistry{
 	"orz-dsh": {
 		Name: "orz-dsh",
@@ -96,111 +261,27 @@ var workspaceDefaultImportRegistries = map[string]*workspaceManifestImportRegist
 	},
 }
 
-func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, err error) {
-	manifest = &workspaceManifest{
-		Clean: &workspaceManifestClean{
-			Output: &workspaceManifestCleanOutput{},
-		},
-		Shell:  make(map[string]*workspaceManifestShell),
-		Import: &workspaceManifestImport{},
-	}
-	metadata, err := loadManifest(workspacePath, []string{"workspace"}, manifest, false)
-	if err != nil {
-		return nil, errW(err, "load workspace manifest error",
-			reason("load manifest error"),
-			kv("workspacePath", workspacePath),
-		)
-	}
-	if metadata != nil {
-		manifest.manifestPath = metadata.manifestPath
-		manifest.manifestType = metadata.manifestType
-	}
-	manifest.workspacePath = workspacePath
-	if err = manifest.init(); err != nil {
-		return nil, err
-	}
-	return manifest, nil
-}
-
-func (m *workspaceManifest) init() (err error) {
-	if m.Clean.Output.Expires != "" {
-		m.Clean.Output.expires, err = time.ParseDuration(m.Clean.Output.Expires)
-		if err != nil {
-			return errN("workspace manifest invalid",
-				reason("value invalid"),
-				kv("path", m.manifestPath),
-				kv("field", "clean.output.expires"),
-				kv("value", m.Clean.Output.Expires),
-			)
-		}
-	} else {
-		m.Clean.Output.expires = workspaceDefaultCleanOutputExpires
-	}
-
-	if m.Clean.Output.Count != nil {
-		value := *m.Clean.Output.Count
-		if value <= 0 {
-			return errN("workspace manifest invalid",
-				reason("value invalid"),
-				kv("path", m.manifestPath),
-				kv("field", "clean.output.count"),
-				kv("value", value),
-			)
-		}
-		m.Clean.Output.count = value
-	} else {
-		m.Clean.Output.count = workspaceDefaultCleanOutputCount
-	}
-
-	for k, v := range m.Shell {
-		if v.Path != "" && !dsh_utils.IsFileExists(v.Path) {
-			return errN("workspace manifest invalid",
-				reason("value invalid"),
-				kv("path", m.manifestPath),
-				kv("field", fmt.Sprintf("shell.%s.path", k)),
-				kv("value", v.Path),
-			)
-		}
-		for i := 0; i < len(v.Exts); i++ {
-			if v.Exts[i] == "" {
-				return errN("workspace manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("shell.%s.exts[%d]", k, i)),
-				)
-			}
-		}
-		for i := 0; i < len(v.Args); i++ {
-			if v.Args[i] == "" {
-				return errN("workspace manifest invalid",
-					reason("value empty"),
-					kv("path", m.manifestPath),
-					kv("field", fmt.Sprintf("shell.%s.args[%d]", k, i)),
-				)
-			}
-		}
-	}
-
+func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error) {
 	registriesByName := make(map[string]*workspaceManifestImportRegistry)
-	for i := 0; i < len(m.Import.Registries); i++ {
-		registry := m.Import.Registries[i]
+	for i := 0; i < len(imp.Registries); i++ {
+		registry := imp.Registries[i]
 		if registry.Name == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
-				kv("path", m.manifestPath),
+				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
 			)
 		}
 		if _, exist := registriesByName[registry.Name]; exist {
 			return errN("workspace manifest invalid",
 				reason("value duplicate"),
-				kv("path", m.manifestPath),
+				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
 				kv("value", registry.Name),
 			)
 		}
 		registriesByName[registry.Name] = registry
-		if err = m.checkImportMethod(registry.Local, registry.Git, "registries", i); err != nil {
+		if err = imp.checkImportMode(manifest, registry.Local, registry.Git, "registries", i); err != nil {
 			return err
 		}
 		if registry.Git != nil {
@@ -209,35 +290,35 @@ func (m *workspaceManifest) init() (err error) {
 			}
 		}
 	}
-	m.Import.registriesByName = registriesByName
+	imp.registriesByName = registriesByName
 
 	redirectPrefixesDict := make(map[string]bool)
-	for i := 0; i < len(m.Import.Redirects); i++ {
-		redirect := m.Import.Redirects[i]
+	for i := 0; i < len(imp.Redirects); i++ {
+		redirect := imp.Redirects[i]
 		if redirect.Prefix == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
-				kv("path", m.manifestPath),
+				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
 			)
 		}
 		if _, exist := redirectPrefixesDict[redirect.Prefix]; exist {
 			return errN("workspace manifest invalid",
 				reason("value duplicate"),
-				kv("path", m.manifestPath),
+				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
 				kv("value", redirect.Prefix),
 			)
 		}
 		redirectPrefixesDict[redirect.Prefix] = true
-		if err = m.checkImportMethod(redirect.Local, redirect.Git, "redirects", i); err != nil {
+		if err = imp.checkImportMode(manifest, redirect.Local, redirect.Git, "redirects", i); err != nil {
 			return err
 		}
 	}
-	if len(m.Import.Redirects) > 0 {
-		m.Import.redirectsSorted = make([]*workspaceManifestImportRedirect, len(m.Import.Redirects))
-		copy(m.Import.redirectsSorted, m.Import.Redirects)
-		slices.SortStableFunc(m.Import.redirectsSorted, func(l, r *workspaceManifestImportRedirect) int {
+	if len(imp.Redirects) > 0 {
+		imp.redirectsSorted = make([]*workspaceManifestImportRedirect, len(imp.Redirects))
+		copy(imp.redirectsSorted, imp.Redirects)
+		slices.SortStableFunc(imp.redirectsSorted, func(l, r *workspaceManifestImportRedirect) int {
 			return len(r.Prefix) - len(l.Prefix)
 		})
 	}
@@ -245,25 +326,25 @@ func (m *workspaceManifest) init() (err error) {
 	return nil
 }
 
-func (m *workspaceManifest) checkImportMethod(local *workspaceManifestImportLocal, git *workspaceManifestImportGit, scope string, index int) error {
-	importMethodCount := 0
+func (imp *workspaceManifestImport) checkImportMode(manifest *workspaceManifest, local *workspaceManifestImportLocal, git *workspaceManifestImportGit, scope string, index int) error {
+	importModeCount := 0
 	if local != nil {
-		importMethodCount++
+		importModeCount++
 	}
 	if git != nil {
-		importMethodCount++
+		importModeCount++
 	}
-	if importMethodCount != 1 {
+	if importModeCount != 1 {
 		return errN("workspace manifest invalid",
 			reason("[local, git] must have only one"),
-			kv("path", m.manifestPath),
+			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("import.%s[%d]", scope, index)),
 		)
 	} else if local != nil {
 		if local.Dir == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
-				kv("path", m.manifestPath),
+				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("import.%s[%d].local.dir", scope, index)),
 			)
 		}
@@ -271,7 +352,7 @@ func (m *workspaceManifest) checkImportMethod(local *workspaceManifestImportLoca
 		if git.Url == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
-				kv("path", m.manifestPath),
+				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("import.%s[%d].git.url", scope, index)),
 			)
 		}
@@ -279,43 +360,8 @@ func (m *workspaceManifest) checkImportMethod(local *workspaceManifestImportLoca
 	return nil
 }
 
-func (m *workspaceManifest) getShellPath(shell string) string {
-	if s, exist := m.Shell[shell]; exist {
-		return s.Path
-	}
-	return ""
-}
-
-func (m *workspaceManifest) getShellExts(shell string) []string {
-	if s, exist := m.Shell[shell]; exist {
-		if s.Exts != nil {
-			return s.Exts
-		}
-	}
-	if exts, exist := workspaceDefaultShellExts[shell]; exist {
-		if exts != nil {
-			return exts
-		}
-	}
-	return workspaceDefaultShellExtsFallback
-}
-
-func (m *workspaceManifest) getShellArgs(shell string) []string {
-	if s, ok := m.Shell[shell]; ok {
-		if s.Args != nil {
-			return s.Args
-		}
-	}
-	if args, exist := workspaceDefaultShellArgs[shell]; exist {
-		if args != nil {
-			return args
-		}
-	}
-	return nil
-}
-
-func (m *workspaceManifest) getImportRegistry(name string) *workspaceManifestImportRegistry {
-	if registry, exist := m.Import.registriesByName[name]; exist {
+func (imp *workspaceManifestImport) getRegistry(name string) *workspaceManifestImportRegistry {
+	if registry, exist := imp.registriesByName[name]; exist {
 		return registry
 	}
 	if registry, exist := workspaceDefaultImportRegistries[name]; exist {
@@ -324,12 +370,14 @@ func (m *workspaceManifest) getImportRegistry(name string) *workspaceManifestImp
 	return nil
 }
 
-func (m *workspaceManifest) getImportRedirect(path string) *workspaceManifestImportRedirect {
-	for i := 0; i < len(m.Import.redirectsSorted); i++ {
-		redirect := m.Import.redirectsSorted[i]
+func (imp *workspaceManifestImport) getRedirect(path string) *workspaceManifestImportRedirect {
+	for i := 0; i < len(imp.redirectsSorted); i++ {
+		redirect := imp.redirectsSorted[i]
 		if strings.HasPrefix(path, redirect.Prefix) {
 			return redirect
 		}
 	}
 	return nil
 }
+
+// endregion

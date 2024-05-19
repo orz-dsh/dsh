@@ -54,11 +54,7 @@ func loadManifest(dir string, fileNames []string, manifestEntity any, required b
 		manifestType = manifestMetadataTypeJson
 		err = dsh_utils.ReadJsonFile(manifestPath, manifestEntity)
 	default:
-		// impossible
-		panic(desc("manifest file type not supported",
-			kv("manifestPath", manifestPath),
-			kv("manifestFileType", manifestFileType),
-		))
+		impossible()
 	}
 	if err != nil {
 		return nil, errW(err, "load manifest error",

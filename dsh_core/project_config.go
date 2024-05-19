@@ -7,22 +7,38 @@ import (
 	"reflect"
 )
 
+// region config
+
 type projectConfig struct {
-	sourceContainer *projectConfigSourceContainer
-	importContainer *projectImportContainer
+	SourceContainer *projectConfigSourceContainer
+	ImportContainer *projectImportContainer
 }
+
+func loadProjectConfig(context *appContext, manifest *projectManifest) (config *projectConfig, err error) {
+	sc, err := loadProjectConfigSourceContainer(context, manifest)
+	if err != nil {
+		return nil, err
+	}
+	ic, err := makeProjectImportContainer(context, manifest, projectImportScopeConfig)
+	if err != nil {
+		return nil, err
+	}
+	config = &projectConfig{
+		SourceContainer: sc,
+		ImportContainer: ic,
+	}
+	return config, nil
+}
+
+// endregion
+
+// region source
 
 type projectConfigSource struct {
-	sourcePath string
-	sourceName string
-	sourceType projectConfigSourceType
+	SourcePath string
+	SourceName string
+	SourceType projectConfigSourceType
 	content    *projectConfigSourceContent
-}
-
-type projectConfigSourceContainer struct {
-	context       *appContext
-	sources       []*projectConfigSource
-	sourcesByName map[string]*projectConfigSource
 }
 
 type projectConfigSourceContent struct {
@@ -44,149 +60,6 @@ const (
 	projectConfigMergeTypeReplace = "replace"
 	projectConfigMergeTypeInsert  = "insert"
 )
-
-func loadProjectConfig(context *appContext, manifest *projectManifest) (config *projectConfig, err error) {
-	sc, err := loadProjectConfigSourceContainer(context, manifest)
-	if err != nil {
-		return nil, err
-	}
-	ic, err := loadProjectImportContainer(context, manifest, projectImportScopeConfig)
-	if err != nil {
-		return nil, err
-	}
-	config = &projectConfig{
-		sourceContainer: sc,
-		importContainer: ic,
-	}
-	return config, nil
-}
-
-func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest) (container *projectConfigSourceContainer, err error) {
-	container = &projectConfigSourceContainer{
-		context:       context,
-		sourcesByName: make(map[string]*projectConfigSource),
-	}
-	for i := 0; i < len(manifest.Config.Sources); i++ {
-		src := manifest.Config.Sources[i]
-		if src.Dir != "" {
-			if src.Match != "" {
-				matched, err := context.option.evalProjectMatchExpr(manifest, src.match)
-				if err != nil {
-					return nil, err
-				}
-				if !matched {
-					continue
-				}
-			}
-			if err = container.scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return container, nil
-}
-
-func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
-	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
-		dsh_utils.FileTypeYaml,
-		dsh_utils.FileTypeToml,
-		dsh_utils.FileTypeJson,
-	})
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(filePaths); i++ {
-		filePath := filePaths[i]
-		fileType := fileTypes[i]
-		var sourceType projectConfigSourceType
-		switch fileType {
-		case dsh_utils.FileTypeYaml:
-			sourceType = projectConfigSourceTypeYaml
-		case dsh_utils.FileTypeToml:
-			sourceType = projectConfigSourceTypeToml
-		case dsh_utils.FileTypeJson:
-			sourceType = projectConfigSourceTypeJson
-		default:
-			// impossible
-			panic(desc("config source type unsupported",
-				kv("filePath", filePath),
-				kv("fileType", fileType),
-			))
-		}
-		source := &projectConfigSource{
-			sourcePath: filepath.Join(sourceDir, filePath),
-			sourceName: dsh_utils.RemoveFileExt(filePath),
-			sourceType: sourceType,
-		}
-		if existSource, exist := c.sourcesByName[source.sourcePath]; exist {
-			if existSource.sourcePath == source.sourcePath {
-				continue
-			}
-			return errN("scan config sources error",
-				reason("source name duplicated"),
-				kv("sourceName", source.sourceName),
-				kv("sourcePath1", source.sourcePath),
-				kv("sourcePath2", existSource.sourcePath),
-			)
-		}
-		c.sources = append(c.sources, source)
-		c.sourcesByName[source.sourceName] = source
-	}
-	return nil
-}
-
-func (c *projectConfigSourceContainer) loadSources() (err error) {
-	for i := 0; i < len(c.sources); i++ {
-		source := c.sources[i]
-		if source.content == nil {
-			content := &projectConfigSourceContent{}
-			switch source.sourceType {
-			case projectConfigSourceTypeYaml:
-				if err = dsh_utils.ReadYamlFile(source.sourcePath, content); err != nil {
-					return errW(err, "load config sources error",
-						reason("read yaml file error"),
-						kv("sourcePath", source.sourcePath),
-					)
-				}
-			case projectConfigSourceTypeToml:
-				if err = dsh_utils.ReadTomlFile(source.sourcePath, content); err != nil {
-					return errW(err, "load config sources error",
-						reason("read toml file error"),
-						kv("sourcePath", source.sourcePath),
-					)
-				}
-			case projectConfigSourceTypeJson:
-				if err = dsh_utils.ReadJsonFile(source.sourcePath, content); err != nil {
-					return errW(err, "load config sources error",
-						reason("read json file error"),
-						kv("sourcePath", source.sourcePath),
-					)
-				}
-			default:
-				// impossible
-				panic(desc("config source type unsupported",
-					kv("sourcePath", source.sourcePath),
-					kv("sourceType", source.sourceType),
-				))
-			}
-			for k, v := range content.Merges {
-				switch v {
-				case projectConfigMergeTypeReplace:
-				case projectConfigMergeTypeInsert:
-				default:
-					return errN("load config sources error",
-						reason("merge type invalid"),
-						kv("sourcePath", source.sourcePath),
-						kv("field", fmt.Sprintf("merges[%s]", k)),
-						kv("value", v),
-					)
-				}
-			}
-			source.content = content
-		}
-	}
-	return nil
-}
 
 func (s *projectConfigSource) mergeConfigs(configs map[string]any) error {
 	content := s.content
@@ -227,7 +100,7 @@ func (s *projectConfigSource) merge(target map[string]any, source map[string]any
 					} else {
 						return nil, errN("merge configs error",
 							reason("merge type invalid"),
-							kv("sourcePath", s.sourcePath),
+							kv("sourcePath", s.SourcePath),
 							kv("sourceKey", sourceKey),
 							kv("mergeType", merge),
 							kv("supportType", []string{
@@ -243,7 +116,7 @@ func (s *projectConfigSource) merge(target map[string]any, source map[string]any
 			} else {
 				return nil, errN("merge configs error",
 					reason("source type not match target type"),
-					kv("sourcePath", s.sourcePath),
+					kv("sourcePath", s.SourcePath),
 					kv("sourceKey", sourceKey),
 					kv("sourceType", reflect.TypeOf(sourceMap)),
 					kv("targetType", reflect.TypeOf(targetValue)),
@@ -267,7 +140,7 @@ func (s *projectConfigSource) merge(target map[string]any, source map[string]any
 					} else {
 						return nil, errN("merge configs error",
 							reason("merge type invalid"),
-							kv("sourcePath", s.sourcePath),
+							kv("sourcePath", s.SourcePath),
 							kv("sourceKey", sourceKey),
 							kv("mergeType", mergeKey),
 							kv("supportType", []string{
@@ -282,7 +155,7 @@ func (s *projectConfigSource) merge(target map[string]any, source map[string]any
 			} else {
 				return nil, errN("merge configs error",
 					reason("source type not match target type"),
-					kv("sourcePath", s.sourcePath),
+					kv("sourcePath", s.SourcePath),
 					kv("sourceKey", sourceKey),
 					kv("sourceType", reflect.TypeOf(sourceList)),
 					kv("targetType", reflect.TypeOf(targetValue)),
@@ -295,3 +168,131 @@ func (s *projectConfigSource) merge(target map[string]any, source map[string]any
 	}
 	return target, nil
 }
+
+// endregion
+
+// region container
+
+type projectConfigSourceContainer struct {
+	context       *appContext
+	Sources       []*projectConfigSource
+	sourcesByName map[string]*projectConfigSource
+}
+
+func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest) (container *projectConfigSourceContainer, err error) {
+	container = &projectConfigSourceContainer{
+		context:       context,
+		sourcesByName: make(map[string]*projectConfigSource),
+	}
+	for i := 0; i < len(manifest.Config.Sources); i++ {
+		src := manifest.Config.Sources[i]
+		if src.Match != "" {
+			matched, err := context.Option.evalProjectMatchExpr(manifest, src.match)
+			if err != nil {
+				return nil, err
+			}
+			if !matched {
+				continue
+			}
+		}
+		if err = container.scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
+			return nil, err
+		}
+	}
+	return container, nil
+}
+
+func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
+	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
+		dsh_utils.FileTypeYaml,
+		dsh_utils.FileTypeToml,
+		dsh_utils.FileTypeJson,
+	})
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(filePaths); i++ {
+		filePath := filePaths[i]
+		fileType := fileTypes[i]
+		var sourceType projectConfigSourceType
+		switch fileType {
+		case dsh_utils.FileTypeYaml:
+			sourceType = projectConfigSourceTypeYaml
+		case dsh_utils.FileTypeToml:
+			sourceType = projectConfigSourceTypeToml
+		case dsh_utils.FileTypeJson:
+			sourceType = projectConfigSourceTypeJson
+		default:
+			impossible()
+		}
+		source := &projectConfigSource{
+			SourcePath: filepath.Join(sourceDir, filePath),
+			SourceName: dsh_utils.RemoveFileExt(filePath),
+			SourceType: sourceType,
+		}
+		if existSource, exist := c.sourcesByName[source.SourcePath]; exist {
+			if existSource.SourcePath == source.SourcePath {
+				continue
+			}
+			return errN("scan config sources error",
+				reason("source name duplicated"),
+				kv("source1", existSource),
+				kv("source2", source),
+			)
+		}
+		c.Sources = append(c.Sources, source)
+		c.sourcesByName[source.SourceName] = source
+	}
+	return nil
+}
+
+func (c *projectConfigSourceContainer) loadSources() (err error) {
+	for i := 0; i < len(c.Sources); i++ {
+		source := c.Sources[i]
+		if source.content == nil {
+			content := &projectConfigSourceContent{}
+			switch source.SourceType {
+			case projectConfigSourceTypeYaml:
+				if err = dsh_utils.ReadYamlFile(source.SourcePath, content); err != nil {
+					return errW(err, "load config sources error",
+						reason("read yaml file error"),
+						kv("sourcePath", source.SourcePath),
+					)
+				}
+			case projectConfigSourceTypeToml:
+				if err = dsh_utils.ReadTomlFile(source.SourcePath, content); err != nil {
+					return errW(err, "load config sources error",
+						reason("read toml file error"),
+						kv("sourcePath", source.SourcePath),
+					)
+				}
+			case projectConfigSourceTypeJson:
+				if err = dsh_utils.ReadJsonFile(source.SourcePath, content); err != nil {
+					return errW(err, "load config sources error",
+						reason("read json file error"),
+						kv("sourcePath", source.SourcePath),
+					)
+				}
+			default:
+				impossible()
+			}
+			for k, v := range content.Merges {
+				switch v {
+				case projectConfigMergeTypeReplace:
+				case projectConfigMergeTypeInsert:
+				default:
+					return errN("load config sources error",
+						reason("merge type invalid"),
+						kv("sourcePath", source.SourcePath),
+						kv("field", fmt.Sprintf("merges[%s]", k)),
+						kv("value", v),
+					)
+				}
+			}
+			source.content = content
+		}
+	}
+	return nil
+}
+
+// endregion

@@ -8,23 +8,11 @@ import (
 	"time"
 )
 
+// region script
+
 type projectScript struct {
-	sourceContainer *projectScriptSourceContainer
-	importContainer *projectImportContainer
-}
-
-type projectScriptSource struct {
-	sourcePath string
-	sourceName string
-}
-
-type projectScriptSourceContainer struct {
-	context            *appContext
-	manifest           *projectManifest
-	plainSources       []*projectScriptSource
-	templateSources    []*projectScriptSource
-	templateLibSources []*projectScriptSource
-	sourcesByName      map[string]*projectScriptSource
+	SourceContainer *projectScriptSourceContainer
+	ImportContainer *projectImportContainer
 }
 
 func loadProjectScript(context *appContext, manifest *projectManifest) (script *projectScript, err error) {
@@ -32,15 +20,37 @@ func loadProjectScript(context *appContext, manifest *projectManifest) (script *
 	if err != nil {
 		return nil, err
 	}
-	ic, err := loadProjectImportContainer(context, manifest, projectImportScopeScript)
+	ic, err := makeProjectImportContainer(context, manifest, projectImportScopeScript)
 	if err != nil {
 		return nil, err
 	}
 	script = &projectScript{
-		sourceContainer: sc,
-		importContainer: ic,
+		SourceContainer: sc,
+		ImportContainer: ic,
 	}
 	return script, nil
+}
+
+// endregion
+
+// region source
+
+type projectScriptSource struct {
+	SourcePath string
+	SourceName string
+}
+
+// endregion
+
+// region container
+
+type projectScriptSourceContainer struct {
+	context            *appContext
+	manifest           *projectManifest
+	PlainSources       []*projectScriptSource
+	TemplateSources    []*projectScriptSource
+	TemplateLibSources []*projectScriptSource
+	sourcesByName      map[string]*projectScriptSource
 }
 
 func loadProjectScriptSourceContainer(context *appContext, manifest *projectManifest) (container *projectScriptSourceContainer, err error) {
@@ -51,19 +61,17 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	}
 	for i := 0; i < len(manifest.Script.Sources); i++ {
 		src := manifest.Script.Sources[i]
-		if src.Dir != "" {
-			if src.Match != "" {
-				matched, err := context.option.evalProjectMatchExpr(manifest, src.match)
-				if err != nil {
-					return nil, err
-				}
-				if !matched {
-					continue
-				}
-			}
-			if err = container.scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
+		if src.Match != "" {
+			matched, err := context.Option.evalProjectMatchExpr(manifest, src.match)
+			if err != nil {
 				return nil, err
 			}
+			if !matched {
+				continue
+			}
+		}
+		if err = container.scanSources(filepath.Join(manifest.projectPath, src.Dir), src.Files); err != nil {
+			return nil, err
 		}
 	}
 	return container, nil
@@ -82,70 +90,65 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 		filePath := filePaths[j]
 		fileType := fileTypes[j]
 		source := &projectScriptSource{
-			sourcePath: filepath.Join(sourceDir, filePaths[j]),
-			sourceName: filePath,
+			SourcePath: filepath.Join(sourceDir, filePaths[j]),
+			SourceName: filePath,
 		}
 		if fileType == dsh_utils.FileTypeTemplate {
-			source.sourceName = source.sourceName[:len(source.sourceName)-len(".dtpl")]
+			source.SourceName = source.SourceName[:len(source.SourceName)-len(".dtpl")]
 		}
-		if existSource, exist := c.sourcesByName[source.sourceName]; exist {
-			if existSource.sourcePath == source.sourcePath {
+		if existSource, exist := c.sourcesByName[source.SourceName]; exist {
+			if existSource.SourcePath == source.SourcePath {
 				continue
 			}
 			return errN("scan script sources error",
 				reason("source name duplicated"),
-				kv("sourceName", source.sourceName),
-				kv("sourcePath1", source.sourcePath),
-				kv("sourcePath2", existSource.sourcePath),
+				kv("source1", existSource),
+				kv("source2", source),
 			)
 		}
 		switch fileType {
 		case dsh_utils.FileTypePlain:
-			c.plainSources = append(c.plainSources, source)
+			c.PlainSources = append(c.PlainSources, source)
 		case dsh_utils.FileTypeTemplate:
-			c.templateSources = append(c.templateSources, source)
+			c.TemplateSources = append(c.TemplateSources, source)
 		case dsh_utils.FileTypeTemplateLib:
-			c.templateLibSources = append(c.templateLibSources, source)
+			c.TemplateLibSources = append(c.TemplateLibSources, source)
 		default:
-			// impossible
-			panic(desc("script source type unsupported",
-				kv("filePath", filePath),
-				kv("fileType", fileType),
-			))
+			impossible()
 		}
-		c.sourcesByName[source.sourceName] = source
+		c.sourcesByName[source.SourceName] = source
 	}
 	return nil
 }
 
 func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) (targetNames []string, err error) {
-	for i := 0; i < len(c.plainSources); i++ {
+	for i := 0; i < len(c.PlainSources); i++ {
 		startTime := time.Now()
-		source := c.plainSources[i]
-		target := filepath.Join(c.manifest.Name, source.sourceName)
+		source := c.PlainSources[i]
+		target := filepath.Join(c.manifest.Name, source.SourceName)
 		targetPath := filepath.Join(outputPath, target)
 		c.context.logger.InfoDesc("make script sources start",
 			kv("sourceType", dsh_utils.FileTypePlain),
-			kv("sourcePath", source.sourcePath),
+			kv("sourcePath", source.SourcePath),
 			kv("targetPath", targetPath),
 		)
 		if useHardLink {
-			err = dsh_utils.LinkOrCopyFile(source.sourcePath, targetPath)
+			err = dsh_utils.LinkOrCopyFile(source.SourcePath, targetPath)
 			if err != nil {
 				return nil, errW(err, "make script sources error",
 					reason("link or copy file error"),
 					kv("sourceType", dsh_utils.FileTypePlain),
-					kv("sourcePath", source.sourcePath),
+					kv("sourcePath", source.SourcePath),
 					kv("targetPath", targetPath),
 				)
 			}
 		} else {
-			err = dsh_utils.CopyFile(source.sourcePath, targetPath)
+			err = dsh_utils.CopyFile(source.SourcePath, targetPath)
 			if err != nil {
 				return nil, errW(err, "make script sources error",
 					reason("copy file error"),
 					kv("sourceType", dsh_utils.FileTypePlain),
-					kv("sourcePath", source.sourcePath),
+					kv("sourcePath", source.SourcePath),
 					kv("targetPath", targetPath),
 				)
 			}
@@ -156,24 +159,24 @@ func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs te
 		)
 	}
 	var templateLibSourcePaths []string
-	for i := 0; i < len(c.templateLibSources); i++ {
-		templateLibSourcePaths = append(templateLibSourcePaths, c.templateLibSources[i].sourcePath)
+	for i := 0; i < len(c.TemplateLibSources); i++ {
+		templateLibSourcePaths = append(templateLibSourcePaths, c.TemplateLibSources[i].SourcePath)
 	}
-	for i := 0; i < len(c.templateSources); i++ {
+	for i := 0; i < len(c.TemplateSources); i++ {
 		startTime := time.Now()
-		source := c.templateSources[i]
-		target := filepath.Join(c.manifest.Name, source.sourceName)
+		source := c.TemplateSources[i]
+		target := filepath.Join(c.manifest.Name, source.SourceName)
 		targetPath := filepath.Join(outputPath, target)
 		c.context.logger.InfoDesc("make script sources start",
 			kv("sourceType", dsh_utils.FileTypeTemplate),
-			kv("sourcePath", source.sourcePath),
+			kv("sourcePath", source.SourcePath),
 			kv("targetPath", targetPath),
 		)
-		if err = executeFileTemplate(source.sourcePath, templateLibSourcePaths, targetPath, data, funcs); err != nil {
+		if err = executeFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath, data, funcs); err != nil {
 			return nil, errW(err, "make script sources error",
 				reason("make template error"),
 				kv("sourceType", dsh_utils.FileTypeTemplate),
-				kv("sourcePath", source.sourcePath),
+				kv("sourcePath", source.SourcePath),
 				kv("targetPath", targetPath),
 			)
 		}
@@ -184,3 +187,5 @@ func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs te
 	}
 	return targetNames, nil
 }
+
+// endregion

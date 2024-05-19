@@ -9,7 +9,7 @@ type appImportContainer struct {
 	context       *appContext
 	project       *project
 	scope         projectImportScope
-	imports       []*projectImport
+	Imports       []*projectImport
 	importsLoaded bool
 }
 
@@ -30,36 +30,36 @@ func (c *appImportContainer) loadImports() (err error) {
 	}
 
 	var imports []*projectImport
-	var importsByUnique = make(map[string]*projectImport)
+	var importsByPath = make(map[string]*projectImport)
 
 	pic := c.project.getImportContainer(c.scope)
-	for i := 0; i < len(pic.imports); i++ {
-		imp := pic.imports[i]
+	for i := 0; i < len(pic.Imports); i++ {
+		imp := pic.Imports[i]
 		imports = append(imports, imp)
-		importsByUnique[imp.unique] = imp
+		importsByPath[imp.Path] = imp
 	}
 
-	projectImports := pic.imports
+	projectImports := pic.Imports
 	for i := 0; i < len(projectImports); i++ {
 		imp1 := projectImports[i]
-		if err = imp1.project.loadImports(pic.scope); err != nil {
+		if err = imp1.target.loadImports(pic.scope); err != nil {
 			return err
 		}
-		pic1 := imp1.project.getImportContainer(pic.scope)
-		for j := 0; j < len(pic1.imports); j++ {
-			imp2 := pic1.imports[j]
-			if imp2.projectPath == c.project.manifest.projectPath {
+		pic1 := imp1.target.getImportContainer(pic.scope)
+		for j := 0; j < len(pic1.Imports); j++ {
+			imp2 := pic1.Imports[j]
+			if imp2.Path == c.project.Manifest.projectPath {
 				continue
 			}
-			if _, exist := importsByUnique[imp2.unique]; !exist {
+			if _, exist := importsByPath[imp2.Path]; !exist {
 				imports = append(imports, imp2)
-				importsByUnique[imp2.unique] = imp2
+				importsByPath[imp2.Path] = imp2
 				projectImports = append(projectImports, imp2)
 			}
 		}
 	}
 
-	c.imports = imports
+	c.Imports = imports
 	c.importsLoaded = true
 	return nil
 }
@@ -73,36 +73,36 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 	if err = c.loadImports(); err != nil {
 		return nil, errW(err, "make configs error",
 			reason("load imports error"),
-			kv("projectName", c.project.manifest.Name),
-			kv("projectPath", c.project.manifest.projectPath),
+			kv("projectName", c.project.Manifest.Name),
+			kv("projectPath", c.project.Manifest.projectPath),
 		)
 	}
-	for i := 0; i < len(c.imports); i++ {
-		if err = c.imports[i].project.loadConfigSources(); err != nil {
+	for i := 0; i < len(c.Imports); i++ {
+		if err = c.Imports[i].target.loadConfigSources(); err != nil {
 			return nil, errW(err, "make configs error",
 				reason("load config sources error"),
-				kv("projectName", c.imports[i].project.manifest.Name),
-				kv("projectPath", c.imports[i].project.manifest.projectPath),
+				kv("projectName", c.Imports[i].target.Manifest.Name),
+				kv("projectPath", c.Imports[i].target.Manifest.projectPath),
 			)
 		}
 	}
 	if err = c.project.loadConfigSources(); err != nil {
 		return nil, errW(err, "make configs error",
 			reason("load config sources error"),
-			kv("projectName", c.project.manifest.Name),
-			kv("projectPath", c.project.manifest.projectPath),
+			kv("projectName", c.project.Manifest.Name),
+			kv("projectPath", c.project.Manifest.projectPath),
 		)
 	}
 
 	var sources []*projectConfigSource
-	for i := 0; i < len(c.imports); i++ {
-		for j := 0; j < len(c.imports[i].project.config.sourceContainer.sources); j++ {
-			source := c.imports[i].project.config.sourceContainer.sources[j]
+	for i := 0; i < len(c.Imports); i++ {
+		for j := 0; j < len(c.Imports[i].target.Config.SourceContainer.Sources); j++ {
+			source := c.Imports[i].target.Config.SourceContainer.Sources[j]
 			sources = append(sources, source)
 		}
 	}
-	for i := 0; i < len(c.project.config.sourceContainer.sources); i++ {
-		source := c.project.config.sourceContainer.sources[i]
+	for i := 0; i < len(c.project.Config.SourceContainer.Sources); i++ {
+		source := c.project.Config.SourceContainer.Sources[i]
 		sources = append(sources, source)
 	}
 
@@ -123,7 +123,7 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 		if err = source.mergeConfigs(configs); err != nil {
 			return nil, errW(err, "make configs error",
 				reason("merge configs error"),
-				kv("sourcePath", source.sourcePath),
+				kv("sourcePath", source.SourcePath),
 			)
 		}
 	}
@@ -139,13 +139,13 @@ func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.
 	if err := c.loadImports(); err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("load imports error"),
-			kv("projectName", c.project.manifest.Name),
-			kv("projectPath", c.project.manifest.projectPath),
+			kv("projectName", c.project.Manifest.Name),
+			kv("projectPath", c.project.Manifest.projectPath),
 		)
 	}
 	var targetNames []string
-	for i := 0; i < len(c.imports); i++ {
-		iTargetNames, err := c.imports[i].project.makeScripts(configs, funcs, outputPath, useHardLink)
+	for i := 0; i < len(c.Imports); i++ {
+		iTargetNames, err := c.Imports[i].target.makeScripts(configs, funcs, outputPath, useHardLink)
 		if err != nil {
 			return nil, err
 		}

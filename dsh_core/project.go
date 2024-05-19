@@ -6,14 +6,14 @@ import (
 
 type project struct {
 	context  *appContext
-	manifest *projectManifest
-	script   *projectScript
-	config   *projectConfig
+	Manifest *projectManifest
+	Script   *projectScript
+	Config   *projectConfig
 }
 
 func loadProject(context *appContext, manifest *projectManifest) (p *project, err error) {
 	context.logger.InfoDesc("load project", kv("name", manifest.Name))
-	err = context.option.loadProjectOptions(manifest)
+	err = context.Option.loadProjectOptions(manifest)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("load project options error"),
@@ -39,20 +39,22 @@ func loadProject(context *appContext, manifest *projectManifest) (p *project, er
 	}
 	p = &project{
 		context:  context,
-		manifest: manifest,
-		script:   script,
-		config:   config,
+		Manifest: manifest,
+		Script:   script,
+		Config:   config,
 	}
 	return p, nil
 }
 
 func (p *project) getImportContainer(scope projectImportScope) *projectImportContainer {
 	if scope == projectImportScopeScript {
-		return p.script.importContainer
+		return p.Script.ImportContainer
 	} else if scope == projectImportScopeConfig {
-		return p.config.importContainer
+		return p.Config.ImportContainer
+	} else {
+		impossible()
 	}
-	panic(desc("invalid import scope", kv("scope", scope)))
+	return nil
 }
 
 func (p *project) loadImports(scope projectImportScope) error {
@@ -60,20 +62,20 @@ func (p *project) loadImports(scope projectImportScope) error {
 }
 
 func (p *project) loadConfigSources() error {
-	return p.config.sourceContainer.loadSources()
+	return p.Config.SourceContainer.loadSources()
 }
 
 func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) ([]string, error) {
 	data := map[string]any{
-		"options": p.context.option.getProjectOptions(p.manifest),
+		"options": p.context.Option.getProjectOptions(p.Manifest),
 		"configs": configs,
 	}
-	targetNames, err := p.script.sourceContainer.makeSources(data, funcs, outputPath, useHardLink)
+	targetNames, err := p.Script.SourceContainer.makeSources(data, funcs, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("make sources error"),
-			kv("projectName", p.manifest.Name),
-			kv("projectPath", p.manifest.projectPath),
+			kv("projectName", p.Manifest.Name),
+			kv("projectPath", p.Manifest.projectPath),
 		)
 	}
 	return targetNames, nil
