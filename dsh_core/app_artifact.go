@@ -115,7 +115,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 }
 
 func (a *AppArtifact) getShellPath(shellName string) (shellPath string, err error) {
-	shellPath = a.context.workspace.manifest.Shell.getShellPath(shellName)
+	shellPath = a.context.Profile.getShellPath(shellName)
 	if shellPath != "" {
 		return shellPath, nil
 	}
@@ -152,7 +152,7 @@ func (a *AppArtifact) getTargetName(shellName string, targetGlob string) (target
 		return targetName, nil
 	}
 
-	exts := a.context.workspace.manifest.Shell.getShellExts(shellName)
+	exts := a.context.Profile.getShellExts(shellName)
 	for i := 0; i < len(exts); i++ {
 		targetName = targetGlob + exts[i]
 		if a.targetNamesDict[targetName] {
@@ -168,7 +168,7 @@ func (a *AppArtifact) getTargetName(shellName string, targetGlob string) (target
 }
 
 func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
-	args := a.context.workspace.manifest.Shell.getShellArgs(shellName)
+	args := a.context.Profile.getShellArgs(shellName)
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {

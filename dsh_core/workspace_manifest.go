@@ -24,19 +24,19 @@ func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, e
 		Clean: &workspaceManifestClean{
 			Output: &workspaceManifestCleanOutput{},
 		},
-		Shell:  make(map[string]*workspaceManifestShellItem),
+		Shell:  workspaceManifestShell{},
 		Import: &workspaceManifestImport{},
 	}
-	metadata, err := loadManifest(workspacePath, []string{"workspace"}, manifest, false)
+	metadata, err := loadManifestFromDir(workspacePath, []string{"workspace"}, manifest, false)
 	if err != nil {
 		return nil, errW(err, "load workspace manifest error",
-			reason("load manifest error"),
+			reason("load manifest from dir error"),
 			kv("workspacePath", workspacePath),
 		)
 	}
 	if metadata != nil {
-		manifest.manifestPath = metadata.manifestPath
-		manifest.manifestType = metadata.manifestType
+		manifest.manifestPath = metadata.ManifestPath
+		manifest.manifestType = metadata.ManifestType
 	}
 	manifest.workspacePath = workspacePath
 	if err = manifest.init(); err != nil {
@@ -177,14 +177,14 @@ func (s workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
 	return nil
 }
 
-func (s workspaceManifestShell) getShellPath(shell string) string {
+func (s workspaceManifestShell) getPath(shell string) string {
 	if i, exist := s[shell]; exist {
 		return i.Path
 	}
 	return ""
 }
 
-func (s workspaceManifestShell) getShellExts(shell string) []string {
+func (s workspaceManifestShell) getExts(shell string) []string {
 	if i, exist := s[shell]; exist {
 		if i.Exts != nil {
 			return i.Exts
@@ -198,7 +198,7 @@ func (s workspaceManifestShell) getShellExts(shell string) []string {
 	return workspaceDefaultShellExtsFallback
 }
 
-func (s workspaceManifestShell) getShellArgs(shell string) []string {
+func (s workspaceManifestShell) getArgs(shell string) []string {
 	if i, ok := s[shell]; ok {
 		if i.Args != nil {
 			return i.Args
@@ -224,15 +224,17 @@ type workspaceManifestImport struct {
 }
 
 type workspaceManifestImportRegistry struct {
-	Name  string
-	Local *workspaceManifestImportLocal
-	Git   *workspaceManifestImportGit
+	Name       string
+	Local      *workspaceManifestImportLocal
+	Git        *workspaceManifestImportGit
+	definition *importRegistryDefinition
 }
 
 type workspaceManifestImportRedirect struct {
-	Prefix string
-	Local  *workspaceManifestImportLocal
-	Git    *workspaceManifestImportGit
+	Prefix     string
+	Local      *workspaceManifestImportLocal
+	Git        *workspaceManifestImportGit
+	definition *importRedirectDefinition
 }
 
 type workspaceManifestImportLocal struct {
@@ -245,20 +247,20 @@ type workspaceManifestImportGit struct {
 }
 
 var workspaceDefaultImportRegistries = map[string]*workspaceManifestImportRegistry{
-	"orz-dsh": {
+	"orz-dsh": newWorkspaceManifestImportRegistry(&importRegistryDefinition{
 		Name: "orz-dsh",
-		Git: &workspaceManifestImportGit{
+		Git: &importGitDefinition{
 			Url: "https://github.com/orz-dsh/{{.path}}.git",
 			Ref: "main",
 		},
-	},
-	"orz-ops": {
+	}),
+	"orz-ops": newWorkspaceManifestImportRegistry(&importRegistryDefinition{
 		Name: "orz-ops",
-		Git: &workspaceManifestImportGit{
+		Git: &importGitDefinition{
 			Url: "https://github.com/orz-ops/{{.path}}.git",
 			Ref: "main",
 		},
-	},
+	}),
 }
 
 func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error) {
@@ -288,6 +290,24 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 			if registry.Git.Ref == "" {
 				registry.Git.Ref = "main"
 			}
+		}
+		var localDefinition *importLocalDefinition
+		var gitDefinition *importGitDefinition
+		if registry.Local != nil {
+			localDefinition = &importLocalDefinition{
+				Dir: registry.Local.Dir,
+			}
+		}
+		if registry.Git != nil {
+			gitDefinition = &importGitDefinition{
+				Url: registry.Git.Url,
+				Ref: registry.Git.Ref,
+			}
+		}
+		registry.definition = &importRegistryDefinition{
+			Name:  registry.Name,
+			Local: localDefinition,
+			Git:   gitDefinition,
 		}
 	}
 	imp.registriesByName = registriesByName
@@ -378,6 +398,27 @@ func (imp *workspaceManifestImport) getRedirect(path string) *workspaceManifestI
 		}
 	}
 	return nil
+}
+
+func newWorkspaceManifestImportRegistry(definition *importRegistryDefinition) *workspaceManifestImportRegistry {
+	var local *workspaceManifestImportLocal
+	var git *workspaceManifestImportGit
+	if definition.Local != nil {
+		local = &workspaceManifestImportLocal{
+			Dir: definition.Local.Dir,
+		}
+	} else if definition.Git != nil {
+		git = &workspaceManifestImportGit{
+			Url: definition.Git.Url,
+			Ref: definition.Git.Ref,
+		}
+	}
+	return &workspaceManifestImportRegistry{
+		Name:       definition.Name,
+		Local:      local,
+		Git:        git,
+		definition: definition,
+	}
 }
 
 // endregion

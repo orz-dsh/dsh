@@ -15,24 +15,27 @@ type App struct {
 	configsMade           bool
 }
 
-type AppMakeScriptsOptions struct {
+type AppMakeScriptsSettings struct {
 	OutputPath      string
 	OutputPathClear bool
 	UseHardLink     bool
 }
 
-func loadApp(workspace *Workspace, manifest *projectManifest, options map[string]string) (app *App, err error) {
+func loadApp(workspace *Workspace, manifest *projectManifest, profile *AppProfile) (app *App, err error) {
 	workspace.logger.InfoDesc("load app", kv("name", manifest.Name))
-	option, err := loadAppOption(manifest, options)
+
+	optionValues := profile.getOptionValues()
+	option, err := loadAppOption(manifest, optionValues)
 	if err != nil {
 		return nil, errW(err, "load app error",
 			reason("load app option error"),
 			kv("projectName", manifest.Name),
 			kv("projectPath", manifest.projectPath),
-			kv("options", options),
+			kv("optionValues", optionValues),
 		)
 	}
-	c := newAppContext(workspace, option)
+
+	c := newAppContext(workspace, profile, option)
 	p, err := c.loadProject(manifest)
 	if err != nil {
 		return nil, errW(err, "load app error",
@@ -79,7 +82,7 @@ func (a *App) MakeConfigs() (map[string]any, error) {
 	return a.configs, nil
 }
 
-func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact, err error) {
+func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifact, err error) {
 	configs, err := a.MakeConfigs()
 	if err != nil {
 		return nil, err
@@ -87,7 +90,7 @@ func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact,
 
 	startTime := time.Now()
 	a.context.logger.Info("make scripts start")
-	outputPath := options.OutputPath
+	outputPath := settings.OutputPath
 	if outputPath == "" {
 		outputPath, err = a.context.workspace.makeOutputDir(a.project.Manifest.Name)
 		if err != nil {
@@ -104,7 +107,7 @@ func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact,
 			)
 		}
 		outputPath = absPath
-		if options.OutputPathClear {
+		if settings.OutputPathClear {
 			if err = dsh_utils.ClearDir(outputPath); err != nil {
 				return nil, errW(err, "make scripts error",
 					reason("clear output dir error"),
@@ -115,7 +118,7 @@ func (a *App) MakeScripts(options AppMakeScriptsOptions) (artifact *AppArtifact,
 	}
 	funcs := newTemplateFuncs()
 
-	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath, options.UseHardLink)
+	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath, settings.UseHardLink)
 	if err != nil {
 		return nil, err
 	}

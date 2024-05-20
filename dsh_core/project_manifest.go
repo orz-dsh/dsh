@@ -31,15 +31,15 @@ func loadProjectManifest(projectPath string) (manifest *projectManifest, err err
 		Script:  &projectManifestScript{},
 		Config:  &projectManifestConfig{},
 	}
-	metadata, err := loadManifest(projectPath, []string{"project"}, manifest, true)
+	metadata, err := loadManifestFromDir(projectPath, []string{"project"}, manifest, true)
 	if err != nil {
 		return nil, errW(err, "load project manifest error",
-			reason("load manifest error"),
+			reason("load manifest from dir error"),
 			kv("projectPath", projectPath),
 		)
 	}
-	manifest.manifestPath = metadata.manifestPath
-	manifest.manifestType = metadata.manifestType
+	manifest.manifestPath = metadata.ManifestPath
+	manifest.manifestType = metadata.ManifestType
 	manifest.projectPath = projectPath
 	if err = manifest.init(); err != nil {
 		return nil, err

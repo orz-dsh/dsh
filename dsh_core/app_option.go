@@ -98,21 +98,21 @@ func getGlobalOptionDefaultUsername() (string, error) {
 	return globalOptionDefaultUsername, nil
 }
 
-func loadAppOption(manifest *projectManifest, options map[string]string) (*appOption, error) {
+func loadAppOption(manifest *projectManifest, values map[string]string) (*appOption, error) {
 	_os := ""
-	if _os = options[GlobalOptionNameOs]; _os == "" {
+	if _os = values[GlobalOptionNameOs]; _os == "" {
 		_os = getGlobalOptionDefaultOs()
 	}
 	_arch := ""
-	if _arch = options[GlobalOptionNameArch]; _arch == "" {
+	if _arch = values[GlobalOptionNameArch]; _arch == "" {
 		_arch = getGlobalOptionDefaultArch()
 	}
 	_shell := ""
-	if _shell = options[GlobalOptionNameShell]; _shell == "" {
+	if _shell = values[GlobalOptionNameShell]; _shell == "" {
 		_shell = getGlobalOptionDefaultShell(_os)
 	}
 	_hostname := ""
-	if _hostname = options[GlobalOptionNameHostname]; _hostname == "" {
+	if _hostname = values[GlobalOptionNameHostname]; _hostname == "" {
 		hostname, err := getGlobalOptionDefaultHostname()
 		if err != nil {
 			return nil, err
@@ -120,7 +120,7 @@ func loadAppOption(manifest *projectManifest, options map[string]string) (*appOp
 		_hostname = hostname
 	}
 	_username := ""
-	if _username = options[GlobalOptionNameUsername]; _username == "" {
+	if _username = values[GlobalOptionNameUsername]; _username == "" {
 		username, err := getGlobalOptionDefaultUsername()
 		if err != nil {
 			return nil, err
@@ -128,7 +128,7 @@ func loadAppOption(manifest *projectManifest, options map[string]string) (*appOp
 		_username = username
 	}
 	specifyOptions := make(map[string]string)
-	for k, v := range options {
+	for k, v := range values {
 		if strings.HasPrefix(k, "_") {
 			// global option
 			continue

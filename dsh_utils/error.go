@@ -49,15 +49,15 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-func NewError(skip int, title string, kvs ...DescKeyValue) *Error {
+func NewError(skipStacks int, title string, kvs ...DescKeyValue) *Error {
 	tracer := errors.New("").(stackTracer)
 	return &Error{
 		Details: DescList{NewDesc(title, kvs)},
-		Stacks:  tracer.StackTrace()[skip+1:],
+		Stacks:  tracer.StackTrace()[skipStacks+1:],
 	}
 }
 
-func WrapError(skip int, err error, title string, kvs ...DescKeyValue) *Error {
+func WrapError(skipStacks int, err error, title string, kvs ...DescKeyValue) *Error {
 	var err_ *Error
 	if errors.As(err, &err_) {
 		return &Error{
@@ -76,7 +76,7 @@ func WrapError(skip int, err error, title string, kvs ...DescKeyValue) *Error {
 	tracer := errors.WithStack(err).(stackTracer)
 	return &Error{
 		Details: DescList{NewDesc(title, kvs)},
-		Stacks:  tracer.StackTrace()[skip+1:],
+		Stacks:  tracer.StackTrace()[skipStacks+1:],
 		cause:   err,
 	}
 }

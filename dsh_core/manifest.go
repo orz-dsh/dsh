@@ -3,8 +3,8 @@ package dsh_core
 import "dsh/dsh_utils"
 
 type manifestMetadata struct {
-	manifestPath string
-	manifestType manifestMetadataType
+	ManifestPath string
+	ManifestType manifestMetadataType
 }
 
 type manifestMetadataType string
@@ -15,7 +15,13 @@ const (
 	manifestMetadataTypeJson manifestMetadataType = "json"
 )
 
-func loadManifest(dir string, fileNames []string, manifestEntity any, required bool) (metadata *manifestMetadata, err error) {
+var manifestFileTypes = []dsh_utils.FileType{
+	dsh_utils.FileTypeYaml,
+	dsh_utils.FileTypeToml,
+	dsh_utils.FileTypeJson,
+}
+
+func loadManifestFromDir(dir string, fileNames []string, manifestEntity any, required bool) (metadata *manifestMetadata, err error) {
 	var findFileNames []string
 	for i := 0; i < len(fileNames); i++ {
 		fileName := fileNames[i]
@@ -25,11 +31,7 @@ func loadManifest(dir string, fileNames []string, manifestEntity any, required b
 		findFileNames = append(findFileNames, fileName+".json")
 	}
 
-	manifestPath, manifestFileType := dsh_utils.FindFile(dir, findFileNames, []dsh_utils.FileType{
-		dsh_utils.FileTypeYaml,
-		dsh_utils.FileTypeToml,
-		dsh_utils.FileTypeJson,
-	})
+	manifestPath, manifestFileType := dsh_utils.FindFile(dir, findFileNames, manifestFileTypes)
 	if manifestPath == "" {
 		if required {
 			return nil, errN("load manifest error",
@@ -42,6 +44,19 @@ func loadManifest(dir string, fileNames []string, manifestEntity any, required b
 		}
 	}
 
+	return loadManifestFromFile(manifestPath, manifestFileType, manifestEntity)
+}
+
+func loadManifestFromFile(manifestPath string, manifestFileType dsh_utils.FileType, manifestEntity any) (metadata *manifestMetadata, err error) {
+	if manifestFileType == "" {
+		manifestFileType = dsh_utils.GetFileType(manifestPath, manifestFileTypes)
+		if manifestFileType == "" {
+			return nil, errN("load manifest error",
+				reason("file type not supported"),
+				kv("manifestPath", manifestPath),
+			)
+		}
+	}
 	var manifestType manifestMetadataType
 	switch manifestFileType {
 	case dsh_utils.FileTypeYaml:
@@ -65,8 +80,8 @@ func loadManifest(dir string, fileNames []string, manifestEntity any, required b
 	}
 
 	metadata = &manifestMetadata{
-		manifestPath: manifestPath,
-		manifestType: manifestType,
+		ManifestPath: manifestPath,
+		ManifestType: manifestType,
 	}
 	return metadata, nil
 }

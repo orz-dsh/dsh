@@ -7,14 +7,16 @@ import (
 type appContext struct {
 	workspace      *Workspace
 	logger         *dsh_utils.Logger
+	Profile        *AppProfile
 	Option         *appOption
 	projectsByName map[string]*project
 }
 
-func newAppContext(workspace *Workspace, option *appOption) *appContext {
+func newAppContext(workspace *Workspace, profile *AppProfile, option *appOption) *appContext {
 	return &appContext{
 		workspace:      workspace,
 		logger:         workspace.logger,
+		Profile:        profile,
 		Option:         option,
 		projectsByName: make(map[string]*project),
 	}

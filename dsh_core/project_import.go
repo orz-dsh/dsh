@@ -194,17 +194,17 @@ func (c *projectImportContainer) addImport(manifestImport *projectManifestImport
 }
 
 func (c *projectImportContainer) makeRegistryImport(importRegistry *projectManifestImportRegistry) (*projectImport, error) {
+	registryDefinition := c.context.Profile.getImportRegistry(importRegistry.Name)
 	// TODO: error info
-	registry := c.context.workspace.manifest.Import.getRegistry(importRegistry.Name)
-	if registry == nil {
+	if registryDefinition == nil {
 		return nil, errN("make registry import error",
 			reason("registry not found"),
 			kv("scope", c.scope),
 			kv("import", importRegistry),
 		)
 	}
-	if registry.Local != nil {
-		localRawDir, err := executeStringTemplate(registry.Local.Dir, map[string]any{
+	if registryDefinition.Local != nil {
+		localRawDir, err := executeStringTemplate(registryDefinition.Local.Dir, map[string]any{
 			"path": importRegistry.Path,
 			"ref":  importRegistry.Ref,
 		}, nil)
@@ -223,8 +223,8 @@ func (c *projectImportContainer) makeRegistryImport(importRegistry *projectManif
 			Path: importRegistry.Path,
 			Ref:  importRegistry.Ref,
 		}, localRawDir)
-	} else if registry.Git != nil {
-		gitRawUrl, err := executeStringTemplate(registry.Git.Url, map[string]any{
+	} else if registryDefinition.Git != nil {
+		gitRawUrl, err := executeStringTemplate(registryDefinition.Git.Url, map[string]any{
 			"path": importRegistry.Path,
 			"ref":  importRegistry.Ref,
 		}, nil)
@@ -233,11 +233,11 @@ func (c *projectImportContainer) makeRegistryImport(importRegistry *projectManif
 				reason("execute git url template error"),
 				kv("scope", c.scope),
 				kv("import", importRegistry),
-				kv("registry", registry),
+				kv("registry", registryDefinition),
 			)
 		}
 		gitRawUrl = strings.TrimSpace(gitRawUrl)
-		gitRawRef := t(importRegistry.Ref != "", importRegistry.Ref, registry.Git.Ref)
+		gitRawRef := t(importRegistry.Ref != "", importRegistry.Ref, registryDefinition.Git.Ref)
 		return c.makeGitImport(nil, &projectImportRegistry{
 			Name: importRegistry.Name,
 			Path: importRegistry.Path,
