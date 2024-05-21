@@ -62,7 +62,7 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	for i := 0; i < len(manifest.Script.Sources); i++ {
 		src := manifest.Script.Sources[i]
 		if src.Match != "" {
-			matched, err := context.Option.evalProjectMatchExpr(manifest, src.match)
+			matched, err := context.Option.evalMatch(manifest, src.match)
 			if err != nil {
 				return nil, err
 			}
@@ -172,7 +172,7 @@ func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs te
 			kv("sourcePath", source.SourcePath),
 			kv("targetPath", targetPath),
 		)
-		if err = executeFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath, data, funcs); err != nil {
+		if err = dsh_utils.EvalFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath, data, funcs); err != nil {
 			return nil, errW(err, "make script sources error",
 				reason("make template error"),
 				kv("sourceType", dsh_utils.FileTypeTemplate),

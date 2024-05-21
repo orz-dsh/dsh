@@ -66,10 +66,10 @@ func (p *project) loadConfigSources() error {
 }
 
 func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) ([]string, error) {
-	data := map[string]any{
+	data := p.context.Profile.evalData.mergeMap(map[string]any{
 		"options": p.context.Option.getProjectOptions(p.Manifest),
 		"configs": configs,
-	}
+	})
 	targetNames, err := p.Script.SourceContainer.makeSources(data, funcs, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",

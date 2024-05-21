@@ -13,7 +13,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	profile, err := workspace.LoadAppProfile(nil)
+	profile, err := workspace.PrepareLocalApp("./.test1/app1", nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -24,7 +24,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := workspace.OpenLocalApp("./.test1/app1", profile)
+	app, err := profile.MakeApp()
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -50,7 +50,7 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	profile, err := workspace.LoadAppProfile(nil)
+	profile, err := workspace.PrepareGitApp("https://github.com/orz-dsh/not-exist-project.git", "main", nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -60,7 +60,7 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = workspace.OpenGitApp("https://github.com/orz-dsh/not-exist-project.git", "main", profile)
+	_, err = profile.MakeApp()
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -72,7 +72,7 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	profile, err := workspace.LoadAppProfile(nil)
+	profile, err := workspace.PrepareLocalApp("./.test2/app1", nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -84,7 +84,7 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := workspace.OpenLocalApp("./.test2/app1", profile)
+	app, err := profile.MakeApp()
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

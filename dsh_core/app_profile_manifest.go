@@ -180,24 +180,22 @@ func (s AppProfileManifestShell) getArgs(shell string) []string {
 // region import
 
 type AppProfileManifestImport struct {
-	Registries       []*AppProfileManifestImportRegistry
-	Redirects        []*AppProfileManifestImportRedirect
-	registriesByName map[string]*AppProfileManifestImportRegistry
-	redirectsSorted  []*AppProfileManifestImportRedirect
+	Registries          []*AppProfileManifestImportRegistry
+	Redirects           []*AppProfileManifestImportRedirect
+	registryDefinitions map[string]*importRegistryDefinition
+	redirectDefinitions []*importRedirectDefinition
 }
 
 type AppProfileManifestImportRegistry struct {
-	Name       string
-	Local      *AppProfileManifestImportLocal
-	Git        *AppProfileManifestImportGit
-	definition *importRegistryDefinition
+	Name  string
+	Local *AppProfileManifestImportLocal
+	Git   *AppProfileManifestImportGit
 }
 
 type AppProfileManifestImportRedirect struct {
-	Prefix     string
-	Local      *AppProfileManifestImportLocal
-	Git        *AppProfileManifestImportGit
-	definition *importRedirectDefinition
+	Prefix string
+	Local  *AppProfileManifestImportLocal
+	Git    *AppProfileManifestImportGit
 }
 
 type AppProfileManifestImportLocal struct {
@@ -210,7 +208,7 @@ type AppProfileManifestImportGit struct {
 }
 
 func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err error) {
-	registriesByName := make(map[string]*AppProfileManifestImportRegistry)
+	registryDefinitions := make(map[string]*importRegistryDefinition)
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
@@ -220,7 +218,7 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
 			)
 		}
-		if _, exist := registriesByName[registry.Name]; exist {
+		if _, exist := registryDefinitions[registry.Name]; exist {
 			return errN("app profile manifest invalid",
 				reason("value duplicate"),
 				kv("path", manifest.manifestPath),
@@ -228,7 +226,6 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 				kv("value", registry.Name),
 			)
 		}
-		registriesByName[registry.Name] = registry
 		if err = imp.checkImportMode(manifest, registry.Local, registry.Git, "registries", i); err != nil {
 			return err
 		}
@@ -237,28 +234,18 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 				registry.Git.Ref = "main"
 			}
 		}
-		var localDefinition *importLocalDefinition
-		var gitDefinition *importGitDefinition
 		if registry.Local != nil {
-			localDefinition = &importLocalDefinition{
-				Dir: registry.Local.Dir,
-			}
-		}
-		if registry.Git != nil {
-			gitDefinition = &importGitDefinition{
-				Url: registry.Git.Url,
-				Ref: registry.Git.Ref,
-			}
-		}
-		registry.definition = &importRegistryDefinition{
-			Name:  registry.Name,
-			Local: localDefinition,
-			Git:   gitDefinition,
+			registryDefinitions[registry.Name] = newImportRegistryLocalDefinition(registry.Name, registry.Local.Dir)
+		} else if registry.Git != nil {
+			registryDefinitions[registry.Name] = newImportRegistryGitDefinition(registry.Name, registry.Git.Url, registry.Git.Ref)
+		} else {
+			impossible()
 		}
 	}
-	imp.registriesByName = registriesByName
+	imp.registryDefinitions = registryDefinitions
 
-	redirectPrefixesDict := make(map[string]bool)
+	redirectPrefixes := make(map[string]bool)
+	var redirectDefinitions []*importRedirectDefinition
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Prefix == "" {
@@ -268,7 +255,7 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
 			)
 		}
-		if _, exist := redirectPrefixesDict[redirect.Prefix]; exist {
+		if _, exist := redirectPrefixes[redirect.Prefix]; exist {
 			return errN("app profile manifest invalid",
 				reason("value duplicate"),
 				kv("path", manifest.manifestPath),
@@ -276,17 +263,23 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 				kv("value", redirect.Prefix),
 			)
 		}
-		redirectPrefixesDict[redirect.Prefix] = true
+		redirectPrefixes[redirect.Prefix] = true
 		if err = imp.checkImportMode(manifest, redirect.Local, redirect.Git, "redirects", i); err != nil {
 			return err
 		}
+		if redirect.Local != nil {
+			redirectDefinitions = append(redirectDefinitions, newImportRedirectLocalDefinition(redirect.Prefix, redirect.Local.Dir))
+		} else if redirect.Git != nil {
+			redirectDefinitions = append(redirectDefinitions, newImportRedirectGitDefinition(redirect.Prefix, redirect.Git.Url, redirect.Git.Ref))
+		} else {
+			impossible()
+		}
 	}
-	if len(imp.Redirects) > 0 {
-		imp.redirectsSorted = make([]*AppProfileManifestImportRedirect, len(imp.Redirects))
-		copy(imp.redirectsSorted, imp.Redirects)
-		slices.SortStableFunc(imp.redirectsSorted, func(l, r *AppProfileManifestImportRedirect) int {
+	if len(redirectDefinitions) > 0 {
+		slices.SortStableFunc(redirectDefinitions, func(l, r *importRedirectDefinition) int {
 			return len(r.Prefix) - len(l.Prefix)
 		})
+		imp.redirectDefinitions = redirectDefinitions
 	}
 
 	return nil
@@ -326,21 +319,24 @@ func (imp *AppProfileManifestImport) checkImportMode(manifest *AppProfileManifes
 	return nil
 }
 
-func (imp *AppProfileManifestImport) getRegistry(name string) *AppProfileManifestImportRegistry {
-	if registry, exist := imp.registriesByName[name]; exist {
-		return registry
+func (imp *AppProfileManifestImport) getRegistryDefinition(name string) *importRegistryDefinition {
+	if definition, exist := imp.registryDefinitions[name]; exist {
+		return definition
 	}
 	return nil
 }
 
-func (imp *AppProfileManifestImport) getRedirect(path string) *AppProfileManifestImportRedirect {
-	for i := 0; i < len(imp.redirectsSorted); i++ {
-		redirect := imp.redirectsSorted[i]
-		if strings.HasPrefix(path, redirect.Prefix) {
-			return redirect
+func (imp *AppProfileManifestImport) getRedirectDefinition(resources []string) (*importRedirectDefinition, string) {
+	for i := 0; i < len(resources); i++ {
+		resource := resources[i]
+		for j := 0; j < len(imp.redirectDefinitions); j++ {
+			definition := imp.redirectDefinitions[j]
+			if path, found := strings.CutPrefix(resource, definition.Prefix); found {
+				return definition, path
+			}
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 // endregion

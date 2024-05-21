@@ -116,7 +116,7 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 			}
 		}
 	}
-	funcs := newTemplateFuncs()
+	funcs := newProjectScriptTemplateFuncs()
 
 	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath, settings.UseHardLink)
 	if err != nil {

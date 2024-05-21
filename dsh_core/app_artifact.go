@@ -17,6 +17,7 @@ type AppArtifact struct {
 	context         *appContext
 	targetNames     []string
 	targetNamesDict map[string]bool
+	evaluator       *appArtifactEvaluator
 	OutputPath      string
 }
 
@@ -30,6 +31,7 @@ func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtif
 		context:         app.context,
 		targetNames:     targetNames,
 		targetNamesDict: targetNamesDict,
+		evaluator:       newAppArtifactEvaluator(app.context.Profile.evalData),
 		OutputPath:      outputPath,
 	}
 }
@@ -172,28 +174,16 @@ func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetGlo
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {
-		tplData := map[string]any{
-			"shell": map[string]any{
-				"name": shellName,
-				"path": shellPath,
-			},
-			"target": map[string]any{
-				"glob": targetGlob,
-				"name": targetName,
-				"path": targetPath,
-			},
-		}
-		for i := 0; i < len(args); i++ {
-			arg := args[i]
-			shellArg, err := executeStringTemplate(arg, tplData, nil)
-			if err != nil {
-				return nil, errW(err, "get shell args error",
-					reason("execute arg template error"),
-					kv("index", i),
-					kv("arg", arg),
-				)
-			}
-			shellArgs = append(shellArgs, shellArg)
+		shellArgs, err = a.evaluator.evalShellArgs(shellName, shellPath, targetGlob, targetName, targetPath, args)
+		if err != nil {
+			return nil, errW(err, "get shell args error",
+				reason("eval shell args error"),
+				kv("shellName", shellName),
+				kv("shellPath", shellPath),
+				kv("targetGlob", targetGlob),
+				kv("targetName", targetName),
+				kv("targetPath", targetPath),
+			)
 		}
 	}
 	return shellArgs, nil

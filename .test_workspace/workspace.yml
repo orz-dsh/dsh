@@ -1,3 +1,7 @@
+profile:
+  items:
+    - file: "{{.workingPath}}/profile.yml"
+      optional: true
 clean:
   output:
     count: 1

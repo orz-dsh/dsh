@@ -82,70 +82,33 @@ func (w *Workspace) GetPath() string {
 	return w.path
 }
 
-func (w *Workspace) OpenLocalApp(path string, profile *AppProfile) (app *App, err error) {
-	if profile.workspace != w {
-		return nil, errN("open local app error",
-			reason("profile belong to another workspace"),
-			kv("thisWorkspacePath", w.path),
-			kv("profileWorkspacePath", profile.workspace.path),
-		)
-	}
-
-	m, err := w.loadProjectManifest(path)
+func (w *Workspace) PrepareLocalApp(projectPath string, profilePaths []string) (*AppProfile, error) {
+	m, err := w.loadProjectManifest(projectPath)
 	if err != nil {
-		return nil, errW(err, "open local app error",
+		return nil, errW(err, "prepare local app error",
 			reason("load project manifest error"),
-			kv("path", path),
-			kv("profile", profile),
+			kv("projectPath", projectPath),
+			kv("profilePaths", profilePaths),
 		)
 	}
-	app, err = loadApp(w, m, profile)
-	if err != nil {
-		return nil, errW(err, "open local app error",
-			reason("load app error"),
-			kv("path", path),
-			kv("profile", profile),
-		)
-	}
-	return app, nil
+	return loadAppProfile(w, m, profilePaths)
 }
 
-func (w *Workspace) OpenGitApp(url string, ref string, profile *AppProfile) (app *App, err error) {
-	if profile.workspace != w {
-		return nil, errN("open git app error",
-			reason("profile belong to another workspace"),
-			kv("thisWorkspacePath", w.path),
-			kv("profileWorkspacePath", profile.workspace.path),
-		)
-	}
-
-	m, err := w.loadGitProjectManifest("", url, nil, ref, nil)
+func (w *Workspace) PrepareGitApp(projectUrl string, projectRef string, profilePaths []string) (*AppProfile, error) {
+	m, err := w.loadGitProjectManifest("", projectUrl, nil, projectRef, nil)
 	if err != nil {
-		return nil, errW(err, "open git app error",
+		return nil, errW(err, "prepare git app error",
 			reason("load git project manifest error"),
-			kv("url", url),
-			kv("ref", ref),
-			kv("profile", profile),
+			kv("projectUrl", projectUrl),
+			kv("projectRef", projectRef),
+			kv("profilePaths", profilePaths),
 		)
 	}
-	app, err = loadApp(w, m, profile)
-	if err != nil {
-		return nil, errW(err, "open git app error",
-			reason("load app error"),
-			kv("url", url),
-			kv("ref", ref),
-			kv("profile", profile),
-		)
-	}
-	return app, nil
+	return loadAppProfile(w, m, profilePaths)
 }
 
 func (w *Workspace) Clean(settings WorkspaceCleanSettings) error {
 	return w.cleanOutputDir(settings.ExcludeOutputPath)
-}
-
-func (w *Workspace) LoadAppProfile(paths []string) (profile *AppProfile, err error) {
-	return loadAppProfile(w, paths)
 }
 
 func (w *Workspace) loadProjectManifest(path string) (manifest *projectManifest, err error) {

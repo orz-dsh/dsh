@@ -1,19 +1,57 @@
 package dsh_core
 
 import (
+	"dsh/dsh_utils"
 	"maps"
 	"slices"
 )
 
 type AppProfile struct {
-	workspace *Workspace
-	Manifests []*AppProfileManifest
+	workspace       *Workspace
+	projectManifest *projectManifest
+	evalData        *appProfileEvalData
+	Manifests       []*AppProfileManifest
 }
 
-func loadAppProfile(workspace *Workspace, paths []string) (*AppProfile, error) {
+func loadAppProfile(workspace *Workspace, projectManifest *projectManifest, paths []string) (*AppProfile, error) {
+	workingPath, err := dsh_utils.GetWorkingDir()
+	if err != nil {
+		return nil, err
+	}
+	evalData := newAppProfileEvalData(workingPath, workspace.path, projectManifest.projectPath, projectManifest.Name)
+	evaluator := newAppProfileEvaluator(evalData)
+
 	var manifests []*AppProfileManifest
-	for i := 0; i < len(paths); i++ {
-		path := paths[i]
+	var allPaths []string
+	pathsDict := make(map[string]bool)
+
+	for i := len(paths) - 1; i >= 0; i-- {
+		path, err := evaluator.evalPath(paths[i])
+		if err != nil {
+			return nil, err
+		}
+		if path != "" && !pathsDict[path] {
+			allPaths = append(allPaths, path)
+			pathsDict[path] = true
+		}
+	}
+
+	for i := len(workspace.manifest.Profile.Items) - 1; i >= 0; i-- {
+		item := workspace.manifest.Profile.Items[i]
+		path, err := evaluator.evalMatchAndPath(item.match, item.File)
+		if err != nil {
+			return nil, err
+		}
+		if path != "" && !pathsDict[path] {
+			if dsh_utils.IsFileExists(path) || !item.Optional {
+				allPaths = append(allPaths, path)
+				pathsDict[path] = true
+			}
+		}
+	}
+
+	for i := len(allPaths) - 1; i >= 0; i-- {
+		path := allPaths[i]
 		manifest, err := loadAppProfileManifest(path)
 		if err != nil {
 			return nil, err
@@ -22,10 +60,16 @@ func loadAppProfile(workspace *Workspace, paths []string) (*AppProfile, error) {
 	}
 
 	profile := &AppProfile{
-		workspace: workspace,
-		Manifests: manifests,
+		workspace:       workspace,
+		projectManifest: projectManifest,
+		evalData:        evalData,
+		Manifests:       manifests,
 	}
 	return profile, nil
+}
+
+func (p *AppProfile) MakeApp() (*App, error) {
+	return loadApp(p.workspace, p.projectManifest, p)
 }
 
 func (p *AppProfile) AddManifest(position int, manifest *AppProfileManifest) {
@@ -87,17 +131,32 @@ func (p *AppProfile) getShellArgs(shell string) []string {
 	return p.workspace.manifest.Shell.getArgs(shell)
 }
 
-func (p *AppProfile) getImportRegistry(name string) *importRegistryDefinition {
+func (p *AppProfile) getImportRegistryDefinition(name string) *importRegistryDefinition {
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		registry := manifest.Import.getRegistry(name)
-		if registry != nil {
-			return registry.definition
+		definition := manifest.Import.getRegistryDefinition(name)
+		if definition != nil {
+			return definition
 		}
 	}
-	registry := p.workspace.manifest.Import.getRegistry(name)
-	if registry != nil {
-		return registry.definition
+	definition := p.workspace.manifest.Import.getRegistryDefinition(name)
+	if definition != nil {
+		return definition
 	}
 	return nil
+}
+
+func (p *AppProfile) getImportRedirectDefinition(resources []string) (*importRedirectDefinition, string) {
+	for i := len(p.Manifests) - 1; i >= 0; i-- {
+		manifest := p.Manifests[i]
+		definition, path := manifest.Import.getRedirectDefinition(resources)
+		if definition != nil {
+			return definition, path
+		}
+	}
+	definition, path := p.workspace.manifest.Import.getRedirectDefinition(resources)
+	if definition != nil {
+		return definition, path
+	}
+	return nil, ""
 }

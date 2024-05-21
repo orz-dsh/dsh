@@ -187,7 +187,7 @@ func loadProjectConfigSourceContainer(context *appContext, manifest *projectMani
 	for i := 0; i < len(manifest.Config.Sources); i++ {
 		src := manifest.Config.Sources[i]
 		if src.Match != "" {
-			matched, err := context.Option.evalProjectMatchExpr(manifest, src.match)
+			matched, err := context.Option.evalMatch(manifest, src.match)
 			if err != nil {
 				return nil, err
 			}

@@ -1,0 +1,2 @@
+Write-Output "hello {{.projectName}}"
+Write-Output "workspace is {{.workspacePath}}"

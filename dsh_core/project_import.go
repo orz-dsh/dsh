@@ -4,7 +4,6 @@ import (
 	"dsh/dsh_utils"
 	"net/url"
 	"path/filepath"
-	"strings"
 )
 
 // region import
@@ -124,6 +123,7 @@ type projectImportContainer struct {
 	context       *appContext
 	manifest      *projectManifest
 	scope         projectImportScope
+	evaluator     *projectImportEvaluator
 	Imports       []*projectImport
 	importsByPath map[string]*projectImport
 	importsLoaded bool
@@ -142,6 +142,7 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 		context:       context,
 		manifest:      manifest,
 		scope:         scope,
+		evaluator:     newProjectImportEvaluator(context.Profile.evalData),
 		importsByPath: make(map[string]*projectImport),
 	}
 	for i := 0; i < len(imports); i++ {
@@ -154,7 +155,7 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 
 func (c *projectImportContainer) addImport(manifestImport *projectManifestImport) (err error) {
 	if manifestImport.match != nil {
-		matched, err := c.context.Option.evalProjectMatchExpr(c.manifest, manifestImport.match)
+		matched, err := c.context.Option.evalMatch(c.manifest, manifestImport.match)
 		if err != nil {
 			return errW(err, "add import error",
 				reason("eval match error"),
@@ -193,55 +194,47 @@ func (c *projectImportContainer) addImport(manifestImport *projectManifestImport
 	return nil
 }
 
-func (c *projectImportContainer) makeRegistryImport(importRegistry *projectManifestImportRegistry) (*projectImport, error) {
-	registryDefinition := c.context.Profile.getImportRegistry(importRegistry.Name)
+func (c *projectImportContainer) makeRegistryImport(imp *projectManifestImportRegistry) (*projectImport, error) {
+	definition := c.context.Profile.getImportRegistryDefinition(imp.Name)
 	// TODO: error info
-	if registryDefinition == nil {
+	if definition == nil {
 		return nil, errN("make registry import error",
 			reason("registry not found"),
 			kv("scope", c.scope),
-			kv("import", importRegistry),
+			kv("import", imp),
 		)
 	}
-	if registryDefinition.Local != nil {
-		localRawDir, err := executeStringTemplate(registryDefinition.Local.Dir, map[string]any{
-			"path": importRegistry.Path,
-			"ref":  importRegistry.Ref,
-		}, nil)
-		localRawDir = strings.TrimSpace(localRawDir)
+	if definition.Local != nil {
+		localRawDir, err := c.evaluator.evalRegistry(definition.Local.Dir, imp.Path, imp.Ref)
 		if err != nil {
 			return nil, errW(err, "add registry import error",
-				reason("execute local dir template error"),
+				reason("eval local dir template error"),
 				kv("scope", c.scope),
-				kv("name", importRegistry.Name),
-				kv("path", importRegistry.Path),
-				kv("ref", importRegistry.Ref),
+				kv("name", imp.Name),
+				kv("path", imp.Path),
+				kv("ref", imp.Ref),
 			)
 		}
 		return c.makeLocalImport(nil, &projectImportRegistry{
-			Name: importRegistry.Name,
-			Path: importRegistry.Path,
-			Ref:  importRegistry.Ref,
+			Name: imp.Name,
+			Path: imp.Path,
+			Ref:  imp.Ref,
 		}, localRawDir)
-	} else if registryDefinition.Git != nil {
-		gitRawUrl, err := executeStringTemplate(registryDefinition.Git.Url, map[string]any{
-			"path": importRegistry.Path,
-			"ref":  importRegistry.Ref,
-		}, nil)
+	} else if definition.Git != nil {
+		gitRawUrl, err := c.evaluator.evalRegistry(definition.Git.Url, imp.Path, imp.Ref)
 		if err != nil {
 			return nil, errW(err, "new registry import error",
 				reason("execute git url template error"),
 				kv("scope", c.scope),
-				kv("import", importRegistry),
-				kv("registry", registryDefinition),
+				kv("import", imp),
+				kv("registry", definition),
 			)
 		}
-		gitRawUrl = strings.TrimSpace(gitRawUrl)
-		gitRawRef := t(importRegistry.Ref != "", importRegistry.Ref, registryDefinition.Git.Ref)
+		gitRawRef := t(imp.Ref != "", imp.Ref, definition.Git.Ref)
 		return c.makeGitImport(nil, &projectImportRegistry{
-			Name: importRegistry.Name,
-			Path: importRegistry.Path,
-			Ref:  importRegistry.Ref,
+			Name: imp.Name,
+			Path: imp.Path,
+			Ref:  imp.Ref,
 		}, gitRawUrl, nil, gitRawRef, nil)
 	} else {
 		impossible()
@@ -308,67 +301,44 @@ func (c *projectImportContainer) makeGitImport(original *projectImport, registry
 	return imp, nil
 }
 
-func (c *projectImportContainer) redirectImport(originalImport *projectImport) (redirectImport *projectImport, err error) {
-	var redirect *workspaceManifestImportRedirect
-	if originalImport.Local != nil {
-		redirect = c.context.workspace.manifest.Import.getRedirect(originalImport.Local.RawDir)
-	} else if originalImport.Git != nil {
-		redirect = c.context.workspace.manifest.Import.getRedirect(originalImport.Git.RawUrl)
+func (c *projectImportContainer) redirectImport(original *projectImport) (_ *projectImport, err error) {
+	var resources []string
+	if original.Local != nil {
+		resources = []string{original.Local.RawDir, original.Path}
+	} else if original.Git != nil {
+		resources = []string{original.Git.RawUrl, original.Path}
 	} else {
 		impossible()
 	}
-	if redirect != nil {
-		original := make(map[string]any)
-		redirectPath := ""
-		if originalImport.Local != nil {
-			redirectPath = originalImport.Local.RawDir[len(redirect.Prefix):]
-			original["mode"] = "local"
-			original["dir"] = originalImport.Local.RawDir
-		} else if originalImport.Git != nil {
-			redirectPath = originalImport.Git.RawUrl[len(redirect.Prefix):]
-			original["mode"] = "git"
-			original["url"] = originalImport.Git.RawUrl
-			original["ref"] = originalImport.Git.RawRef
-		}
-		if redirect.Local != nil {
-			// TODO: template data
-			localRawDir, err := executeStringTemplate(redirect.Local.Dir, map[string]any{
-				"path":     redirectPath,
-				"original": original,
-			}, nil)
-			localRawDir = strings.TrimSpace(localRawDir)
+	definition, path := c.context.workspace.manifest.Import.getRedirectDefinition(resources)
+	if definition != nil {
+		if definition.Local != nil {
+			localRawDir, err := c.evaluator.evalRedirect(definition.Local.Dir, path, original)
 			if err != nil {
 				return nil, errW(err, "redirect import error",
-					reason("execute local dir template error"),
+					reason("eval local dir template error"),
 					kv("scope", c.scope),
-					kv("redirect.prefix", redirect.Prefix),
-					kv("redirect.local.dir", redirect.Local.Dir),
+					kv("definition", definition),
 				)
 			}
-			return c.makeLocalImport(originalImport, originalImport.Registry, localRawDir)
-		} else if redirect.Git != nil {
-			// TODO: template data
-			gitRawUrl, err := executeStringTemplate(redirect.Git.Url, map[string]any{
-				"path":     redirectPath,
-				"original": original,
-			}, nil)
+			return c.makeLocalImport(original, original.Registry, localRawDir)
+		} else if definition.Git != nil {
+			gitRawUrl, err := c.evaluator.evalRedirect(definition.Git.Url, path, original)
 			if err != nil {
 				return nil, errW(err, "redirect import error",
-					reason("execute git url template error"),
+					reason("eval git url template error"),
 					kv("scope", c.scope),
-					kv("redirect.prefix", redirect.Prefix),
-					kv("redirect.git.url", redirect.Git.Url),
+					kv("definition", definition),
 				)
 			}
-			gitRawUrl = strings.TrimSpace(gitRawUrl)
-			gitRawRef := t(originalImport.Git != nil, originalImport.Git.RawRef, redirect.Git.Ref)
+			gitRawRef := t(original.Git != nil, original.Git.RawRef, definition.Git.Ref)
 			gitRawRef = t(gitRawRef != "", gitRawRef, "main")
-			return c.makeGitImport(originalImport, originalImport.Registry, gitRawUrl, nil, gitRawRef, nil)
+			return c.makeGitImport(original, original.Registry, gitRawUrl, nil, gitRawRef, nil)
 		} else {
 			impossible()
 		}
 	}
-	return originalImport, nil
+	return original, nil
 }
 
 func (c *projectImportContainer) loadImports() (err error) {

@@ -4,8 +4,12 @@ import (
 	"encoding/json"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
+	"text/template"
 )
 
 func CompileExpr(content string) (*vm.Program, error) {
@@ -102,4 +106,76 @@ func EvalExprReturnString(program *vm.Program, env map[string]any) (*string, err
 		return &str, nil
 	}
 	return nil, nil
+}
+
+func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string, data map[string]any, funcs template.FuncMap) error {
+	tpl := template.New(filepath.Base(inputPath)).Option("missingkey=error")
+	if funcs != nil {
+		tpl = tpl.Funcs(funcs)
+	}
+	files := append([]string{inputPath}, libraryPaths...)
+	tpl, err := tpl.ParseFiles(files...)
+	if err != nil {
+		return errW(err, "eval file template error",
+			reason("parse template error"),
+			kv("inputPath", inputPath),
+			kv("libraryPaths", libraryPaths),
+		)
+	}
+
+	if err = os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); err != nil {
+		return errW(err, "eval file template error",
+			reason("make target dir error"),
+			kv("outputPath", outputPath),
+		)
+	}
+
+	targetFile, err := os.Create(outputPath)
+	if err != nil {
+		return errW(err, "eval file template error",
+			reason("create target file error"),
+			kv("outputPath", outputPath),
+		)
+	}
+	defer targetFile.Close()
+
+	err = tpl.Execute(targetFile, data)
+	if err != nil {
+		return errW(err, "eval file template error",
+			reason("execute template error"),
+			kv("inputPath", inputPath),
+			kv("libraryPaths", libraryPaths),
+			kv("outputPath", outputPath),
+			kv("data", data),
+			kv("funcs", funcs),
+		)
+	}
+	return nil
+}
+
+func EvalStringTemplate(str string, data map[string]any, funcs template.FuncMap) (string, error) {
+	tpl := template.New("StringTemplate").Option("missingkey=error")
+	if funcs != nil {
+		tpl = tpl.Funcs(funcs)
+	}
+	tpl, err := tpl.Parse(str)
+	if err != nil {
+		return "", errW(err, "eval string template error",
+			reason("parse template error"),
+			kv("str", str),
+			kv("data", data),
+			kv("funcs", funcs),
+		)
+	}
+	var writer strings.Builder
+	err = tpl.Execute(&writer, data)
+	if err != nil {
+		return "", errW(err, "eval string template error",
+			reason("execute template error"),
+			kv("str", str),
+			kv("data", data),
+			kv("funcs", funcs),
+		)
+	}
+	return strings.TrimSpace(writer.String()), nil
 }
