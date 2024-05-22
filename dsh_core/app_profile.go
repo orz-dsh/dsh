@@ -160,3 +160,31 @@ func (p *AppProfile) getImportRedirectDefinition(resources []string) (*importRed
 	}
 	return nil, ""
 }
+
+func (p *AppProfile) getScriptSourceDefinitions() (definitions []*projectSourceDefinition) {
+	for i := 0; i < len(p.Manifests); i++ {
+		definitions = append(definitions, p.Manifests[i].Script.sourceDefinitions...)
+	}
+	return definitions
+}
+
+func (p *AppProfile) getScriptImportDefinitions() (definitions []*projectImportDefinition) {
+	for i := 0; i < len(p.Manifests); i++ {
+		definitions = append(definitions, p.Manifests[i].Script.importDefinitions...)
+	}
+	return definitions
+}
+
+func (p *AppProfile) getConfigSourceDefinitions() (definitions []*projectSourceDefinition) {
+	for i := 0; i < len(p.Manifests); i++ {
+		definitions = append(definitions, p.Manifests[i].Config.sourceDefinitions...)
+	}
+	return definitions
+}
+
+func (p *AppProfile) getConfigImportDefinitions() (definitions []*projectImportDefinition) {
+	for i := 0; i < len(p.Manifests); i++ {
+		definitions = append(definitions, p.Manifests[i].Config.importDefinitions...)
+	}
+	return definitions
+}

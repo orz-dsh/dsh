@@ -130,11 +130,17 @@ type projectImportContainer struct {
 }
 
 func makeProjectImportContainer(context *appContext, manifest *projectManifest, scope projectImportScope) (container *projectImportContainer, err error) {
-	var imports []*projectManifestImport
+	var definitions []*projectImportDefinition
 	if scope == projectImportScopeScript {
-		imports = manifest.Script.Imports
+		definitions = manifest.Script.importDefinitions
+		if context.isMainProject(manifest) {
+			definitions = append(definitions, context.Profile.getScriptImportDefinitions()...)
+		}
 	} else if scope == projectImportScopeConfig {
-		imports = manifest.Config.Imports
+		definitions = manifest.Config.importDefinitions
+		if context.isMainProject(manifest) {
+			definitions = append(definitions, context.Profile.getConfigImportDefinitions()...)
+		}
 	} else {
 		impossible()
 	}
@@ -145,22 +151,22 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 		evaluator:     newProjectImportEvaluator(context.Profile.evalData),
 		importsByPath: make(map[string]*projectImport),
 	}
-	for i := 0; i < len(imports); i++ {
-		if err = container.addImport(imports[i]); err != nil {
+	for i := 0; i < len(definitions); i++ {
+		if err = container.addImport(definitions[i]); err != nil {
 			return nil, err
 		}
 	}
 	return container, nil
 }
 
-func (c *projectImportContainer) addImport(manifestImport *projectManifestImport) (err error) {
-	if manifestImport.match != nil {
-		matched, err := c.context.Option.evalMatch(c.manifest, manifestImport.match)
+func (c *projectImportContainer) addImport(definition *projectImportDefinition) (err error) {
+	if definition.match != nil {
+		matched, err := c.context.Option.evalMatch(c.manifest, definition.match)
 		if err != nil {
 			return errW(err, "add import error",
 				reason("eval match error"),
 				kv("scope", c.scope),
-				kv("match", manifestImport.Match),
+				kv("match", definition.Match),
 			)
 		}
 		if !matched {
@@ -168,16 +174,16 @@ func (c *projectImportContainer) addImport(manifestImport *projectManifestImport
 		}
 	}
 	var imp *projectImport
-	if manifestImport.Registry != nil {
-		if imp, err = c.makeRegistryImport(manifestImport.Registry); err != nil {
+	if definition.Registry != nil {
+		if imp, err = c.makeRegistryImport(definition.Registry); err != nil {
 			return err
 		}
-	} else if manifestImport.Local != nil {
-		if imp, err = c.makeLocalImport(nil, nil, manifestImport.Local.Dir); err != nil {
+	} else if definition.Local != nil {
+		if imp, err = c.makeLocalImport(nil, nil, definition.Local.Dir); err != nil {
 			return err
 		}
-	} else if manifestImport.Git != nil {
-		if imp, err = c.makeGitImport(nil, nil, manifestImport.Git.Url, manifestImport.Git.url, manifestImport.Git.Ref, manifestImport.Git.ref); err != nil {
+	} else if definition.Git != nil {
+		if imp, err = c.makeGitImport(nil, nil, definition.Git.Url, definition.Git.url, definition.Git.Ref, definition.Git.ref); err != nil {
 			return err
 		}
 	}
@@ -194,47 +200,47 @@ func (c *projectImportContainer) addImport(manifestImport *projectManifestImport
 	return nil
 }
 
-func (c *projectImportContainer) makeRegistryImport(imp *projectManifestImportRegistry) (*projectImport, error) {
-	definition := c.context.Profile.getImportRegistryDefinition(imp.Name)
+func (c *projectImportContainer) makeRegistryImport(projectDefinition *projectImportRegistryDefinition) (*projectImport, error) {
+	workspaceDefinition := c.context.Profile.getImportRegistryDefinition(projectDefinition.Name)
 	// TODO: error info
-	if definition == nil {
+	if workspaceDefinition == nil {
 		return nil, errN("make registry import error",
 			reason("registry not found"),
 			kv("scope", c.scope),
-			kv("import", imp),
+			kv("import", projectDefinition),
 		)
 	}
-	if definition.Local != nil {
-		localRawDir, err := c.evaluator.evalRegistry(definition.Local.Dir, imp.Path, imp.Ref)
+	if workspaceDefinition.Local != nil {
+		localRawDir, err := c.evaluator.evalRegistry(workspaceDefinition.Local.Dir, projectDefinition.Path, projectDefinition.Ref)
 		if err != nil {
 			return nil, errW(err, "add registry import error",
 				reason("eval local dir template error"),
 				kv("scope", c.scope),
-				kv("name", imp.Name),
-				kv("path", imp.Path),
-				kv("ref", imp.Ref),
+				kv("name", projectDefinition.Name),
+				kv("path", projectDefinition.Path),
+				kv("ref", projectDefinition.Ref),
 			)
 		}
 		return c.makeLocalImport(nil, &projectImportRegistry{
-			Name: imp.Name,
-			Path: imp.Path,
-			Ref:  imp.Ref,
+			Name: projectDefinition.Name,
+			Path: projectDefinition.Path,
+			Ref:  projectDefinition.Ref,
 		}, localRawDir)
-	} else if definition.Git != nil {
-		gitRawUrl, err := c.evaluator.evalRegistry(definition.Git.Url, imp.Path, imp.Ref)
+	} else if workspaceDefinition.Git != nil {
+		gitRawUrl, err := c.evaluator.evalRegistry(workspaceDefinition.Git.Url, projectDefinition.Path, projectDefinition.Ref)
 		if err != nil {
 			return nil, errW(err, "new registry import error",
 				reason("execute git url template error"),
 				kv("scope", c.scope),
-				kv("import", imp),
-				kv("registry", definition),
+				kv("import", projectDefinition),
+				kv("registry", workspaceDefinition),
 			)
 		}
-		gitRawRef := t(imp.Ref != "", imp.Ref, definition.Git.Ref)
+		gitRawRef := t(projectDefinition.Ref != "", projectDefinition.Ref, workspaceDefinition.Git.Ref)
 		return c.makeGitImport(nil, &projectImportRegistry{
-			Name: imp.Name,
-			Path: imp.Path,
-			Ref:  imp.Ref,
+			Name: projectDefinition.Name,
+			Path: projectDefinition.Path,
+			Ref:  projectDefinition.Ref,
 		}, gitRawUrl, nil, gitRawRef, nil)
 	} else {
 		impossible()

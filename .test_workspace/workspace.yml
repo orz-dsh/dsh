@@ -2,26 +2,19 @@ profile:
   items:
     - file: "{{.workingPath}}/profile.yml"
       optional: true
+    - file: "{{.workspacePath}}/profile.test.yml"
 clean:
   output:
     count: 1
     expires: 24h
-shell:
-  powershell:
-    args:
-      - -ExecutionPolicy
-      - Bypass
-      - -NoProfile
-      - -File
-      - "{{.target.path}}"
-import:
-  redirects:
-    - prefix: "https://github.com/orz-dsh/"
-      git:
-        url: "https://gitee.com/orz-dsh/{{.path}}"
-    - prefix: "https://github.com/orz-dsh/shell-lib"
-      local:
-        dir: "../shell-lib"
+#import:
+#  redirects:
+#    - prefix: "https://github.com/orz-dsh/"
+#      git:
+#        url: "https://gitee.com/orz-dsh/{{.path}}"
+#    - prefix: "https://github.com/orz-dsh/shell-lib"
+#      local:
+#        dir: "../shell-lib"
 #    - prefix: "/some/local/path"
 #      git:
 #        url: "https://github.com/orz-dsh/some-remote-repo.git"

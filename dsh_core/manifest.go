@@ -49,6 +49,12 @@ func loadManifestFromDir(dir string, fileNames []string, manifestEntity any, req
 
 func loadManifestFromFile(manifestPath string, manifestFileType dsh_utils.FileType, manifestEntity any) (metadata *manifestMetadata, err error) {
 	if manifestFileType == "" {
+		if !dsh_utils.IsFileExists(manifestPath) {
+			return nil, errN("load manifest error",
+				reason("manifest file not found"),
+				kv("manifestPath", manifestPath),
+			)
+		}
 		manifestFileType = dsh_utils.GetFileType(manifestPath, manifestFileTypes)
 		if manifestFileType == "" {
 			return nil, errN("load manifest error",

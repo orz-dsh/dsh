@@ -1,0 +1,13 @@
+shell:
+  powershell:
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -NoProfile
+      - -File
+      - "{{.target.path}}"
+script:
+  imports:
+    - registry:
+        name: orz-dsh
+        path: shell-lib

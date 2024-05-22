@@ -35,8 +35,8 @@ func loadApp(workspace *Workspace, manifest *projectManifest, profile *AppProfil
 		)
 	}
 
-	c := newAppContext(workspace, profile, option)
-	p, err := c.loadProject(manifest)
+	c := newAppContext(workspace, manifest, profile, option)
+	p, err := c.loadMainProject()
 	if err != nil {
 		return nil, errW(err, "load app error",
 			reason("load project error"),

@@ -243,6 +243,9 @@ func (o *appOption) getProjectOptions(manifest *projectManifest) map[string]any 
 }
 
 func (o *appOption) evalMatch(manifest *projectManifest, expr *vm.Program) (bool, error) {
+	if expr == nil {
+		return true, nil
+	}
 	matched, err := dsh_utils.EvalExprReturnBool(expr, o.getProjectOptions(manifest))
 	if err != nil {
 		return false, errW(err, "eval project match expr error",

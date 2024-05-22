@@ -3,6 +3,8 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"fmt"
+	"github.com/expr-lang/expr/vm"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,6 +16,8 @@ type AppProfileManifest struct {
 	Option       *AppProfileManifestOption
 	Shell        AppProfileManifestShell
 	Import       *AppProfileManifestImport
+	Script       *AppProfileManifestProjectScript
+	Config       *AppProfileManifestProjectConfig
 	manifestPath string
 	manifestType manifestMetadataType
 }
@@ -23,6 +27,8 @@ func loadAppProfileManifest(path string) (*AppProfileManifest, error) {
 		Option: &AppProfileManifestOption{},
 		Shell:  AppProfileManifestShell{},
 		Import: &AppProfileManifestImport{},
+		Script: &AppProfileManifestProjectScript{},
+		Config: &AppProfileManifestProjectConfig{},
 	}
 
 	if path != "" {
@@ -64,6 +70,8 @@ func MakeAppProfileManifest(optionValues map[string]string, shell AppProfileMani
 			Registries: importRegistries,
 			Redirects:  importRedirects,
 		},
+		Script: &AppProfileManifestProjectScript{},
+		Config: &AppProfileManifestProjectConfig{},
 	}
 
 	if err := manifest.init(); err != nil {
@@ -87,6 +95,12 @@ func (m *AppProfileManifest) init() (err error) {
 		return err
 	}
 	if err = m.Import.init(m); err != nil {
+		return err
+	}
+	if err = m.Script.init(m); err != nil {
+		return err
+	}
+	if err = m.Config.init(m); err != nil {
 		return err
 	}
 
@@ -337,6 +351,224 @@ func (imp *AppProfileManifestImport) getRedirectDefinition(resources []string) (
 		}
 	}
 	return nil, ""
+}
+
+// endregion
+
+// region project script
+
+type AppProfileManifestProjectScript struct {
+	Sources           []*AppProfileManifestProjectSource
+	Imports           []*AppProfileManifestProjectImport
+	sourceDefinitions []*projectSourceDefinition
+	importDefinitions []*projectImportDefinition
+}
+
+func (s *AppProfileManifestProjectScript) init(manifest *AppProfileManifest) (err error) {
+	var sourceDefinitions []*projectSourceDefinition
+	for i := 0; i < len(s.Sources); i++ {
+		src := s.Sources[i]
+		if err = src.init(manifest, "script", i); err != nil {
+			return err
+		}
+		sourceDefinitions = append(sourceDefinitions, src.definition)
+	}
+
+	var importDefinitions []*projectImportDefinition
+	for i := 0; i < len(s.Imports); i++ {
+		imp := s.Imports[i]
+		if err = imp.init(manifest, "script", i); err != nil {
+			return err
+		}
+		importDefinitions = append(importDefinitions, imp.definition)
+	}
+
+	s.sourceDefinitions = sourceDefinitions
+	s.importDefinitions = importDefinitions
+	return nil
+}
+
+// endregion
+
+// region project config
+
+type AppProfileManifestProjectConfig struct {
+	Sources           []*AppProfileManifestProjectSource
+	Imports           []*AppProfileManifestProjectImport
+	sourceDefinitions []*projectSourceDefinition
+	importDefinitions []*projectImportDefinition
+}
+
+func (c *AppProfileManifestProjectConfig) init(manifest *AppProfileManifest) (err error) {
+	var sourceDefinitions []*projectSourceDefinition
+	for i := 0; i < len(c.Sources); i++ {
+		src := c.Sources[i]
+		if err = src.init(manifest, "config", i); err != nil {
+			return err
+		}
+		sourceDefinitions = append(sourceDefinitions, src.definition)
+	}
+
+	var importDefinitions []*projectImportDefinition
+	for i := 0; i < len(c.Imports); i++ {
+		imp := c.Imports[i]
+		if err = imp.init(manifest, "config", i); err != nil {
+			return err
+		}
+		importDefinitions = append(importDefinitions, imp.definition)
+	}
+
+	c.sourceDefinitions = sourceDefinitions
+	c.importDefinitions = importDefinitions
+	return nil
+}
+
+// endregion
+
+// region project source
+
+type AppProfileManifestProjectSource struct {
+	Dir        string
+	Files      []string
+	Match      string
+	definition *projectSourceDefinition
+}
+
+func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, scope string, index int) (err error) {
+	if s.Dir == "" {
+		return errN("project manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("%s.sources[%d].dir", scope, index)),
+		)
+	}
+	var matchExpr *vm.Program
+	if s.Match != "" {
+		matchExpr, err = dsh_utils.CompileExpr(s.Match)
+		if err != nil {
+			return errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.sources[%d].match", scope, index)),
+				kv("value", s.Match),
+			)
+		}
+	}
+
+	s.definition = newProjectSourceDefinition(s.Dir, s.Files, s.Match, matchExpr)
+	return nil
+}
+
+// endregion
+
+// region project import
+
+type AppProfileManifestProjectImport struct {
+	Registry   *AppProfileManifestProjectImportRegistry
+	Local      *AppProfileManifestProjectImportLocal
+	Git        *AppProfileManifestProjectImportGit
+	Match      string
+	definition *projectImportDefinition
+}
+
+type AppProfileManifestProjectImportRegistry struct {
+	Name string
+	Path string
+	Ref  string
+}
+
+type AppProfileManifestProjectImportLocal struct {
+	Dir string
+}
+
+type AppProfileManifestProjectImportGit struct {
+	Url string
+	Ref string
+}
+
+func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, scope string, index int) (err error) {
+	importModeCount := 0
+	if i.Registry != nil {
+		importModeCount++
+	}
+	if i.Local != nil {
+		importModeCount++
+	}
+	if i.Git != nil {
+		importModeCount++
+	}
+	var registryDefinition *projectImportRegistryDefinition
+	var localDefinition *projectImportLocalDefinition
+	var gitDefinition *projectImportGitDefinition
+	if importModeCount != 1 {
+		return errN("project manifest invalid",
+			reason("[registry, local, git] must have only one"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
+		)
+	} else if i.Registry != nil {
+		if i.Registry.Name == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].registry.name", scope, index)),
+			)
+		}
+		if i.Registry.Path == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].registry.path", scope, index)),
+			)
+		}
+		registryDefinition = newProjectImportRegistryDefinition(i.Registry.Name, i.Registry.Path, i.Registry.Ref)
+	} else if i.Local != nil {
+		if i.Local.Dir == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].local.dir", scope, index)),
+			)
+		}
+		localDefinition = newProjectImportLocalDefinition(i.Local.Dir)
+	} else if i.Git != nil {
+		if i.Git.Url == "" {
+			return errN("project manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
+			)
+		}
+		if i.Git.Ref == "" {
+			i.Git.Ref = "main"
+		}
+		var parsedUrl *url.URL
+		if parsedUrl, err = url.Parse(i.Git.Url); err != nil {
+			return errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
+				kv("value", i.Git.Url),
+			)
+		}
+		parsedRef := parseGitRef(i.Git.Ref)
+		gitDefinition = newProjectImportGitDefinition(i.Git.Url, parsedUrl, i.Git.Ref, parsedRef)
+	}
+	var matchExpr *vm.Program
+	if i.Match != "" {
+		matchExpr, err = dsh_utils.CompileExpr(i.Match)
+		if err != nil {
+			return errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("%s.imports[%d].match", scope, index)),
+				kv("value", i.Match),
+			)
+		}
+	}
+
+	i.definition = newProjectImportDefinition(registryDefinition, localDefinition, gitDefinition, i.Match, matchExpr)
+	return nil
 }
 
 // endregion

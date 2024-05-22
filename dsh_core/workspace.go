@@ -8,8 +8,8 @@ import (
 )
 
 type Workspace struct {
-	path                   string
 	logger                 *dsh_utils.Logger
+	path                   string
 	manifest               *workspaceManifest
 	projectManifestsByPath map[string]*projectManifest
 	projectManifestsByName map[string]*projectManifest
@@ -52,8 +52,8 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 		)
 	}
 	workspace = &Workspace{
-		path:                   path,
 		logger:                 logger,
+		path:                   path,
 		manifest:               manifest,
 		projectManifestsByPath: make(map[string]*projectManifest),
 		projectManifestsByName: make(map[string]*projectManifest),

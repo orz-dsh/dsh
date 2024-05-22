@@ -319,23 +319,33 @@ func (i *projectManifestOptionItem) parseValue(rawValue string) (any, error) {
 // region script
 
 type projectManifestScript struct {
-	Sources []*projectManifestSource
-	Imports []*projectManifestImport
+	Sources           []*projectManifestSource
+	Imports           []*projectManifestImport
+	sourceDefinitions []*projectSourceDefinition
+	importDefinitions []*projectImportDefinition
 }
 
 func (s *projectManifestScript) init(manifest *projectManifest) (err error) {
+	var sourceDefinitions []*projectSourceDefinition
 	for i := 0; i < len(s.Sources); i++ {
 		src := s.Sources[i]
 		if err = src.init(manifest, "script", i); err != nil {
 			return err
 		}
+		sourceDefinitions = append(sourceDefinitions, src.definition)
 	}
+
+	var importDefinitions []*projectImportDefinition
 	for i := 0; i < len(s.Imports); i++ {
 		imp := s.Imports[i]
 		if err = imp.init(manifest, "script", i); err != nil {
 			return err
 		}
+		importDefinitions = append(importDefinitions, imp.definition)
 	}
+
+	s.sourceDefinitions = sourceDefinitions
+	s.importDefinitions = importDefinitions
 	return nil
 }
 
@@ -344,23 +354,33 @@ func (s *projectManifestScript) init(manifest *projectManifest) (err error) {
 // region config
 
 type projectManifestConfig struct {
-	Sources []*projectManifestSource
-	Imports []*projectManifestImport
+	Sources           []*projectManifestSource
+	Imports           []*projectManifestImport
+	sourceDefinitions []*projectSourceDefinition
+	importDefinitions []*projectImportDefinition
 }
 
 func (c *projectManifestConfig) init(manifest *projectManifest) (err error) {
+	var sourceDefinitions []*projectSourceDefinition
 	for i := 0; i < len(c.Sources); i++ {
 		src := c.Sources[i]
 		if err = src.init(manifest, "config", i); err != nil {
 			return err
 		}
+		sourceDefinitions = append(sourceDefinitions, src.definition)
 	}
+
+	var importDefinitions []*projectImportDefinition
 	for i := 0; i < len(c.Imports); i++ {
 		imp := c.Imports[i]
 		if err = imp.init(manifest, "config", i); err != nil {
 			return err
 		}
+		importDefinitions = append(importDefinitions, imp.definition)
 	}
+
+	c.sourceDefinitions = sourceDefinitions
+	c.importDefinitions = importDefinitions
 	return nil
 }
 
@@ -369,10 +389,10 @@ func (c *projectManifestConfig) init(manifest *projectManifest) (err error) {
 // region source
 
 type projectManifestSource struct {
-	Dir   string
-	Files []string
-	Match string
-	match *vm.Program
+	Dir        string
+	Files      []string
+	Match      string
+	definition *projectSourceDefinition
 }
 
 func (s *projectManifestSource) init(manifest *projectManifest, scope string, index int) (err error) {
@@ -383,8 +403,9 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 			kv("field", fmt.Sprintf("%s.sources[%d].dir", scope, index)),
 		)
 	}
+	var matchExpr *vm.Program
 	if s.Match != "" {
-		s.match, err = dsh_utils.CompileExpr(s.Match)
+		matchExpr, err = dsh_utils.CompileExpr(s.Match)
 		if err != nil {
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
@@ -394,6 +415,8 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 			)
 		}
 	}
+
+	s.definition = newProjectSourceDefinition(s.Dir, s.Files, s.Match, matchExpr)
 	return nil
 }
 
@@ -402,11 +425,11 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 // region import
 
 type projectManifestImport struct {
-	Registry *projectManifestImportRegistry
-	Local    *projectManifestImportLocal
-	Git      *projectManifestImportGit
-	Match    string
-	match    *vm.Program
+	Registry   *projectManifestImportRegistry
+	Local      *projectManifestImportLocal
+	Git        *projectManifestImportGit
+	Match      string
+	definition *projectImportDefinition
 }
 
 type projectManifestImportRegistry struct {
@@ -422,8 +445,6 @@ type projectManifestImportLocal struct {
 type projectManifestImportGit struct {
 	Url string
 	Ref string
-	url *url.URL
-	ref *gitRef
 }
 
 func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (err error) {
@@ -437,6 +458,9 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 	if i.Git != nil {
 		importModeCount++
 	}
+	var registryDefinition *projectImportRegistryDefinition
+	var localDefinition *projectImportLocalDefinition
+	var gitDefinition *projectImportGitDefinition
 	if importModeCount != 1 {
 		return errN("project manifest invalid",
 			reason("[registry, local, git] must have only one"),
@@ -458,6 +482,7 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 				kv("field", fmt.Sprintf("%s.imports[%d].registry.path", scope, index)),
 			)
 		}
+		registryDefinition = newProjectImportRegistryDefinition(i.Registry.Name, i.Registry.Path, i.Registry.Ref)
 	} else if i.Local != nil {
 		if i.Local.Dir == "" {
 			return errN("project manifest invalid",
@@ -466,6 +491,7 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 				kv("field", fmt.Sprintf("%s.imports[%d].local.dir", scope, index)),
 			)
 		}
+		localDefinition = newProjectImportLocalDefinition(i.Local.Dir)
 	} else if i.Git != nil {
 		if i.Git.Url == "" {
 			return errN("project manifest invalid",
@@ -477,7 +503,8 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 		if i.Git.Ref == "" {
 			i.Git.Ref = "main"
 		}
-		if i.Git.url, err = url.Parse(i.Git.Url); err != nil {
+		var parsedUrl *url.URL
+		if parsedUrl, err = url.Parse(i.Git.Url); err != nil {
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
@@ -485,10 +512,12 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 				kv("value", i.Git.Url),
 			)
 		}
-		i.Git.ref = parseGitRef(i.Git.Ref)
+		parsedRef := parseGitRef(i.Git.Ref)
+		gitDefinition = newProjectImportGitDefinition(i.Git.Url, parsedUrl, i.Git.Ref, parsedRef)
 	}
+	var matchExpr *vm.Program
 	if i.Match != "" {
-		i.match, err = dsh_utils.CompileExpr(i.Match)
+		matchExpr, err = dsh_utils.CompileExpr(i.Match)
 		if err != nil {
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
@@ -498,6 +527,8 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 			)
 		}
 	}
+
+	i.definition = newProjectImportDefinition(registryDefinition, localDefinition, gitDefinition, i.Match, matchExpr)
 	return nil
 }
 
