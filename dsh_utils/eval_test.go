@@ -341,3 +341,26 @@ func TestEvalExprReturnString(t *testing.T) {
 	}
 	t.Log("return nil:", result)
 }
+
+func TestEvalExprModifyData(t *testing.T) {
+	program, err := CompileExpr("setValue(\"a\", 2)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := map[string]any{
+		"a": 1,
+	}
+	data["setValue"] = func(k string, v any) any {
+		data[k] = v
+		return v
+	}
+	result, err := EvalExprReturnString(program, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(desc(
+		"eval success",
+		kv("result", result),
+		kv("data", data),
+	))
+}
