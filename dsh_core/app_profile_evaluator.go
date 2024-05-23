@@ -48,23 +48,27 @@ func newAppProfileEvaluator(data *appProfileEvalData) *appProfileEvaluator {
 }
 
 func (e *appProfileEvaluator) evalMatch(match *vm.Program) (bool, error) {
+	if match == nil {
+		return true, nil
+	}
 	return dsh_utils.EvalExprReturnBool(match, e.data.newMap())
 }
 
-func (e *appProfileEvaluator) evalPath(path string) (string, error) {
+func (e *appProfileEvaluator) evalString(path string) (string, error) {
 	return dsh_utils.EvalStringTemplate(path, e.data.newMap(), nil)
 }
 
-func (e *appProfileEvaluator) evalMatchAndPath(match *vm.Program, path string) (_ string, err error) {
-	matched := match == nil
-	if match != nil {
-		matched, err = e.evalMatch(match)
-		if err != nil {
-			return "", err
-		}
+func (e *appProfileEvaluator) evalMatchAndString(match *vm.Program, path string) (_ string, err error) {
+	matched, err := e.evalMatch(match)
+	if err != nil {
+		return "", err
 	}
 	if matched {
-		return e.evalPath(path)
+		return e.evalString(path)
 	}
 	return "", nil
+}
+
+func (e *appProfileEvaluator) newMatcher() *Matcher {
+	return dsh_utils.NewEvalMatcher(e.data.newMap())
 }

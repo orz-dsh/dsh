@@ -74,15 +74,15 @@ func (a *AppArtifact) ExecuteInThisProcess(targetGlob string) (err error) {
 
 func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactExecutor, err error) {
 	shellName := a.app.context.Option.getGlobalOptionsShell()
-	shellPath, err := a.getShellPath(shellName)
+	definition, err := a.context.Profile.getWorkspaceShellDefinition(shellName)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
-			reason("get shell path error"),
+			reason("get workspace shell definition error"),
 			kv("shellName", shellName),
 		)
 	}
 
-	targetName, err := a.getTargetName(shellName, targetGlob)
+	targetName, err := a.getTargetName(definition, targetGlob)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get target name error"),
@@ -92,12 +92,11 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	}
 	targetPath := filepath.Join(a.OutputPath, targetName)
 
-	shellArgs, err := a.getShellArgs(shellName, shellPath, targetGlob, targetName, targetPath)
+	shellArgs, err := a.getShellArgs(definition, targetGlob, targetName, targetPath)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get shell args error"),
-			kv("shellName", shellName),
-			kv("shellPath", shellPath),
+			kv("definition", definition),
 			kv("targetGlob", targetGlob),
 			kv("targetName", targetName),
 			kv("targetPath", targetPath),
@@ -106,8 +105,8 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 
 	executor = &appArtifactExecutor{
 		context:    a.context,
-		ShellName:  shellName,
-		ShellPath:  shellPath,
+		ShellName:  definition.Name,
+		ShellPath:  definition.Path,
 		ShellArgs:  shellArgs,
 		TargetGlob: targetGlob,
 		TargetName: targetName,
@@ -116,23 +115,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	return executor, nil
 }
 
-func (a *AppArtifact) getShellPath(shellName string) (shellPath string, err error) {
-	shellPath = a.context.Profile.getShellPath(shellName)
-	if shellPath != "" {
-		return shellPath, nil
-	}
-
-	shellPath, err = exec.LookPath(shellName)
-	if err != nil {
-		return "", errW(err, "get shell path error",
-			reason("look path error"),
-			kv("shellName", shellName),
-		)
-	}
-	return shellPath, nil
-}
-
-func (a *AppArtifact) getTargetName(shellName string, targetGlob string) (targetName string, err error) {
+func (a *AppArtifact) getTargetName(definition *workspaceShellDefinition, targetGlob string) (targetName string, err error) {
 	if targetGlob == "" {
 		return "", errN("get target name error",
 			reason("target glob empty"),
@@ -154,7 +137,7 @@ func (a *AppArtifact) getTargetName(shellName string, targetGlob string) (target
 		return targetName, nil
 	}
 
-	exts := a.context.Profile.getShellExts(shellName)
+	exts := definition.Exts
 	for i := 0; i < len(exts); i++ {
 		targetName = targetGlob + exts[i]
 		if a.targetNamesDict[targetName] {
@@ -164,22 +147,21 @@ func (a *AppArtifact) getTargetName(shellName string, targetGlob string) (target
 
 	return "", errN("get target name error",
 		reason("target name not found"),
-		kv("shellName", shellName),
+		kv("definition", definition),
 		kv("targetGlob", targetGlob),
 	)
 }
 
-func (a *AppArtifact) getShellArgs(shellName string, shellPath string, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
-	args := a.context.Profile.getShellArgs(shellName)
+func (a *AppArtifact) getShellArgs(definition *workspaceShellDefinition, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
+	args := definition.Args
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {
-		shellArgs, err = a.evaluator.evalShellArgs(shellName, shellPath, targetGlob, targetName, targetPath, args)
+		shellArgs, err = a.evaluator.evalShellArgs(definition.Name, definition.Path, targetGlob, targetName, targetPath, args)
 		if err != nil {
 			return nil, errW(err, "get shell args error",
 				reason("eval shell args error"),
-				kv("shellName", shellName),
-				kv("shellPath", shellPath),
+				kv("definition", definition),
 				kv("targetGlob", targetGlob),
 				kv("targetName", targetName),
 				kv("targetPath", targetPath),

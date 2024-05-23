@@ -1,13 +1,21 @@
-shell:
-  powershell:
-    args:
-      - -ExecutionPolicy
-      - Bypass
-      - -NoProfile
-      - -File
-      - "{{.target.path}}"
-script:
-  imports:
-    - registry:
-        name: orz-dsh
-        path: shell-lib
+workspace:
+  shell:
+    items:
+      - name: powershell
+        args:
+          - -ExecutionPolicy
+          - Bypass
+          - -NoProfile
+          - -File
+          - "{{.target.path}}"
+project:
+  option:
+    items:
+      - name: xxxx
+        value: xxxx
+        match: xxxx
+  script:
+    imports:
+      - registry:
+          name: orz-dsh
+          path: shell-lib

@@ -134,12 +134,12 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 	if scope == projectImportScopeScript {
 		definitions = manifest.Script.importDefinitions
 		if context.isMainProject(manifest) {
-			definitions = append(definitions, context.Profile.getScriptImportDefinitions()...)
+			definitions = append(definitions, context.Profile.getProjectScriptImportDefinitions()...)
 		}
 	} else if scope == projectImportScopeConfig {
 		definitions = manifest.Config.importDefinitions
 		if context.isMainProject(manifest) {
-			definitions = append(definitions, context.Profile.getConfigImportDefinitions()...)
+			definitions = append(definitions, context.Profile.getProjectConfigImportDefinitions()...)
 		}
 	} else {
 		impossible()
@@ -201,7 +201,7 @@ func (c *projectImportContainer) addImport(definition *projectImportDefinition) 
 }
 
 func (c *projectImportContainer) makeRegistryImport(projectDefinition *projectImportRegistryDefinition) (*projectImport, error) {
-	workspaceDefinition := c.context.Profile.getImportRegistryDefinition(projectDefinition.Name)
+	workspaceDefinition := c.context.Profile.getWorkspaceImportRegistryDefinition(projectDefinition.Name)
 	// TODO: error info
 	if workspaceDefinition == nil {
 		return nil, errN("make registry import error",
@@ -316,7 +316,7 @@ func (c *projectImportContainer) redirectImport(original *projectImport) (_ *pro
 	} else {
 		impossible()
 	}
-	definition, path := c.context.workspace.manifest.Import.getRedirectDefinition(resources)
+	definition, path := c.context.Profile.getWorkspaceImportRedirectDefinition(resources)
 	if definition != nil {
 		if definition.Local != nil {
 			localRawDir, err := c.evaluator.evalRedirect(definition.Local.Dir, path, original)

@@ -20,13 +20,13 @@ func CompileExpr(content string) (*vm.Program, error) {
 	return program, nil
 }
 
-func EvalExprReturnBool(program *vm.Program, env map[string]any) (bool, error) {
-	result, err := expr.Run(program, env)
+func EvalExprReturnBool(program *vm.Program, data map[string]any) (bool, error) {
+	result, err := expr.Run(program, data)
 	if err != nil {
 		return false, errW(err, "eval expr return bool error",
 			reason("eval expr error"),
 			kv("program", program.Source().Content()),
-			kv("env", env),
+			kv("data", data),
 		)
 	}
 	if result != nil {
@@ -56,13 +56,13 @@ func EvalExprReturnBool(program *vm.Program, env map[string]any) (bool, error) {
 	return false, nil
 }
 
-func EvalExprReturnString(program *vm.Program, env map[string]any) (*string, error) {
-	result, err := expr.Run(program, env)
+func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, error) {
+	result, err := expr.Run(program, data)
 	if err != nil {
 		return nil, errW(err, "eval expr return string error",
 			reason("eval expr error"),
 			kv("program", program.Source().Content()),
-			kv("env", env),
+			kv("data", data),
 		)
 	}
 	if result != nil {
@@ -178,4 +178,21 @@ func EvalStringTemplate(str string, data map[string]any, funcs template.FuncMap)
 		)
 	}
 	return strings.TrimSpace(writer.String()), nil
+}
+
+type EvalMatcher struct {
+	data map[string]any
+}
+
+func (m *EvalMatcher) Match(expr *vm.Program) (bool, error) {
+	if expr == nil {
+		return true, nil
+	}
+	return EvalExprReturnBool(expr, m.data)
+}
+
+func NewEvalMatcher(data map[string]any) *EvalMatcher {
+	return &EvalMatcher{
+		data: data,
+	}
 }

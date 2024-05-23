@@ -61,7 +61,7 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	}
 	definitions := manifest.Script.sourceDefinitions
 	if context.isMainProject(manifest) {
-		definitions = append(definitions, context.Profile.getScriptSourceDefinitions()...)
+		definitions = append(definitions, context.Profile.getProjectScriptSourceDefinitions()...)
 	}
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]

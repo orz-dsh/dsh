@@ -7,28 +7,21 @@ import (
 	"net/url"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 // region manifest
 
 type AppProfileManifest struct {
-	Option       *AppProfileManifestOption
-	Shell        AppProfileManifestShell
-	Import       *AppProfileManifestImport
-	Script       *AppProfileManifestProjectScript
-	Config       *AppProfileManifestProjectConfig
+	Workspace    *AppProfileManifestWorkspace
+	Project      *AppProfileManifestProject
 	manifestPath string
 	manifestType manifestMetadataType
 }
 
 func loadAppProfileManifest(path string) (*AppProfileManifest, error) {
 	manifest := &AppProfileManifest{
-		Option: &AppProfileManifestOption{},
-		Shell:  AppProfileManifestShell{},
-		Import: &AppProfileManifestImport{},
-		Script: &AppProfileManifestProjectScript{},
-		Config: &AppProfileManifestProjectConfig{},
+		Workspace: NewAppProfileManifestWorkspace(nil, nil),
+		Project:   NewAppProfileManifestProject(nil, nil, nil),
 	}
 
 	if path != "" {
@@ -60,18 +53,16 @@ func loadAppProfileManifest(path string) (*AppProfileManifest, error) {
 	return manifest, nil
 }
 
-func MakeAppProfileManifest(optionValues map[string]string, shell AppProfileManifestShell, importRegistries []*AppProfileManifestImportRegistry, importRedirects []*AppProfileManifestImportRedirect) (*AppProfileManifest, error) {
+func MakeAppProfileManifest(workspace *AppProfileManifestWorkspace, project *AppProfileManifestProject) (*AppProfileManifest, error) {
+	if workspace == nil {
+		workspace = NewAppProfileManifestWorkspace(nil, nil)
+	}
+	if project == nil {
+		project = NewAppProfileManifestProject(nil, nil, nil)
+	}
 	manifest := &AppProfileManifest{
-		Option: &AppProfileManifestOption{
-			Values: optionValues,
-		},
-		Shell: shell,
-		Import: &AppProfileManifestImport{
-			Registries: importRegistries,
-			Redirects:  importRedirects,
-		},
-		Script: &AppProfileManifestProjectScript{},
-		Config: &AppProfileManifestProjectConfig{},
+		Workspace: workspace,
+		Project:   project,
 	}
 
 	if err := manifest.init(); err != nil {
@@ -88,19 +79,10 @@ func (m *AppProfileManifest) DescExtraKeyValues() KVS {
 }
 
 func (m *AppProfileManifest) init() (err error) {
-	if err = m.Option.init(m); err != nil {
+	if err = m.Workspace.init(m); err != nil {
 		return err
 	}
-	if err = m.Shell.init(m); err != nil {
-		return err
-	}
-	if err = m.Import.init(m); err != nil {
-		return err
-	}
-	if err = m.Script.init(m); err != nil {
-		return err
-	}
-	if err = m.Config.init(m); err != nil {
+	if err = m.Project.init(m); err != nil {
 		return err
 	}
 
@@ -109,95 +91,118 @@ func (m *AppProfileManifest) init() (err error) {
 
 // endregion
 
-// region option
+// region workspace
 
-type AppProfileManifestOption struct {
-	Values map[string]string
+type AppProfileManifestWorkspace struct {
+	Shell  *AppProfileManifestWorkspaceShell
+	Import *AppProfileManifestWorkspaceImport
 }
 
-func (o *AppProfileManifestOption) init(manifest *AppProfileManifest) error {
+func NewAppProfileManifestWorkspace(shell *AppProfileManifestWorkspaceShell, imp *AppProfileManifestWorkspaceImport) *AppProfileManifestWorkspace {
+	if shell == nil {
+		shell = &AppProfileManifestWorkspaceShell{}
+	}
+	if imp == nil {
+		imp = &AppProfileManifestWorkspaceImport{}
+	}
+	return &AppProfileManifestWorkspace{
+		Shell:  shell,
+		Import: imp,
+	}
+}
+
+func (w *AppProfileManifestWorkspace) init(manifest *AppProfileManifest) (err error) {
+	if err = w.Shell.init(manifest); err != nil {
+		return err
+	}
+	if err = w.Import.init(manifest); err != nil {
+		return err
+	}
 	return nil
 }
 
 // endregion
 
-// region shell
+// region workspace shell
 
-type AppProfileManifestShell map[string]*AppProfileManifestShellItem
-
-type AppProfileManifestShellItem struct {
-	Path string
-	Exts []string
-	Args []string
+type AppProfileManifestWorkspaceShell struct {
+	Items       []*AppProfileManifestWorkspaceShellItem
+	definitions workspaceShellDefinitions
 }
 
-func (s AppProfileManifestShell) init(manifest *AppProfileManifest) (err error) {
-	for k, v := range s {
-		if v.Path != "" && !dsh_utils.IsFileExists(v.Path) {
+type AppProfileManifestWorkspaceShellItem struct {
+	Name  string
+	Path  string
+	Exts  []string
+	Args  []string
+	Match string
+}
+
+func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (err error) {
+	definitions := workspaceShellDefinitions{}
+	for i := 0; i < len(s.Items); i++ {
+		item := s.Items[i]
+		if item.Name == "" {
+			return errN("app profile manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("workspace.shell.items[%d].name", i)),
+			)
+		}
+		if item.Path != "" && !dsh_utils.IsFileExists(item.Path) {
 			return errN("app profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("shell.%s.path", k)),
-				kv("value", v.Path),
+				kv("field", fmt.Sprintf("workspace.shell.items[%d].path", i)),
+				kv("value", item.Path),
 			)
 		}
-		for i := 0; i < len(v.Exts); i++ {
-			if v.Exts[i] == "" {
+		for j := 0; j < len(item.Exts); j++ {
+			if item.Exts[j] == "" {
 				return errN("app profile manifest invalid",
 					reason("value empty"),
 					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("shell.%s.exts[%d]", k, i)),
+					kv("field", fmt.Sprintf("workspace.shell.items[%d].exts[%d]", i, j)),
 				)
 			}
 		}
-		for i := 0; i < len(v.Args); i++ {
-			if v.Args[i] == "" {
+		for j := 0; j < len(item.Args); j++ {
+			if item.Args[j] == "" {
 				return errN("app profile manifest invalid",
 					reason("value empty"),
 					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("shell.%s.args[%d]", k, i)),
+					kv("field", fmt.Sprintf("workspace.shell.items[%d].args[%d]", i, j)),
 				)
 			}
 		}
-	}
-
-	return nil
-}
-
-func (s AppProfileManifestShell) getPath(shell string) string {
-	if i, exist := s[shell]; exist {
-		return i.Path
-	}
-	return ""
-}
-
-func (s AppProfileManifestShell) getExts(shell string) []string {
-	if i, exist := s[shell]; exist {
-		if i.Exts != nil {
-			return i.Exts
+		var matchExpr *vm.Program
+		if item.Match != "" {
+			matchExpr, err = dsh_utils.CompileExpr(item.Match)
+			if err != nil {
+				return errW(err, "app profile manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("workspace.shell.items[%d].match", i)),
+					kv("value", item.Match),
+				)
+			}
 		}
+		definitions[item.Name] = append(definitions[item.Name], newWorkspaceShellDefinition(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
 	}
-	return nil
-}
 
-func (s AppProfileManifestShell) getArgs(shell string) []string {
-	if i, ok := s[shell]; ok {
-		if i.Args != nil {
-			return i.Args
-		}
-	}
+	s.definitions = definitions
 	return nil
 }
 
 // endregion
 
-// region import
+// region workspace import
 
-type AppProfileManifestImport struct {
+type AppProfileManifestWorkspaceImport struct {
 	Registries          []*AppProfileManifestImportRegistry
 	Redirects           []*AppProfileManifestImportRedirect
-	registryDefinitions map[string]*importRegistryDefinition
-	redirectDefinitions []*importRedirectDefinition
+	registryDefinitions workspaceImportRegistryDefinitions
+	redirectDefinitions workspaceImportRedirectDefinitions
 }
 
 type AppProfileManifestImportRegistry struct {
@@ -221,22 +226,22 @@ type AppProfileManifestImportGit struct {
 	Ref string
 }
 
-func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err error) {
-	registryDefinitions := make(map[string]*importRegistryDefinition)
+func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest) (err error) {
+	registryDefinitions := workspaceImportRegistryDefinitions{}
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
 			return errN("app profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
+				kv("field", fmt.Sprintf("workspace.import.registries[%d].name", i)),
 			)
 		}
 		if _, exist := registryDefinitions[registry.Name]; exist {
 			return errN("app profile manifest invalid",
 				reason("value duplicate"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
+				kv("field", fmt.Sprintf("workspace.import.registries[%d].name", i)),
 				kv("value", registry.Name),
 			)
 		}
@@ -248,32 +253,34 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 				registry.Git.Ref = "main"
 			}
 		}
+		var localDefinition *workspaceImportLocalDefinition
+		var gitDefinition *workspaceImportGitDefinition
 		if registry.Local != nil {
-			registryDefinitions[registry.Name] = newImportRegistryLocalDefinition(registry.Name, registry.Local.Dir)
+			localDefinition = newWorkspaceImportLocalDefinition(registry.Local.Dir)
 		} else if registry.Git != nil {
-			registryDefinitions[registry.Name] = newImportRegistryGitDefinition(registry.Name, registry.Git.Url, registry.Git.Ref)
+			gitDefinition = newWorkspaceImportGitDefinition(registry.Git.Url, registry.Git.Ref)
 		} else {
 			impossible()
 		}
+		registryDefinitions[registry.Name] = newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition)
 	}
-	imp.registryDefinitions = registryDefinitions
 
 	redirectPrefixes := make(map[string]bool)
-	var redirectDefinitions []*importRedirectDefinition
+	redirectDefinitions := workspaceImportRedirectDefinitions{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Prefix == "" {
 			return errN("app profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
+				kv("field", fmt.Sprintf("workspace.import.redirects[%d].prefix", i)),
 			)
 		}
 		if _, exist := redirectPrefixes[redirect.Prefix]; exist {
 			return errN("app profile manifest invalid",
 				reason("value duplicate"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
+				kv("field", fmt.Sprintf("workspace.import.redirects[%d].prefix", i)),
 				kv("value", redirect.Prefix),
 			)
 		}
@@ -281,25 +288,29 @@ func (imp *AppProfileManifestImport) init(manifest *AppProfileManifest) (err err
 		if err = imp.checkImportMode(manifest, redirect.Local, redirect.Git, "redirects", i); err != nil {
 			return err
 		}
+		var localDefinition *workspaceImportLocalDefinition
+		var gitDefinition *workspaceImportGitDefinition
 		if redirect.Local != nil {
-			redirectDefinitions = append(redirectDefinitions, newImportRedirectLocalDefinition(redirect.Prefix, redirect.Local.Dir))
+			localDefinition = newWorkspaceImportLocalDefinition(redirect.Local.Dir)
 		} else if redirect.Git != nil {
-			redirectDefinitions = append(redirectDefinitions, newImportRedirectGitDefinition(redirect.Prefix, redirect.Git.Url, redirect.Git.Ref))
+			gitDefinition = newWorkspaceImportGitDefinition(redirect.Git.Url, redirect.Git.Ref)
 		} else {
 			impossible()
 		}
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition))
 	}
 	if len(redirectDefinitions) > 0 {
-		slices.SortStableFunc(redirectDefinitions, func(l, r *importRedirectDefinition) int {
+		slices.SortStableFunc(redirectDefinitions, func(l, r *workspaceImportRedirectDefinition) int {
 			return len(r.Prefix) - len(l.Prefix)
 		})
-		imp.redirectDefinitions = redirectDefinitions
 	}
 
+	imp.registryDefinitions = registryDefinitions
+	imp.redirectDefinitions = redirectDefinitions
 	return nil
 }
 
-func (imp *AppProfileManifestImport) checkImportMode(manifest *AppProfileManifest, local *AppProfileManifestImportLocal, git *AppProfileManifestImportGit, scope string, index int) error {
+func (imp *AppProfileManifestWorkspaceImport) checkImportMode(manifest *AppProfileManifest, local *AppProfileManifestImportLocal, git *AppProfileManifestImportGit, scope string, index int) error {
 	importModeCount := 0
 	if local != nil {
 		importModeCount++
@@ -311,14 +322,14 @@ func (imp *AppProfileManifestImport) checkImportMode(manifest *AppProfileManifes
 		return errN("app profile manifest invalid",
 			reason("[local, git] must have only one"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("import.%s[%d]", scope, index)),
+			kv("field", fmt.Sprintf("workspace.import.%s[%d]", scope, index)),
 		)
 	} else if local != nil {
 		if local.Dir == "" {
 			return errN("app profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.%s[%d].local.dir", scope, index)),
+				kv("field", fmt.Sprintf("workspace.import.%s[%d].local.dir", scope, index)),
 			)
 		}
 	} else {
@@ -326,31 +337,109 @@ func (imp *AppProfileManifestImport) checkImportMode(manifest *AppProfileManifes
 			return errN("app profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.%s[%d].git.url", scope, index)),
+				kv("field", fmt.Sprintf("workspace.import.%s[%d].git.url", scope, index)),
 			)
 		}
 	}
 	return nil
 }
 
-func (imp *AppProfileManifestImport) getRegistryDefinition(name string) *importRegistryDefinition {
-	if definition, exist := imp.registryDefinitions[name]; exist {
-		return definition
+// endregion
+
+// region project
+
+type AppProfileManifestProject struct {
+	Option *AppProfileManifestProjectOption
+	Script *AppProfileManifestProjectScript
+	Config *AppProfileManifestProjectConfig
+}
+
+func NewAppProfileManifestProject(option *AppProfileManifestProjectOption, script *AppProfileManifestProjectScript, config *AppProfileManifestProjectConfig) *AppProfileManifestProject {
+	if option == nil {
+		option = &AppProfileManifestProjectOption{}
+	}
+	if script == nil {
+		script = &AppProfileManifestProjectScript{}
+	}
+	if config == nil {
+		config = &AppProfileManifestProjectConfig{}
+	}
+	return &AppProfileManifestProject{
+		Option: option,
+		Script: script,
+		Config: config,
+	}
+}
+
+func (p *AppProfileManifestProject) init(manifest *AppProfileManifest) (err error) {
+	if err = p.Option.init(manifest); err != nil {
+		return err
+	}
+	if err = p.Script.init(manifest); err != nil {
+		return err
+	}
+	if err = p.Config.init(manifest); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (imp *AppProfileManifestImport) getRedirectDefinition(resources []string) (*importRedirectDefinition, string) {
-	for i := 0; i < len(resources); i++ {
-		resource := resources[i]
-		for j := 0; j < len(imp.redirectDefinitions); j++ {
-			definition := imp.redirectDefinitions[j]
-			if path, found := strings.CutPrefix(resource, definition.Prefix); found {
-				return definition, path
+// endregion
+
+// region project option
+
+type AppProfileManifestProjectOption struct {
+	Items       []*AppProfileManifestProjectOptionItem
+	definitions projectOptionDefinitions
+}
+
+type AppProfileManifestProjectOptionItem struct {
+	Name  string
+	Value string
+	Match string
+}
+
+func NewAppProfileManifestProjectOption(keyValues map[string]string) *AppProfileManifestProjectOption {
+	var items []*AppProfileManifestProjectOptionItem
+	for k, v := range keyValues {
+		items = append(items, &AppProfileManifestProjectOptionItem{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return &AppProfileManifestProjectOption{
+		Items: items,
+	}
+}
+
+func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (err error) {
+	definitions := projectOptionDefinitions{}
+	for i := 0; i < len(o.Items); i++ {
+		item := o.Items[i]
+		if item.Name == "" {
+			return errN("app profile manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("project.option.items[%d].name", i)),
+			)
+		}
+		var matchExpr *vm.Program
+		if item.Match != "" {
+			matchExpr, err = dsh_utils.CompileExpr(item.Match)
+			if err != nil {
+				return errW(err, "app profile manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("project.option.items[%d].match", i)),
+					kv("value", item.Match),
+				)
 			}
 		}
+		definitions = append(definitions, newProjectOptionDefinition(item.Name, item.Value, item.Match, matchExpr))
 	}
-	return nil, ""
+
+	o.definitions = definitions
+	return nil
 }
 
 // endregion
@@ -362,6 +451,13 @@ type AppProfileManifestProjectScript struct {
 	Imports           []*AppProfileManifestProjectImport
 	sourceDefinitions []*projectSourceDefinition
 	importDefinitions []*projectImportDefinition
+}
+
+func NewAppProfileManifestProjectScript(sources []*AppProfileManifestProjectSource, imports []*AppProfileManifestProjectImport) *AppProfileManifestProjectScript {
+	return &AppProfileManifestProjectScript{
+		Sources: sources,
+		Imports: imports,
+	}
 }
 
 func (s *AppProfileManifestProjectScript) init(manifest *AppProfileManifest) (err error) {
@@ -399,6 +495,13 @@ type AppProfileManifestProjectConfig struct {
 	importDefinitions []*projectImportDefinition
 }
 
+func NewAppProfileManifestProjectConfig(sources []*AppProfileManifestProjectSource, imports []*AppProfileManifestProjectImport) *AppProfileManifestProjectConfig {
+	return &AppProfileManifestProjectConfig{
+		Sources: sources,
+		Imports: imports,
+	}
+}
+
 func (c *AppProfileManifestProjectConfig) init(manifest *AppProfileManifest) (err error) {
 	var sourceDefinitions []*projectSourceDefinition
 	for i := 0; i < len(c.Sources); i++ {
@@ -434,12 +537,20 @@ type AppProfileManifestProjectSource struct {
 	definition *projectSourceDefinition
 }
 
+func NewAppProfileManifestProjectSource(dir string, files []string, match string) *AppProfileManifestProjectSource {
+	return &AppProfileManifestProjectSource{
+		Dir:   dir,
+		Files: files,
+		Match: match,
+	}
+}
+
 func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, scope string, index int) (err error) {
 	if s.Dir == "" {
 		return errN("project manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("%s.sources[%d].dir", scope, index)),
+			kv("field", fmt.Sprintf("project.%s.sources[%d].dir", scope, index)),
 		)
 	}
 	var matchExpr *vm.Program
@@ -449,7 +560,7 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.sources[%d].match", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.sources[%d].match", scope, index)),
 				kv("value", s.Match),
 			)
 		}
@@ -486,6 +597,36 @@ type AppProfileManifestProjectImportGit struct {
 	Ref string
 }
 
+func NewAppProfileManifestProjectImport(registry *AppProfileManifestProjectImportRegistry, local *AppProfileManifestProjectImportLocal, git *AppProfileManifestProjectImportGit, match string) *AppProfileManifestProjectImport {
+	return &AppProfileManifestProjectImport{
+		Registry: registry,
+		Local:    local,
+		Git:      git,
+		Match:    match,
+	}
+}
+
+func NewAppProfileManifestProjectImportRegistry(name, path, ref string) *AppProfileManifestProjectImportRegistry {
+	return &AppProfileManifestProjectImportRegistry{
+		Name: name,
+		Path: path,
+		Ref:  ref,
+	}
+}
+
+func NewAppProfileManifestProjectImportLocal(dir string) *AppProfileManifestProjectImportLocal {
+	return &AppProfileManifestProjectImportLocal{
+		Dir: dir,
+	}
+}
+
+func NewAppProfileManifestProjectImportGit(url, ref string) *AppProfileManifestProjectImportGit {
+	return &AppProfileManifestProjectImportGit{
+		Url: url,
+		Ref: ref,
+	}
+}
+
 func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, scope string, index int) (err error) {
 	importModeCount := 0
 	if i.Registry != nil {
@@ -504,21 +645,21 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 		return errN("project manifest invalid",
 			reason("[registry, local, git] must have only one"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
+			kv("field", fmt.Sprintf("project.%s.imports[%d]", scope, index)),
 		)
 	} else if i.Registry != nil {
 		if i.Registry.Name == "" {
 			return errN("project manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].registry.name", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.imports[%d].registry.name", scope, index)),
 			)
 		}
 		if i.Registry.Path == "" {
 			return errN("project manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].registry.path", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.imports[%d].registry.path", scope, index)),
 			)
 		}
 		registryDefinition = newProjectImportRegistryDefinition(i.Registry.Name, i.Registry.Path, i.Registry.Ref)
@@ -527,7 +668,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 			return errN("project manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].local.dir", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.imports[%d].local.dir", scope, index)),
 			)
 		}
 		localDefinition = newProjectImportLocalDefinition(i.Local.Dir)
@@ -536,7 +677,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 			return errN("project manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.imports[%d].git.url", scope, index)),
 			)
 		}
 		if i.Git.Ref == "" {
@@ -547,7 +688,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.imports[%d].git.url", scope, index)),
 				kv("value", i.Git.Url),
 			)
 		}
@@ -561,7 +702,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].match", scope, index)),
+				kv("field", fmt.Sprintf("project.%s.imports[%d].match", scope, index)),
 				kv("value", i.Match),
 			)
 		}

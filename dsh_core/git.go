@@ -6,9 +6,9 @@ import (
 )
 
 type gitRef struct {
-	raw           string
-	refType       gitRefType
-	referenceName plumbing.ReferenceName
+	Raw           string
+	Type          gitRefType
+	ReferenceName plumbing.ReferenceName
 }
 
 type gitRefType string
@@ -22,14 +22,14 @@ func parseGitRef(rawRef string) *gitRef {
 	if strings.HasPrefix(rawRef, "tags/") {
 		tag := strings.TrimPrefix(rawRef, "tags/")
 		return &gitRef{
-			raw:           rawRef,
-			refType:       gitRefTypeTag,
-			referenceName: plumbing.NewTagReferenceName(tag),
+			Raw:           rawRef,
+			Type:          gitRefTypeTag,
+			ReferenceName: plumbing.NewTagReferenceName(tag),
 		}
 	}
 	return &gitRef{
-		raw:           rawRef,
-		refType:       gitRefTypeBranch,
-		referenceName: plumbing.NewBranchReferenceName(rawRef),
+		Raw:           rawRef,
+		Type:          gitRefTypeBranch,
+		ReferenceName: plumbing.NewBranchReferenceName(rawRef),
 	}
 }

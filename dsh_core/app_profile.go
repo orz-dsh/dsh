@@ -2,7 +2,6 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"maps"
 	"slices"
 )
 
@@ -10,6 +9,7 @@ type AppProfile struct {
 	workspace       *Workspace
 	projectManifest *projectManifest
 	evalData        *appProfileEvalData
+	evaluator       *appProfileEvaluator
 	Manifests       []*AppProfileManifest
 }
 
@@ -26,7 +26,7 @@ func loadAppProfile(workspace *Workspace, projectManifest *projectManifest, path
 	pathsDict := make(map[string]bool)
 
 	for i := len(paths) - 1; i >= 0; i-- {
-		path, err := evaluator.evalPath(paths[i])
+		path, err := evaluator.evalString(paths[i])
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +38,7 @@ func loadAppProfile(workspace *Workspace, projectManifest *projectManifest, path
 
 	for i := len(workspace.manifest.Profile.Items) - 1; i >= 0; i-- {
 		item := workspace.manifest.Profile.Items[i]
-		path, err := evaluator.evalMatchAndPath(item.match, item.File)
+		path, err := evaluator.evalMatchAndString(item.match, item.File)
 		if err != nil {
 			return nil, err
 		}
@@ -63,6 +63,7 @@ func loadAppProfile(workspace *Workspace, projectManifest *projectManifest, path
 		workspace:       workspace,
 		projectManifest: projectManifest,
 		evalData:        evalData,
+		evaluator:       evaluator,
 		Manifests:       manifests,
 	}
 	return profile, nil
@@ -81,7 +82,7 @@ func (p *AppProfile) AddManifest(position int, manifest *AppProfileManifest) {
 }
 
 func (p *AppProfile) AddManifestOptionValues(position int, values map[string]string) error {
-	manifest, err := MakeAppProfileManifest(values, nil, nil, nil)
+	manifest, err := MakeAppProfileManifest(nil, NewAppProfileManifestProject(NewAppProfileManifestProjectOption(values), nil, nil))
 	if err != nil {
 		return err
 	}
@@ -89,102 +90,93 @@ func (p *AppProfile) AddManifestOptionValues(position int, values map[string]str
 	return nil
 }
 
-func (p *AppProfile) getOptionValues() map[string]string {
-	options := make(map[string]string)
+func (p *AppProfile) getOptionValues() (options map[string]string, err error) {
+	options = make(map[string]string)
 	for i := 0; i < len(p.Manifests); i++ {
-		manifest := p.Manifests[i]
-		maps.Copy(options, manifest.Option.Values)
-	}
-	return options
-}
-
-func (p *AppProfile) getShellPath(shell string) string {
-	for i := len(p.Manifests) - 1; i >= 0; i-- {
-		manifest := p.Manifests[i]
-		path := manifest.Shell.getPath(shell)
-		if path != "" {
-			return path
+		if err = p.Manifests[i].Project.Option.definitions.fillOptions(options, p.evaluator.newMatcher()); err != nil {
+			return nil, err
 		}
 	}
-	return p.workspace.manifest.Shell.getPath(shell)
+	return options, nil
 }
 
-func (p *AppProfile) getShellExts(shell string) []string {
+func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
+	definition := newWorkspaceShellDefinitionEmpty(name)
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		exts := manifest.Shell.getExts(shell)
-		if exts != nil {
-			return exts
+		err := manifest.Workspace.Shell.definitions.fillDefinition(definition, p.evaluator.newMatcher())
+		if err != nil {
+			return nil, err
+		}
+		if definition.isCompleted() {
+			return definition, nil
 		}
 	}
-	return p.workspace.manifest.Shell.getExts(shell)
-}
-
-func (p *AppProfile) getShellArgs(shell string) []string {
-	for i := len(p.Manifests) - 1; i >= 0; i-- {
-		manifest := p.Manifests[i]
-		args := manifest.Shell.getArgs(shell)
-		if args != nil {
-			return args
-		}
+	err := p.workspace.manifest.Shell.definitions.fillDefinition(definition, p.evaluator.newMatcher())
+	if err != nil {
+		return nil, err
 	}
-	return p.workspace.manifest.Shell.getArgs(shell)
+	if err = definition.fillDefault(); err != nil {
+		return nil, err
+	}
+	return definition, nil
 }
 
-func (p *AppProfile) getImportRegistryDefinition(name string) *importRegistryDefinition {
+func (p *AppProfile) getWorkspaceImportRegistryDefinition(name string) *workspaceImportRegistryDefinition {
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		definition := manifest.Import.getRegistryDefinition(name)
-		if definition != nil {
+		if definition := manifest.Workspace.Import.registryDefinitions.getDefinition(name); definition != nil {
 			return definition
 		}
 	}
-	definition := p.workspace.manifest.Import.getRegistryDefinition(name)
-	if definition != nil {
+	if definition := p.workspace.manifest.Import.registryDefinitions.getDefinition(name); definition != nil {
+		return definition
+	}
+	if definition := getWorkspaceImportRegistryDefinitionDefault(name); definition != nil {
 		return definition
 	}
 	return nil
 }
 
-func (p *AppProfile) getImportRedirectDefinition(resources []string) (*importRedirectDefinition, string) {
+func (p *AppProfile) getWorkspaceImportRedirectDefinition(resources []string) (*workspaceImportRedirectDefinition, string) {
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		definition, path := manifest.Import.getRedirectDefinition(resources)
+		definition, path := manifest.Workspace.Import.redirectDefinitions.getDefinition(resources)
 		if definition != nil {
 			return definition, path
 		}
 	}
-	definition, path := p.workspace.manifest.Import.getRedirectDefinition(resources)
+	definition, path := p.workspace.manifest.Import.redirectDefinitions.getDefinition(resources)
 	if definition != nil {
 		return definition, path
 	}
 	return nil, ""
 }
 
-func (p *AppProfile) getScriptSourceDefinitions() (definitions []*projectSourceDefinition) {
+func (p *AppProfile) getProjectScriptSourceDefinitions() (definitions []*projectSourceDefinition) {
 	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Script.sourceDefinitions...)
+		definitions = append(definitions, p.Manifests[i].Project.Script.sourceDefinitions...)
 	}
 	return definitions
 }
 
-func (p *AppProfile) getScriptImportDefinitions() (definitions []*projectImportDefinition) {
+func (p *AppProfile) getProjectScriptImportDefinitions() (definitions []*projectImportDefinition) {
 	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Script.importDefinitions...)
+		definitions = append(definitions, p.Manifests[i].Project.Script.importDefinitions...)
 	}
 	return definitions
 }
 
-func (p *AppProfile) getConfigSourceDefinitions() (definitions []*projectSourceDefinition) {
+func (p *AppProfile) getProjectConfigSourceDefinitions() (definitions []*projectSourceDefinition) {
 	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Config.sourceDefinitions...)
+		definitions = append(definitions, p.Manifests[i].Project.Config.sourceDefinitions...)
 	}
 	return definitions
 }
 
-func (p *AppProfile) getConfigImportDefinitions() (definitions []*projectImportDefinition) {
+func (p *AppProfile) getProjectConfigImportDefinitions() (definitions []*projectImportDefinition) {
 	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Config.importDefinitions...)
+		definitions = append(definitions, p.Manifests[i].Project.Config.importDefinitions...)
 	}
 	return definitions
 }

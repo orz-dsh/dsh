@@ -24,7 +24,14 @@ type AppMakeScriptsSettings struct {
 func loadApp(workspace *Workspace, manifest *projectManifest, profile *AppProfile) (app *App, err error) {
 	workspace.logger.InfoDesc("load app", kv("name", manifest.Name))
 
-	optionValues := profile.getOptionValues()
+	optionValues, err := profile.getOptionValues()
+	if err != nil {
+		return nil, errW(err, "load app error",
+			reason("get option values error"),
+			kv("projectName", manifest.Name),
+			kv("projectPath", manifest.projectPath),
+		)
+	}
 	option, err := loadAppOption(manifest, optionValues)
 	if err != nil {
 		return nil, errW(err, "load app error",

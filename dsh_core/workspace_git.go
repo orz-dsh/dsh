@@ -13,10 +13,10 @@ import (
 func (w *Workspace) getGitProjectPath(parsedUrl *url.URL, parsedRef *gitRef) string {
 	path1 := strings.ReplaceAll(parsedUrl.Host, ":", "@")
 	postfix := ""
-	if parsedRef.refType == gitRefTypeTag {
-		postfix = "tag-" + strings.TrimPrefix(parsedRef.raw, "tags/")
+	if parsedRef.Type == gitRefTypeTag {
+		postfix = "tag-" + strings.TrimPrefix(parsedRef.Raw, "tags/")
 	} else {
-		postfix = "branch-" + parsedRef.raw
+		postfix = "branch-" + parsedRef.Raw
 	}
 	path2 := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(parsedUrl.Path, "/"), ".git"), "/", "@") + "@" + postfix
 	path := filepath.Join(w.path, "project", path1, path2)
@@ -43,7 +43,7 @@ func (w *Workspace) downloadGitProject(path string, rawUrl string, parsedUrl *ur
 		)
 		cloneOptions := &git.CloneOptions{
 			URL:           rawUrl,
-			ReferenceName: parsedRef.referenceName,
+			ReferenceName: parsedRef.ReferenceName,
 			SingleBranch:  true,
 			Depth:         1,
 		}
@@ -110,7 +110,7 @@ func (w *Workspace) downloadGitProject(path string, rawUrl string, parsedUrl *ur
 			)
 		}
 		pullOptions := &git.PullOptions{
-			ReferenceName: parsedRef.referenceName,
+			ReferenceName: parsedRef.ReferenceName,
 			SingleBranch:  true,
 			Depth:         1,
 		}

@@ -2,6 +2,8 @@ package dsh_core
 
 import "dsh/dsh_utils"
 
+type Matcher = dsh_utils.EvalMatcher
+
 type KVS = dsh_utils.DescKeyValues
 
 func kv(key string, value any) dsh_utils.DescKeyValue {
