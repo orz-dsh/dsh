@@ -251,12 +251,14 @@ type workspaceManifestImportRegistry struct {
 	Name  string
 	Local *workspaceManifestImportLocal
 	Git   *workspaceManifestImportGit
+	Match string
 }
 
 type workspaceManifestImportRedirect struct {
 	Prefix string
 	Local  *workspaceManifestImportLocal
 	Git    *workspaceManifestImportGit
+	Match  string
 }
 
 type workspaceManifestImportLocal struct {
@@ -304,10 +306,21 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 		} else {
 			impossible()
 		}
-		registryDefinitions[registry.Name] = newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition)
+		var matchExpr *vm.Program
+		if registry.Match != "" {
+			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
+			if err != nil {
+				return errW(err, "workspace manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("import.registries[%d].match", i)),
+					kv("value", registry.Match),
+				)
+			}
+		}
+		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition, registry.Match, matchExpr))
 	}
 
-	redirectPrefixes := make(map[string]bool)
 	redirectDefinitions := workspaceImportRedirectDefinitions{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
@@ -318,15 +331,6 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
 			)
 		}
-		if _, exist := redirectPrefixes[redirect.Prefix]; exist {
-			return errN("workspace manifest invalid",
-				reason("value duplicate"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
-				kv("value", redirect.Prefix),
-			)
-		}
-		redirectPrefixes[redirect.Prefix] = true
 		if err = imp.checkImportMode(manifest, redirect.Local, redirect.Git, "redirects", i); err != nil {
 			return err
 		}
@@ -339,7 +343,19 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 		} else {
 			impossible()
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition))
+		var matchExpr *vm.Program
+		if redirect.Match != "" {
+			matchExpr, err = dsh_utils.CompileExpr(redirect.Match)
+			if err != nil {
+				return errW(err, "workspace manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("import.redirects[%d].match", i)),
+					kv("value", redirect.Match),
+				)
+			}
+		}
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition, redirect.Match, matchExpr))
 	}
 	if len(redirectDefinitions) > 0 {
 		slices.SortStableFunc(redirectDefinitions, func(l, r *workspaceImportRedirectDefinition) int {

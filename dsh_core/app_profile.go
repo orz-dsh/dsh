@@ -122,35 +122,41 @@ func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDe
 	return definition, nil
 }
 
-func (p *AppProfile) getWorkspaceImportRegistryDefinition(name string) *workspaceImportRegistryDefinition {
+func (p *AppProfile) getWorkspaceImportRegistryDefinition(name string) (definition *workspaceImportRegistryDefinition, err error) {
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		if definition := manifest.Workspace.Import.registryDefinitions.getDefinition(name); definition != nil {
-			return definition
+		if definition, err = manifest.Workspace.Import.registryDefinitions.getDefinition(name, p.evaluator.newMatcher()); err != nil {
+			return nil, err
+		} else if definition != nil {
+			return definition, nil
 		}
 	}
-	if definition := p.workspace.manifest.Import.registryDefinitions.getDefinition(name); definition != nil {
-		return definition
+	if definition, err = p.workspace.manifest.Import.registryDefinitions.getDefinition(name, p.evaluator.newMatcher()); err != nil {
+		return nil, err
+	} else if definition != nil {
+		return definition, nil
 	}
-	if definition := getWorkspaceImportRegistryDefinitionDefault(name); definition != nil {
-		return definition
+	if definition = getWorkspaceImportRegistryDefinitionDefault(name); definition != nil {
+		return definition, nil
 	}
-	return nil
+	return nil, nil
 }
 
-func (p *AppProfile) getWorkspaceImportRedirectDefinition(resources []string) (*workspaceImportRedirectDefinition, string) {
+func (p *AppProfile) getWorkspaceImportRedirectDefinition(resources []string) (definition *workspaceImportRedirectDefinition, path string, err error) {
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		definition, path := manifest.Workspace.Import.redirectDefinitions.getDefinition(resources)
-		if definition != nil {
-			return definition, path
+		if definition, path, err = manifest.Workspace.Import.redirectDefinitions.getDefinition(resources, p.evaluator.newMatcher()); err != nil {
+			return nil, "", err
+		} else if definition != nil {
+			return definition, path, nil
 		}
 	}
-	definition, path := p.workspace.manifest.Import.redirectDefinitions.getDefinition(resources)
-	if definition != nil {
-		return definition, path
+	if definition, path, err = p.workspace.manifest.Import.redirectDefinitions.getDefinition(resources, p.evaluator.newMatcher()); err != nil {
+		return nil, "", err
+	} else if definition != nil {
+		return definition, path, nil
 	}
-	return nil, ""
+	return nil, "", nil
 }
 
 func (p *AppProfile) getProjectScriptSourceDefinitions() (definitions []*projectSourceDefinition) {

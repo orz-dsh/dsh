@@ -201,7 +201,14 @@ func (c *projectImportContainer) addImport(definition *projectImportDefinition) 
 }
 
 func (c *projectImportContainer) makeRegistryImport(projectDefinition *projectImportRegistryDefinition) (*projectImport, error) {
-	workspaceDefinition := c.context.Profile.getWorkspaceImportRegistryDefinition(projectDefinition.Name)
+	workspaceDefinition, err := c.context.Profile.getWorkspaceImportRegistryDefinition(projectDefinition.Name)
+	if err != nil {
+		return nil, errW(err, "make registry import error",
+			reason("get registry definition error"),
+			kv("scope", c.scope),
+			kv("import", projectDefinition),
+		)
+	}
 	// TODO: error info
 	if workspaceDefinition == nil {
 		return nil, errN("make registry import error",
@@ -316,7 +323,14 @@ func (c *projectImportContainer) redirectImport(original *projectImport) (_ *pro
 	} else {
 		impossible()
 	}
-	definition, path := c.context.Profile.getWorkspaceImportRedirectDefinition(resources)
+	definition, path, err := c.context.Profile.getWorkspaceImportRedirectDefinition(resources)
+	if err != nil {
+		return nil, errW(err, "redirect import error",
+			reason("get redirect definition error"),
+			kv("scope", c.scope),
+			kv("resources", resources),
+		)
+	}
 	if definition != nil {
 		if definition.Local != nil {
 			localRawDir, err := c.evaluator.evalRedirect(definition.Local.Dir, path, original)

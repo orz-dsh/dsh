@@ -209,12 +209,14 @@ type AppProfileManifestImportRegistry struct {
 	Name  string
 	Local *AppProfileManifestImportLocal
 	Git   *AppProfileManifestImportGit
+	Match string
 }
 
 type AppProfileManifestImportRedirect struct {
 	Prefix string
 	Local  *AppProfileManifestImportLocal
 	Git    *AppProfileManifestImportGit
+	Match  string
 }
 
 type AppProfileManifestImportLocal struct {
@@ -262,7 +264,19 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		} else {
 			impossible()
 		}
-		registryDefinitions[registry.Name] = newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition)
+		var matchExpr *vm.Program
+		if registry.Match != "" {
+			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
+			if err != nil {
+				return errW(err, "app profile manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("workspace.import.registries[%d].match", i)),
+					kv("value", registry.Match),
+				)
+			}
+		}
+		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition, registry.Match, matchExpr))
 	}
 
 	redirectPrefixes := make(map[string]bool)
@@ -297,7 +311,19 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		} else {
 			impossible()
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition))
+		var matchExpr *vm.Program
+		if redirect.Match != "" {
+			matchExpr, err = dsh_utils.CompileExpr(redirect.Match)
+			if err != nil {
+				return errW(err, "app profile manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("workspace.import.redirects[%d].match", i)),
+					kv("value", redirect.Match),
+				)
+			}
+		}
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition, redirect.Match, matchExpr))
 	}
 	if len(redirectDefinitions) > 0 {
 		slices.SortStableFunc(redirectDefinitions, func(l, r *workspaceImportRedirectDefinition) int {

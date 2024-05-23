@@ -59,6 +59,7 @@ func (d *workspaceShellDefinition) fillDefault() error {
 	if d.Path == "" {
 		path, err := exec.LookPath(d.Name)
 		if err != nil {
+			// TODO: error info
 			return errW(err, "workspace shell definition fill default error",
 				reason("look path error"),
 				kv("name", d.Name),
@@ -82,6 +83,7 @@ func (d *workspaceShellDefinition) fillDefault() error {
 }
 
 func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinition, matcher *Matcher) error {
+	// TODO: priority
 	if definitions, exist := ds[target.Name]; exist {
 		for i := 0; i < len(definitions); i++ {
 			definition := definitions[i]
@@ -113,14 +115,18 @@ type workspaceImportRegistryDefinition struct {
 	Name  string
 	Local *workspaceImportLocalDefinition
 	Git   *workspaceImportGitDefinition
+	Match string
+	match *vm.Program
 }
 
-type workspaceImportRegistryDefinitions map[string]*workspaceImportRegistryDefinition
+type workspaceImportRegistryDefinitions map[string][]*workspaceImportRegistryDefinition
 
 type workspaceImportRedirectDefinition struct {
 	Prefix string
 	Local  *workspaceImportLocalDefinition
 	Git    *workspaceImportGitDefinition
+	Match  string
+	match  *vm.Program
 }
 
 type workspaceImportRedirectDefinitions []*workspaceImportRedirectDefinition
@@ -151,19 +157,23 @@ var workspaceImportRegistryDefinitionsDefault = map[string]*workspaceImportRegis
 	},
 }
 
-func newWorkspaceImportRegistryDefinition(name string, local *workspaceImportLocalDefinition, git *workspaceImportGitDefinition) *workspaceImportRegistryDefinition {
+func newWorkspaceImportRegistryDefinition(name string, local *workspaceImportLocalDefinition, git *workspaceImportGitDefinition, match string, matchExpr *vm.Program) *workspaceImportRegistryDefinition {
 	return &workspaceImportRegistryDefinition{
 		Name:  name,
 		Local: local,
 		Git:   git,
+		Match: match,
+		match: matchExpr,
 	}
 }
 
-func newWorkspaceImportRedirectDefinition(prefix string, local *workspaceImportLocalDefinition, git *workspaceImportGitDefinition) *workspaceImportRedirectDefinition {
+func newWorkspaceImportRedirectDefinition(prefix string, local *workspaceImportLocalDefinition, git *workspaceImportGitDefinition, match string, matchExpr *vm.Program) *workspaceImportRedirectDefinition {
 	return &workspaceImportRedirectDefinition{
 		Prefix: prefix,
 		Local:  local,
 		Git:    git,
+		Match:  match,
+		match:  matchExpr,
 	}
 }
 
@@ -180,24 +190,41 @@ func newWorkspaceImportGitDefinition(url string, ref string) *workspaceImportGit
 	}
 }
 
-func (ds workspaceImportRegistryDefinitions) getDefinition(name string) *workspaceImportRegistryDefinition {
-	if definition, exist := ds[name]; exist {
-		return definition
+func (ds workspaceImportRegistryDefinitions) getDefinition(name string, matcher *Matcher) (*workspaceImportRegistryDefinition, error) {
+	// TODO: priority
+	if definitions, exist := ds[name]; exist {
+		for i := 0; i < len(definitions); i++ {
+			definition := definitions[i]
+			matched, err := matcher.Match(definition.match)
+			if err != nil {
+				return nil, err
+			}
+			if matched {
+				return definition, nil
+			}
+		}
 	}
-	return nil
+	return nil, nil
 }
 
-func (ds workspaceImportRedirectDefinitions) getDefinition(resources []string) (*workspaceImportRedirectDefinition, string) {
+func (ds workspaceImportRedirectDefinitions) getDefinition(resources []string, matcher *Matcher) (*workspaceImportRedirectDefinition, string, error) {
+	// TODO: priority
 	for i := 0; i < len(resources); i++ {
 		resource := resources[i]
 		for j := 0; j < len(ds); j++ {
 			definition := ds[j]
 			if path, found := strings.CutPrefix(resource, definition.Prefix); found {
-				return definition, path
+				matched, err := matcher.Match(definition.match)
+				if err != nil {
+					return nil, "", err
+				}
+				if matched {
+					return definition, path, nil
+				}
 			}
 		}
 	}
-	return nil, ""
+	return nil, "", nil
 }
 
 func getWorkspaceImportRegistryDefinitionDefault(name string) *workspaceImportRegistryDefinition {
@@ -230,6 +257,7 @@ func newProjectOptionDefinition(name string, value string, match string, matchEx
 }
 
 func (ds projectOptionDefinitions) fillOptions(target map[string]string, matcher *Matcher) error {
+	// TODO: priority
 	for i := 0; i < len(ds); i++ {
 		definition := ds[i]
 		matched, err := matcher.Match(definition.match)
