@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"text/template"
 )
+
+type EvalFuncs = template.FuncMap
 
 func CompileExpr(content string) (*vm.Program, error) {
 	program, err := expr.Compile(content)
@@ -108,7 +111,7 @@ func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, er
 	return nil, nil
 }
 
-func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string, data map[string]any, funcs template.FuncMap) error {
+func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string, data map[string]any, funcs EvalFuncs) error {
 	tpl := template.New(filepath.Base(inputPath)).Option("missingkey=error")
 	if funcs != nil {
 		tpl = tpl.Funcs(funcs)
@@ -153,7 +156,7 @@ func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string
 	return nil
 }
 
-func EvalStringTemplate(str string, data map[string]any, funcs template.FuncMap) (string, error) {
+func EvalStringTemplate(str string, data map[string]any, funcs EvalFuncs) (string, error) {
 	tpl := template.New("StringTemplate").Option("missingkey=error")
 	if funcs != nil {
 		tpl = tpl.Funcs(funcs)
@@ -194,5 +197,58 @@ func (m *EvalMatcher) Match(expr *vm.Program) (bool, error) {
 func NewEvalMatcher(data map[string]any) *EvalMatcher {
 	return &EvalMatcher{
 		data: data,
+	}
+}
+
+type EvalReplacer struct {
+	data  map[string]any
+	funcs EvalFuncs
+}
+
+func (r *EvalReplacer) Replace(str string, extraData map[string]any, extraFuncs EvalFuncs) (string, error) {
+	data := r.data
+	if extraData != nil {
+		data = make(map[string]any)
+		if r.data != nil {
+			maps.Copy(data, r.data)
+		}
+		maps.Copy(data, extraData)
+	}
+	funcs := r.funcs
+	if extraFuncs != nil {
+		funcs = make(EvalFuncs)
+		if r.funcs != nil {
+			maps.Copy(funcs, r.funcs)
+		}
+		maps.Copy(funcs, extraFuncs)
+	}
+	return EvalStringTemplate(str, data, r.funcs)
+}
+
+func (r *EvalReplacer) NewEvalReplacer(extraData map[string]any, extraFuncs EvalFuncs) *EvalReplacer {
+	data := make(map[string]any)
+	if r.data != nil {
+		maps.Copy(data, r.data)
+	}
+	if extraData != nil {
+		maps.Copy(data, extraData)
+	}
+	funcs := make(EvalFuncs)
+	if r.funcs != nil {
+		maps.Copy(funcs, r.funcs)
+	}
+	if extraFuncs != nil {
+		maps.Copy(funcs, extraFuncs)
+	}
+	return &EvalReplacer{
+		data:  data,
+		funcs: funcs,
+	}
+}
+
+func NewEvalReplacer(data map[string]any, funcs EvalFuncs) *EvalReplacer {
+	return &EvalReplacer{
+		data:  data,
+		funcs: funcs,
 	}
 }

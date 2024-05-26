@@ -3,6 +3,4 @@ script:
   sources:
     - dir: script
   imports:
-    - registry:
-        name: orz-dsh
-        path: shell-lib
+    - link: "@orz-dsh/shell-lib"

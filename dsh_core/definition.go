@@ -1,10 +1,10 @@
 package dsh_core
 
 import (
+	"dsh/dsh_utils"
 	"github.com/expr-lang/expr/vm"
-	"net/url"
 	"os/exec"
-	"strings"
+	"regexp"
 )
 
 // region workspace shell
@@ -82,7 +82,7 @@ func (d *workspaceShellDefinition) fillDefault() error {
 	return nil
 }
 
-func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinition, matcher *Matcher) error {
+func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinition, matcher *dsh_utils.EvalMatcher) error {
 	// TODO: priority
 	if definitions, exist := ds[target.Name]; exist {
 		for i := 0; i < len(definitions); i++ {
@@ -113,8 +113,7 @@ func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinit
 
 type workspaceImportRegistryDefinition struct {
 	Name  string
-	Local *workspaceImportLocalDefinition
-	Git   *workspaceImportGitDefinition
+	Link  string
 	Match string
 	match *vm.Program
 }
@@ -122,76 +121,44 @@ type workspaceImportRegistryDefinition struct {
 type workspaceImportRegistryDefinitions map[string][]*workspaceImportRegistryDefinition
 
 type workspaceImportRedirectDefinition struct {
-	Prefix string
-	Local  *workspaceImportLocalDefinition
-	Git    *workspaceImportGitDefinition
-	Match  string
-	match  *vm.Program
+	Regex *regexp.Regexp
+	Link  string
+	Match string
+	match *vm.Program
 }
 
 type workspaceImportRedirectDefinitions []*workspaceImportRedirectDefinition
 
-type workspaceImportLocalDefinition struct {
-	Dir string
-}
-
-type workspaceImportGitDefinition struct {
-	Url string
-	Ref string
-}
-
-var workspaceImportRegistryDefinitionsDefault = map[string]*workspaceImportRegistryDefinition{
-	"orz-dsh": {
+var workspaceImportRegistryDefinitionsDefault = workspaceImportRegistryDefinitions{
+	"orz-dsh": {{
 		Name: "orz-dsh",
-		Git: &workspaceImportGitDefinition{
-			Url: "https://github.com/orz-dsh/{{.path}}.git",
-			Ref: "main",
-		},
-	},
-	"orz-ops": {
+		Link: "git:https://github.com/orz-dsh/{{.path}}.git#ref={{.ref}}",
+	}},
+	"orz-ops": {{
 		Name: "orz-ops",
-		Git: &workspaceImportGitDefinition{
-			Url: "https://github.com/orz-ops/{{.path}}.git",
-			Ref: "main",
-		},
-	},
+		Link: "git:https://github.com/orz-ops/{{.path}}.git#ref={{.ref}}",
+	}},
 }
 
-func newWorkspaceImportRegistryDefinition(name string, local *workspaceImportLocalDefinition, git *workspaceImportGitDefinition, match string, matchExpr *vm.Program) *workspaceImportRegistryDefinition {
+func newWorkspaceImportRegistryDefinition(name string, link string, match string, matchExpr *vm.Program) *workspaceImportRegistryDefinition {
 	return &workspaceImportRegistryDefinition{
 		Name:  name,
-		Local: local,
-		Git:   git,
+		Link:  link,
 		Match: match,
 		match: matchExpr,
 	}
 }
 
-func newWorkspaceImportRedirectDefinition(prefix string, local *workspaceImportLocalDefinition, git *workspaceImportGitDefinition, match string, matchExpr *vm.Program) *workspaceImportRedirectDefinition {
+func newWorkspaceImportRedirectDefinition(regex *regexp.Regexp, link string, match string, matchExpr *vm.Program) *workspaceImportRedirectDefinition {
 	return &workspaceImportRedirectDefinition{
-		Prefix: prefix,
-		Local:  local,
-		Git:    git,
-		Match:  match,
-		match:  matchExpr,
+		Regex: regex,
+		Link:  link,
+		Match: match,
+		match: matchExpr,
 	}
 }
 
-func newWorkspaceImportLocalDefinition(dir string) *workspaceImportLocalDefinition {
-	return &workspaceImportLocalDefinition{
-		Dir: dir,
-	}
-}
-
-func newWorkspaceImportGitDefinition(url string, ref string) *workspaceImportGitDefinition {
-	return &workspaceImportGitDefinition{
-		Url: url,
-		Ref: ref,
-	}
-}
-
-func (ds workspaceImportRegistryDefinitions) getDefinition(name string, matcher *Matcher) (*workspaceImportRegistryDefinition, error) {
-	// TODO: priority
+func (ds workspaceImportRegistryDefinitions) getLink(name string, matcher *dsh_utils.EvalMatcher, replacer *dsh_utils.EvalReplacer) (*ProjectLink, error) {
 	if definitions, exist := ds[name]; exist {
 		for i := 0; i < len(definitions); i++ {
 			definition := definitions[i]
@@ -200,38 +167,51 @@ func (ds workspaceImportRegistryDefinitions) getDefinition(name string, matcher 
 				return nil, err
 			}
 			if matched {
-				return definition, nil
+				rawLink, err := replacer.Replace(definition.Link, nil, nil)
+				if err != nil {
+					return nil, err
+				}
+				link, err := ParseProjectLink(rawLink)
+				if err != nil {
+					return nil, err
+				}
+				return link, nil
 			}
 		}
 	}
 	return nil, nil
 }
 
-func (ds workspaceImportRedirectDefinitions) getDefinition(resources []string, matcher *Matcher) (*workspaceImportRedirectDefinition, string, error) {
+func (ds workspaceImportRedirectDefinitions) getLink(links []string, matcher *dsh_utils.EvalMatcher, replacer *dsh_utils.EvalReplacer) (*ProjectLink, string, error) {
 	// TODO: priority
-	for i := 0; i < len(resources); i++ {
-		resource := resources[i]
+	for i := 0; i < len(links); i++ {
+		link := links[i]
 		for j := 0; j < len(ds); j++ {
 			definition := ds[j]
-			if path, found := strings.CutPrefix(resource, definition.Prefix); found {
-				matched, err := matcher.Match(definition.match)
+			matched, values := dsh_utils.RegexMatch(definition.Regex, link)
+			if !matched {
+				continue
+			}
+			matched, err := matcher.Match(definition.match)
+			if err != nil {
+				return nil, "", err
+			}
+			if matched {
+				rawLink, err := replacer.Replace(definition.Link, map[string]any{
+					"re": values,
+				}, nil)
 				if err != nil {
 					return nil, "", err
 				}
-				if matched {
-					return definition, path, nil
+				redirectLink, err := ParseProjectLink(rawLink)
+				if err != nil {
+					return nil, "", err
 				}
+				return redirectLink, link, nil
 			}
 		}
 	}
 	return nil, "", nil
-}
-
-func getWorkspaceImportRegistryDefinitionDefault(name string) *workspaceImportRegistryDefinition {
-	if definition, exist := workspaceImportRegistryDefinitionsDefault[name]; exist {
-		return definition
-	}
-	return nil
 }
 
 // endregion
@@ -256,7 +236,7 @@ func newProjectOptionDefinition(name string, value string, match string, matchEx
 	}
 }
 
-func (ds projectOptionDefinitions) fillOptions(target map[string]string, matcher *Matcher) error {
+func (ds projectOptionDefinitions) fillOptions(target map[string]string, matcher *dsh_utils.EvalMatcher) error {
 	// TODO: priority
 	for i := 0; i < len(ds); i++ {
 		definition := ds[i]
@@ -296,60 +276,16 @@ func newProjectSourceDefinition(dir string, files []string, match string, matchE
 // region project import
 
 type projectImportDefinition struct {
-	Registry *projectImportRegistryDefinition
-	Local    *projectImportLocalDefinition
-	Git      *projectImportGitDefinition
-	Match    string
-	match    *vm.Program
+	Link  *ProjectLink
+	Match string
+	match *vm.Program
 }
 
-type projectImportRegistryDefinition struct {
-	Name string
-	Path string
-	Ref  string
-}
-
-type projectImportLocalDefinition struct {
-	Dir string
-}
-
-type projectImportGitDefinition struct {
-	Url string
-	Ref string
-	url *url.URL
-	ref *gitRef
-}
-
-func newProjectImportDefinition(registry *projectImportRegistryDefinition, local *projectImportLocalDefinition, git *projectImportGitDefinition, match string, matchExpr *vm.Program) *projectImportDefinition {
+func newProjectImportDefinition(link *ProjectLink, match string, matchExpr *vm.Program) *projectImportDefinition {
 	return &projectImportDefinition{
-		Registry: registry,
-		Local:    local,
-		Git:      git,
-		Match:    match,
-		match:    matchExpr,
-	}
-}
-
-func newProjectImportRegistryDefinition(name string, path string, ref string) *projectImportRegistryDefinition {
-	return &projectImportRegistryDefinition{
-		Name: name,
-		Path: path,
-		Ref:  ref,
-	}
-}
-
-func newProjectImportLocalDefinition(dir string) *projectImportLocalDefinition {
-	return &projectImportLocalDefinition{
-		Dir: dir,
-	}
-}
-
-func newProjectImportGitDefinition(rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) *projectImportGitDefinition {
-	return &projectImportGitDefinition{
-		Url: rawUrl,
-		Ref: rawRef,
-		url: parsedUrl,
-		ref: parsedRef,
+		Link:  link,
+		Match: match,
+		match: matchExpr,
 	}
 }
 

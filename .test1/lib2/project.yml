@@ -14,10 +14,8 @@ script:
   sources:
     - dir: script
   imports:
-    - local:
-        dir: ./.test1/lib1
-    - local:
-        dir: ./.test1/lib3
+    - link: "dir:./.test1/lib1"
+    - link: "dir:./.test1/lib3"
 config:
   sources:
     - dir: config

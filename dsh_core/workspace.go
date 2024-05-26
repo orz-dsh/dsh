@@ -83,7 +83,7 @@ func (w *Workspace) GetPath() string {
 }
 
 func (w *Workspace) PrepareLocalApp(projectPath string, profilePaths []string) (*AppProfile, error) {
-	m, err := w.loadProjectManifest(projectPath)
+	m, err := w.loadDirProjectManifest(projectPath)
 	if err != nil {
 		return nil, errW(err, "prepare local app error",
 			reason("load project manifest error"),
@@ -111,7 +111,15 @@ func (w *Workspace) Clean(settings WorkspaceCleanSettings) error {
 	return w.cleanOutputDir(settings.ExcludeOutputPath)
 }
 
-func (w *Workspace) loadProjectManifest(path string) (manifest *projectManifest, err error) {
+func (w *Workspace) loadProjectManifest(link *projectResolvedLink) (manifest *projectManifest, err error) {
+	if link.Git != nil {
+		return w.loadGitProjectManifest(link.Path, link.Git.RawUrl, link.Git.parsedUrl, link.Git.RawRef, link.Git.parsedRef)
+	} else {
+		return w.loadDirProjectManifest(link.Path)
+	}
+}
+
+func (w *Workspace) loadDirProjectManifest(path string) (manifest *projectManifest, err error) {
 	if !dsh_utils.IsDirExists(path) {
 		return nil, errN("load project manifest error",
 			reason("project dir not exists"),
@@ -148,7 +156,7 @@ func (w *Workspace) loadProjectManifest(path string) (manifest *projectManifest,
 	return manifest, nil
 }
 
-func (w *Workspace) loadGitProjectManifest(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *gitRef) (manifest *projectManifest, err error) {
+func (w *Workspace) loadGitProjectManifest(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *ProjectLinkGitRef) (manifest *projectManifest, err error) {
 	if parsedUrl == nil {
 		if parsedUrl, err = url.Parse(rawUrl); err != nil {
 			return nil, errW(err, "load git project manifest error",
@@ -159,7 +167,13 @@ func (w *Workspace) loadGitProjectManifest(path string, rawUrl string, parsedUrl
 		}
 	}
 	if parsedRef == nil {
-		parsedRef = parseGitRef(rawRef)
+		if parsedRef, err = parseProjectLinkGitRef(rawRef); err != nil {
+			return nil, errW(err, "load git project manifest error",
+				reason("parse ref error"),
+				kv("url", rawUrl),
+				kv("ref", rawRef),
+			)
+		}
 	}
 	if path == "" {
 		path = w.getGitProjectPath(parsedUrl, parsedRef)
@@ -171,7 +185,7 @@ func (w *Workspace) loadGitProjectManifest(path string, rawUrl string, parsedUrl
 			kv("ref", rawRef),
 		)
 	}
-	manifest, err = w.loadProjectManifest(path)
+	manifest, err = w.loadDirProjectManifest(path)
 	if err != nil {
 		return nil, errW(err, "load git project manifest error",
 			reason("load manifest error"),

@@ -69,6 +69,6 @@ func (e *appProfileEvaluator) evalMatchAndString(match *vm.Program, path string)
 	return "", nil
 }
 
-func (e *appProfileEvaluator) newMatcher() *Matcher {
+func (e *appProfileEvaluator) newMatcher() *dsh_utils.EvalMatcher {
 	return dsh_utils.NewEvalMatcher(e.data.newMap())
 }

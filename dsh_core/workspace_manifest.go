@@ -4,7 +4,7 @@ import (
 	"dsh/dsh_utils"
 	"fmt"
 	"github.com/expr-lang/expr/vm"
-	"slices"
+	"regexp"
 	"time"
 )
 
@@ -249,25 +249,14 @@ type workspaceManifestImport struct {
 
 type workspaceManifestImportRegistry struct {
 	Name  string
-	Local *workspaceManifestImportLocal
-	Git   *workspaceManifestImportGit
+	Link  string
 	Match string
 }
 
 type workspaceManifestImportRedirect struct {
-	Prefix string
-	Local  *workspaceManifestImportLocal
-	Git    *workspaceManifestImportGit
-	Match  string
-}
-
-type workspaceManifestImportLocal struct {
-	Dir string
-}
-
-type workspaceManifestImportGit struct {
-	Url string
-	Ref string
+	Regex string
+	Link  string
+	Match string
 }
 
 func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error) {
@@ -281,31 +270,16 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
 			)
 		}
-		if _, exist := registryDefinitions[registry.Name]; exist {
+
+		if registry.Link == "" {
 			return errN("workspace manifest invalid",
-				reason("value duplicate"),
+				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.registries[%d].name", i)),
-				kv("value", registry.Name),
+				kv("field", fmt.Sprintf("import.registries[%d].link", i)),
 			)
 		}
-		if err = imp.checkImportMode(manifest, registry.Local, registry.Git, "registries", i); err != nil {
-			return err
-		}
-		if registry.Git != nil {
-			if registry.Git.Ref == "" {
-				registry.Git.Ref = "main"
-			}
-		}
-		var localDefinition *workspaceImportLocalDefinition
-		var gitDefinition *workspaceImportGitDefinition
-		if registry.Local != nil {
-			localDefinition = newWorkspaceImportLocalDefinition(registry.Local.Dir)
-		} else if registry.Git != nil {
-			gitDefinition = newWorkspaceImportGitDefinition(registry.Git.Url, registry.Git.Ref)
-		} else {
-			impossible()
-		}
+		// TODO: check link template
+
 		var matchExpr *vm.Program
 		if registry.Match != "" {
 			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
@@ -318,31 +292,38 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition, registry.Match, matchExpr))
+		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, registry.Link, registry.Match, matchExpr))
 	}
 
 	redirectDefinitions := workspaceImportRedirectDefinitions{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
-		if redirect.Prefix == "" {
+		if redirect.Regex == "" {
 			return errN("workspace manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.redirects[%d].prefix", i)),
+				kv("field", fmt.Sprintf("import.redirects[%d].regex", i)),
 			)
 		}
-		if err = imp.checkImportMode(manifest, redirect.Local, redirect.Git, "redirects", i); err != nil {
-			return err
+		regex, err := regexp.Compile(redirect.Regex)
+		if err != nil {
+			return errW(err, "workspace manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("import.redirects[%d].regex", i)),
+				kv("value", redirect.Regex),
+			)
 		}
-		var localDefinition *workspaceImportLocalDefinition
-		var gitDefinition *workspaceImportGitDefinition
-		if redirect.Local != nil {
-			localDefinition = newWorkspaceImportLocalDefinition(redirect.Local.Dir)
-		} else if redirect.Git != nil {
-			gitDefinition = newWorkspaceImportGitDefinition(redirect.Git.Url, redirect.Git.Ref)
-		} else {
-			impossible()
+
+		if redirect.Link == "" {
+			return errN("workspace manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("import.redirects[%d].link", i)),
+			)
 		}
+		// TODO: check link template
+
 		var matchExpr *vm.Program
 		if redirect.Match != "" {
 			matchExpr, err = dsh_utils.CompileExpr(redirect.Match)
@@ -355,50 +336,11 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition, redirect.Match, matchExpr))
-	}
-	if len(redirectDefinitions) > 0 {
-		slices.SortStableFunc(redirectDefinitions, func(l, r *workspaceImportRedirectDefinition) int {
-			return len(r.Prefix) - len(l.Prefix)
-		})
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(regex, redirect.Link, redirect.Match, matchExpr))
 	}
 
 	imp.registryDefinitions = registryDefinitions
 	imp.redirectDefinitions = redirectDefinitions
-	return nil
-}
-
-func (imp *workspaceManifestImport) checkImportMode(manifest *workspaceManifest, local *workspaceManifestImportLocal, git *workspaceManifestImportGit, scope string, index int) error {
-	importModeCount := 0
-	if local != nil {
-		importModeCount++
-	}
-	if git != nil {
-		importModeCount++
-	}
-	if importModeCount != 1 {
-		return errN("workspace manifest invalid",
-			reason("[local, git] must have only one"),
-			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("import.%s[%d]", scope, index)),
-		)
-	} else if local != nil {
-		if local.Dir == "" {
-			return errN("workspace manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.%s[%d].local.dir", scope, index)),
-			)
-		}
-	} else {
-		if git.Url == "" {
-			return errN("workspace manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("import.%s[%d].git.url", scope, index)),
-			)
-		}
-	}
 	return nil
 }
 

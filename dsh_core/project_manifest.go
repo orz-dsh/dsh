@@ -4,7 +4,6 @@ import (
 	"dsh/dsh_utils"
 	"fmt"
 	"github.com/expr-lang/expr/vm"
-	"net/url"
 	"regexp"
 	"slices"
 )
@@ -425,95 +424,27 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 // region import
 
 type projectManifestImport struct {
-	Registry   *projectManifestImportRegistry
-	Local      *projectManifestImportLocal
-	Git        *projectManifestImportGit
+	Link       string
 	Match      string
 	definition *projectImportDefinition
 }
 
-type projectManifestImportRegistry struct {
-	Name string
-	Path string
-	Ref  string
-}
-
-type projectManifestImportLocal struct {
-	Dir string
-}
-
-type projectManifestImportGit struct {
-	Url string
-	Ref string
-}
-
 func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (err error) {
-	importModeCount := 0
-	if i.Registry != nil {
-		importModeCount++
-	}
-	if i.Local != nil {
-		importModeCount++
-	}
-	if i.Git != nil {
-		importModeCount++
-	}
-	var registryDefinition *projectImportRegistryDefinition
-	var localDefinition *projectImportLocalDefinition
-	var gitDefinition *projectImportGitDefinition
-	if importModeCount != 1 {
+	if i.Link == "" {
 		return errN("project manifest invalid",
-			reason("[registry, local, git] must have only one"),
+			reason("value empty"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("%s.imports[%d]", scope, index)),
+			kv("field", fmt.Sprintf("%s.imports[%d].link", scope, index)),
 		)
-	} else if i.Registry != nil {
-		if i.Registry.Name == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].registry.name", scope, index)),
-			)
-		}
-		if i.Registry.Path == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].registry.path", scope, index)),
-			)
-		}
-		registryDefinition = newProjectImportRegistryDefinition(i.Registry.Name, i.Registry.Path, i.Registry.Ref)
-	} else if i.Local != nil {
-		if i.Local.Dir == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].local.dir", scope, index)),
-			)
-		}
-		localDefinition = newProjectImportLocalDefinition(i.Local.Dir)
-	} else if i.Git != nil {
-		if i.Git.Url == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
-			)
-		}
-		if i.Git.Ref == "" {
-			i.Git.Ref = "main"
-		}
-		var parsedUrl *url.URL
-		if parsedUrl, err = url.Parse(i.Git.Url); err != nil {
-			return errW(err, "project manifest invalid",
-				reason("value invalid"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("%s.imports[%d].git.url", scope, index)),
-				kv("value", i.Git.Url),
-			)
-		}
-		parsedRef := parseGitRef(i.Git.Ref)
-		gitDefinition = newProjectImportGitDefinition(i.Git.Url, parsedUrl, i.Git.Ref, parsedRef)
+	}
+	link, err := ParseProjectLink(i.Link)
+	if err != nil {
+		return errW(err, "project manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("%s.imports[%d].link", scope, index)),
+			kv("value", i.Link),
+		)
 	}
 	var matchExpr *vm.Program
 	if i.Match != "" {
@@ -528,7 +459,7 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 		}
 	}
 
-	i.definition = newProjectImportDefinition(registryDefinition, localDefinition, gitDefinition, i.Match, matchExpr)
+	i.definition = newProjectImportDefinition(link, i.Match, matchExpr)
 	return nil
 }
 

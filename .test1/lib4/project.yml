@@ -3,12 +3,7 @@ script:
   sources:
     - dir: script
   imports:
-    - local:
-        dir: ./.test1/lib2
-    - local:
-        dir: ./.test1/app1
-#    - local:
-#        dir: ./.test1/lib-err
-#    - git:
-#        url: https://github.com/orz-dsh/dsh
-#        ref: main
+    - link: "dir:./.test1/lib2"
+    - link: "dir:./.test1/app1"
+#    - link: "dir:./.test1/lib-err"
+#    - link: "git:https://github.com/orz-dsh/dsh#ref=main"

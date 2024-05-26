@@ -27,11 +27,9 @@ script:
     - dir: script
       match: test == 'a' || test == 'b'
   imports:
-    - local:
-        dir: ./.test1/lib1
+    - link: "dir:./.test1/lib1"
       match: test == 'a'
-    - local:
-        dir: ./.test1/lib2
+    - link: "dir:./.test1/lib2"
       match: test == 'a'
 config:
   sources:
@@ -40,9 +38,7 @@ config:
         - test1.yml
       match: test == 'a' || test == 'b'
   imports:
-    - local:
-        dir: ./.test1/lib1
+    - link: "dir:./.test1/lib1"
       match: test == 'a' || test == 'b'
-    - local:
-        dir: ./.test1/lib2
+    - link: "dir:./.test1/lib2"
       match: test == 'a' || test == 'b'

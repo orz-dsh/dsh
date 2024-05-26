@@ -16,6 +16,4 @@ project:
         match: xxxx
   script:
     imports:
-      - registry:
-          name: orz-dsh
-          path: shell-lib
+      - link: "@orz-dsh/shell-lib"

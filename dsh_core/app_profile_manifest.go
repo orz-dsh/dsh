@@ -4,9 +4,8 @@ import (
 	"dsh/dsh_utils"
 	"fmt"
 	"github.com/expr-lang/expr/vm"
-	"net/url"
 	"path/filepath"
-	"slices"
+	"regexp"
 )
 
 // region manifest
@@ -207,25 +206,14 @@ type AppProfileManifestWorkspaceImport struct {
 
 type AppProfileManifestImportRegistry struct {
 	Name  string
-	Local *AppProfileManifestImportLocal
-	Git   *AppProfileManifestImportGit
+	Link  string
 	Match string
 }
 
 type AppProfileManifestImportRedirect struct {
-	Prefix string
-	Local  *AppProfileManifestImportLocal
-	Git    *AppProfileManifestImportGit
-	Match  string
-}
-
-type AppProfileManifestImportLocal struct {
-	Dir string
-}
-
-type AppProfileManifestImportGit struct {
-	Url string
-	Ref string
+	Regex string
+	Link  string
+	Match string
 }
 
 func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest) (err error) {
@@ -239,31 +227,16 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				kv("field", fmt.Sprintf("workspace.import.registries[%d].name", i)),
 			)
 		}
-		if _, exist := registryDefinitions[registry.Name]; exist {
+
+		if registry.Link == "" {
 			return errN("app profile manifest invalid",
-				reason("value duplicate"),
+				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("workspace.import.registries[%d].name", i)),
-				kv("value", registry.Name),
+				kv("field", fmt.Sprintf("workspace.import.registries[%d].link", i)),
 			)
 		}
-		if err = imp.checkImportMode(manifest, registry.Local, registry.Git, "registries", i); err != nil {
-			return err
-		}
-		if registry.Git != nil {
-			if registry.Git.Ref == "" {
-				registry.Git.Ref = "main"
-			}
-		}
-		var localDefinition *workspaceImportLocalDefinition
-		var gitDefinition *workspaceImportGitDefinition
-		if registry.Local != nil {
-			localDefinition = newWorkspaceImportLocalDefinition(registry.Local.Dir)
-		} else if registry.Git != nil {
-			gitDefinition = newWorkspaceImportGitDefinition(registry.Git.Url, registry.Git.Ref)
-		} else {
-			impossible()
-		}
+		// TODO: check link template
+
 		var matchExpr *vm.Program
 		if registry.Match != "" {
 			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
@@ -276,41 +249,38 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				)
 			}
 		}
-		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, localDefinition, gitDefinition, registry.Match, matchExpr))
+		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, registry.Link, registry.Match, matchExpr))
 	}
 
-	redirectPrefixes := make(map[string]bool)
 	redirectDefinitions := workspaceImportRedirectDefinitions{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
-		if redirect.Prefix == "" {
+		if redirect.Regex == "" {
 			return errN("app profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("workspace.import.redirects[%d].prefix", i)),
+				kv("field", fmt.Sprintf("workspace.import.redirects[%d].regex", i)),
 			)
 		}
-		if _, exist := redirectPrefixes[redirect.Prefix]; exist {
-			return errN("app profile manifest invalid",
-				reason("value duplicate"),
+		regex, err := regexp.Compile(redirect.Regex)
+		if err != nil {
+			return errW(err, "app profile manifest invalid",
+				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("workspace.import.redirects[%d].prefix", i)),
-				kv("value", redirect.Prefix),
+				kv("field", fmt.Sprintf("workspace.import.redirects[%d].regex", i)),
+				kv("value", redirect.Regex),
 			)
 		}
-		redirectPrefixes[redirect.Prefix] = true
-		if err = imp.checkImportMode(manifest, redirect.Local, redirect.Git, "redirects", i); err != nil {
-			return err
+
+		if redirect.Link == "" {
+			return errN("app profile manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("workspace.import.redirects[%d].link", i)),
+			)
 		}
-		var localDefinition *workspaceImportLocalDefinition
-		var gitDefinition *workspaceImportGitDefinition
-		if redirect.Local != nil {
-			localDefinition = newWorkspaceImportLocalDefinition(redirect.Local.Dir)
-		} else if redirect.Git != nil {
-			gitDefinition = newWorkspaceImportGitDefinition(redirect.Git.Url, redirect.Git.Ref)
-		} else {
-			impossible()
-		}
+		// TODO: check link template
+
 		var matchExpr *vm.Program
 		if redirect.Match != "" {
 			matchExpr, err = dsh_utils.CompileExpr(redirect.Match)
@@ -323,50 +293,11 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				)
 			}
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(redirect.Prefix, localDefinition, gitDefinition, redirect.Match, matchExpr))
-	}
-	if len(redirectDefinitions) > 0 {
-		slices.SortStableFunc(redirectDefinitions, func(l, r *workspaceImportRedirectDefinition) int {
-			return len(r.Prefix) - len(l.Prefix)
-		})
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(regex, redirect.Link, redirect.Match, matchExpr))
 	}
 
 	imp.registryDefinitions = registryDefinitions
 	imp.redirectDefinitions = redirectDefinitions
-	return nil
-}
-
-func (imp *AppProfileManifestWorkspaceImport) checkImportMode(manifest *AppProfileManifest, local *AppProfileManifestImportLocal, git *AppProfileManifestImportGit, scope string, index int) error {
-	importModeCount := 0
-	if local != nil {
-		importModeCount++
-	}
-	if git != nil {
-		importModeCount++
-	}
-	if importModeCount != 1 {
-		return errN("app profile manifest invalid",
-			reason("[local, git] must have only one"),
-			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("workspace.import.%s[%d]", scope, index)),
-		)
-	} else if local != nil {
-		if local.Dir == "" {
-			return errN("app profile manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("workspace.import.%s[%d].local.dir", scope, index)),
-			)
-		}
-	} else {
-		if git.Url == "" {
-			return errN("app profile manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("workspace.import.%s[%d].git.url", scope, index)),
-			)
-		}
-	}
 	return nil
 }
 
@@ -579,6 +510,7 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 			kv("field", fmt.Sprintf("project.%s.sources[%d].dir", scope, index)),
 		)
 	}
+
 	var matchExpr *vm.Program
 	if s.Match != "" {
 		matchExpr, err = dsh_utils.CompileExpr(s.Match)
@@ -601,126 +533,36 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 // region project import
 
 type AppProfileManifestProjectImport struct {
-	Registry   *AppProfileManifestProjectImportRegistry
-	Local      *AppProfileManifestProjectImportLocal
-	Git        *AppProfileManifestProjectImportGit
+	Link       string
 	Match      string
 	definition *projectImportDefinition
 }
 
-type AppProfileManifestProjectImportRegistry struct {
-	Name string
-	Path string
-	Ref  string
-}
-
-type AppProfileManifestProjectImportLocal struct {
-	Dir string
-}
-
-type AppProfileManifestProjectImportGit struct {
-	Url string
-	Ref string
-}
-
-func NewAppProfileManifestProjectImport(registry *AppProfileManifestProjectImportRegistry, local *AppProfileManifestProjectImportLocal, git *AppProfileManifestProjectImportGit, match string) *AppProfileManifestProjectImport {
+func NewAppProfileManifestProjectImport(link string, match string) *AppProfileManifestProjectImport {
 	return &AppProfileManifestProjectImport{
-		Registry: registry,
-		Local:    local,
-		Git:      git,
-		Match:    match,
-	}
-}
-
-func NewAppProfileManifestProjectImportRegistry(name, path, ref string) *AppProfileManifestProjectImportRegistry {
-	return &AppProfileManifestProjectImportRegistry{
-		Name: name,
-		Path: path,
-		Ref:  ref,
-	}
-}
-
-func NewAppProfileManifestProjectImportLocal(dir string) *AppProfileManifestProjectImportLocal {
-	return &AppProfileManifestProjectImportLocal{
-		Dir: dir,
-	}
-}
-
-func NewAppProfileManifestProjectImportGit(url, ref string) *AppProfileManifestProjectImportGit {
-	return &AppProfileManifestProjectImportGit{
-		Url: url,
-		Ref: ref,
+		Link:  link,
+		Match: match,
 	}
 }
 
 func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, scope string, index int) (err error) {
-	importModeCount := 0
-	if i.Registry != nil {
-		importModeCount++
-	}
-	if i.Local != nil {
-		importModeCount++
-	}
-	if i.Git != nil {
-		importModeCount++
-	}
-	var registryDefinition *projectImportRegistryDefinition
-	var localDefinition *projectImportLocalDefinition
-	var gitDefinition *projectImportGitDefinition
-	if importModeCount != 1 {
+	if i.Link == "" {
 		return errN("project manifest invalid",
-			reason("[registry, local, git] must have only one"),
+			reason("value empty"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("project.%s.imports[%d]", scope, index)),
+			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
 		)
-	} else if i.Registry != nil {
-		if i.Registry.Name == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.imports[%d].registry.name", scope, index)),
-			)
-		}
-		if i.Registry.Path == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.imports[%d].registry.path", scope, index)),
-			)
-		}
-		registryDefinition = newProjectImportRegistryDefinition(i.Registry.Name, i.Registry.Path, i.Registry.Ref)
-	} else if i.Local != nil {
-		if i.Local.Dir == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.imports[%d].local.dir", scope, index)),
-			)
-		}
-		localDefinition = newProjectImportLocalDefinition(i.Local.Dir)
-	} else if i.Git != nil {
-		if i.Git.Url == "" {
-			return errN("project manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.imports[%d].git.url", scope, index)),
-			)
-		}
-		if i.Git.Ref == "" {
-			i.Git.Ref = "main"
-		}
-		var parsedUrl *url.URL
-		if parsedUrl, err = url.Parse(i.Git.Url); err != nil {
-			return errW(err, "project manifest invalid",
-				reason("value invalid"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.imports[%d].git.url", scope, index)),
-				kv("value", i.Git.Url),
-			)
-		}
-		parsedRef := parseGitRef(i.Git.Ref)
-		gitDefinition = newProjectImportGitDefinition(i.Git.Url, parsedUrl, i.Git.Ref, parsedRef)
 	}
+	link, err := ParseProjectLink(i.Link)
+	if err != nil {
+		return errW(err, "project manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
+			kv("value", i.Link),
+		)
+	}
+
 	var matchExpr *vm.Program
 	if i.Match != "" {
 		matchExpr, err = dsh_utils.CompileExpr(i.Match)
@@ -734,7 +576,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 		}
 	}
 
-	i.definition = newProjectImportDefinition(registryDefinition, localDefinition, gitDefinition, i.Match, matchExpr)
+	i.definition = newProjectImportDefinition(link, i.Match, matchExpr)
 	return nil
 }
 

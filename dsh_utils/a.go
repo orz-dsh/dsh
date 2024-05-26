@@ -1,7 +1,5 @@
 package dsh_utils
 
-type Matcher = EvalMatcher
-
 type KVS = DescKeyValues
 
 func kv(key string, value any) DescKeyValue {

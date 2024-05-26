@@ -2,6 +2,7 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
+	"path/filepath"
 	"slices"
 )
 
@@ -100,6 +101,59 @@ func (p *AppProfile) getOptionValues() (options map[string]string, err error) {
 	return options, nil
 }
 
+func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projectResolvedLink, err error) {
+	finalLink := link
+	if link.Registry != nil {
+		registryLink, err := p.getWorkspaceImportRegistryLink(link.Registry)
+		if err != nil {
+			return nil, err
+		}
+		if registryLink == nil {
+			return nil, errN("resolve project link error",
+				reason("registry not found"),
+				kv("link", link),
+			)
+		}
+		finalLink = registryLink
+	}
+	path := ""
+	if finalLink.Dir != nil {
+		absPath, err := filepath.Abs(finalLink.Dir.Dir)
+		if err != nil {
+			return nil, err
+		}
+		path = absPath
+	} else if finalLink.Git != nil {
+		path = p.workspace.getGitProjectPath(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
+	} else {
+		impossible()
+	}
+	resources := []string{
+		finalLink.Normalized,
+		"dir:" + path,
+	}
+	redirectLink, _, err := p.getWorkspaceImportRedirectLink(resources)
+	if err != nil {
+		return nil, err
+	}
+	if redirectLink != nil {
+		finalLink = redirectLink
+		if finalLink.Dir != nil {
+			path = finalLink.Dir.Dir
+		} else if finalLink.Git != nil {
+			path = p.workspace.getGitProjectPath(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
+		} else {
+			impossible()
+		}
+	}
+	resolvedLink = &projectResolvedLink{
+		Link: link,
+		Path: path,
+		Git:  finalLink.Git,
+	}
+	return resolvedLink, nil
+}
+
 func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
 	definition := newWorkspaceShellDefinitionEmpty(name)
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
@@ -122,39 +176,50 @@ func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDe
 	return definition, nil
 }
 
-func (p *AppProfile) getWorkspaceImportRegistryDefinition(name string) (definition *workspaceImportRegistryDefinition, err error) {
+func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
+	data := p.evalData.mergeMap(map[string]any{
+		"name":          registry.Name,
+		"path":          registry.Path,
+		"ref":           registry.RawRef,
+		"refNormalized": registry.parsedRef.Normalized,
+	})
+	matcher := dsh_utils.NewEvalMatcher(data)
+	replacer := dsh_utils.NewEvalReplacer(data, nil)
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		if definition, err = manifest.Workspace.Import.registryDefinitions.getDefinition(name, p.evaluator.newMatcher()); err != nil {
+		if link, err = manifest.Workspace.Import.registryDefinitions.getLink(registry.Name, matcher, replacer); err != nil {
 			return nil, err
-		} else if definition != nil {
-			return definition, nil
+		} else if link != nil {
+			return link, nil
 		}
 	}
-	if definition, err = p.workspace.manifest.Import.registryDefinitions.getDefinition(name, p.evaluator.newMatcher()); err != nil {
+	if link, err = p.workspace.manifest.Import.registryDefinitions.getLink(registry.Name, matcher, replacer); err != nil {
 		return nil, err
-	} else if definition != nil {
-		return definition, nil
+	} else if link != nil {
+		return link, nil
 	}
-	if definition = getWorkspaceImportRegistryDefinitionDefault(name); definition != nil {
-		return definition, nil
+	if link, err = workspaceImportRegistryDefinitionsDefault.getLink(registry.Name, matcher, replacer); err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return link, nil
 }
 
-func (p *AppProfile) getWorkspaceImportRedirectDefinition(resources []string) (definition *workspaceImportRedirectDefinition, path string, err error) {
+func (p *AppProfile) getWorkspaceImportRedirectLink(resources []string) (link *ProjectLink, resource string, err error) {
+	data := p.evalData.newMap()
+	matcher := dsh_utils.NewEvalMatcher(data)
+	replacer := dsh_utils.NewEvalReplacer(data, nil)
 	for i := len(p.Manifests) - 1; i >= 0; i-- {
 		manifest := p.Manifests[i]
-		if definition, path, err = manifest.Workspace.Import.redirectDefinitions.getDefinition(resources, p.evaluator.newMatcher()); err != nil {
+		if link, resource, err = manifest.Workspace.Import.redirectDefinitions.getLink(resources, matcher, replacer); err != nil {
 			return nil, "", err
-		} else if definition != nil {
-			return definition, path, nil
+		} else if link != nil {
+			return link, resource, nil
 		}
 	}
-	if definition, path, err = p.workspace.manifest.Import.redirectDefinitions.getDefinition(resources, p.evaluator.newMatcher()); err != nil {
+	if link, resource, err = p.workspace.manifest.Import.redirectDefinitions.getLink(resources, matcher, replacer); err != nil {
 		return nil, "", err
-	} else if definition != nil {
-		return definition, path, nil
+	} else if link != nil {
+		return link, resource, nil
 	}
 	return nil, "", nil
 }

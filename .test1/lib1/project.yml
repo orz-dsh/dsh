@@ -20,5 +20,4 @@ script:
   sources:
     - dir: script
   imports:
-    - local:
-        dir: ./.test1/lib2
+    - link: "dir:./.test1/lib2"

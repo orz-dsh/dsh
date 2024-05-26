@@ -36,7 +36,7 @@ func (c *appImportContainer) loadImports() (err error) {
 	for i := 0; i < len(pic.Imports); i++ {
 		imp := pic.Imports[i]
 		imports = append(imports, imp)
-		importsByPath[imp.Path] = imp
+		importsByPath[imp.Link.Path] = imp
 	}
 
 	projectImports := pic.Imports
@@ -48,12 +48,12 @@ func (c *appImportContainer) loadImports() (err error) {
 		pic1 := imp1.target.getImportContainer(pic.scope)
 		for j := 0; j < len(pic1.Imports); j++ {
 			imp2 := pic1.Imports[j]
-			if imp2.Path == c.project.Manifest.projectPath {
+			if imp2.Link.Path == c.project.Manifest.projectPath {
 				continue
 			}
-			if _, exist := importsByPath[imp2.Path]; !exist {
+			if _, exist := importsByPath[imp2.Link.Path]; !exist {
 				imports = append(imports, imp2)
-				importsByPath[imp2.Path] = imp2
+				importsByPath[imp2.Link.Path] = imp2
 				projectImports = append(projectImports, imp2)
 			}
 		}
