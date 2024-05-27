@@ -5,10 +5,8 @@ import (
 )
 
 type AppProfile struct {
-	workspace *Workspace
-	evalData  *appEvalData
-	//evalData                           *appProfileEvalData
-	//evaluator                          *appProfileEvaluator
+	workspace                          *Workspace
+	evalData                           *appEvalData
 	workspaceShellDefinitions          workspaceShellDefinitions
 	workspaceImportRegistryDefinitions workspaceImportRegistryDefinitions
 	workspaceImportRedirectDefinitions workspaceImportRedirectDefinitions
@@ -20,14 +18,6 @@ type AppProfile struct {
 }
 
 func makeAppProfile(workspace *Workspace, evalData *appEvalData, manifests []*AppProfileManifest) (*AppProfile, error) {
-	//workingPath, err := dsh_utils.GetWorkingDir()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// TODO
-	//evalData := newAppProfileEvalData(workingPath, workspace.path /*projectManifest.projectPath, projectManifest.Name*/, "", "")
-	//evaluator := newAppProfileEvaluator(evalData)
-
 	workspaceShellDefinitions := workspaceShellDefinitions{}
 	workspaceImportRegistryDefinitions := workspaceImportRegistryDefinitions{}
 	workspaceImportRedirectDefinitions := workspaceImportRedirectDefinitions{}
@@ -63,9 +53,8 @@ func makeAppProfile(workspace *Workspace, evalData *appEvalData, manifests []*Ap
 	workspaceImportRedirectDefinitions = append(workspaceImportRedirectDefinitions, workspace.manifest.Import.redirectDefinitions...)
 
 	profile := &AppProfile{
-		workspace: workspace,
-		evalData:  evalData,
-		//evaluator:                          evaluator,
+		workspace:                          workspace,
+		evalData:                           evalData,
 		workspaceShellDefinitions:          workspaceShellDefinitions,
 		workspaceImportRegistryDefinitions: workspaceImportRegistryDefinitions,
 		workspaceImportRedirectDefinitions: workspaceImportRedirectDefinitions,
