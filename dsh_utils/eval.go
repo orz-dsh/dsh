@@ -183,72 +183,97 @@ func EvalStringTemplate(str string, data map[string]any, funcs EvalFuncs) (strin
 	return strings.TrimSpace(writer.String()), nil
 }
 
+type EvalData struct {
+	main   string
+	groups map[string]map[string]any
+}
+
+func NewEvalData() *EvalData {
+	return &EvalData{}
+}
+
+func (d *EvalData) Data(name string, data map[string]any) *EvalData {
+	groups := make(map[string]map[string]any)
+	if d.groups != nil {
+		maps.Copy(groups, d.groups)
+	}
+	groups[name] = data
+	return &EvalData{
+		groups: groups,
+		main:   d.main,
+	}
+}
+
+func (d *EvalData) MainData(name string, data map[string]any) *EvalData {
+	return d.Data(name, data).Main(name)
+}
+
+func (d *EvalData) Main(name string) *EvalData {
+	return &EvalData{
+		groups: d.groups,
+		main:   name,
+	}
+}
+
+func (d *EvalData) Map() map[string]any {
+	result := make(map[string]any)
+	if d.main == "" {
+		for k, v := range d.groups {
+			result[k] = v
+		}
+	} else {
+		for k, v := range d.groups {
+			if k != d.main {
+				result[k] = v
+			}
+		}
+		for k, v := range d.groups[d.main] {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+func (d *EvalData) DescExtraKeyValues() KVS {
+	return KVS{
+		kv("main", d.main),
+		kv("groups", d.groups),
+	}
+}
+
 type EvalMatcher struct {
-	data map[string]any
+	data *EvalData
+}
+
+func NewEvalMatcher(data *EvalData) *EvalMatcher {
+	return &EvalMatcher{
+		data: data,
+	}
 }
 
 func (m *EvalMatcher) Match(expr *vm.Program) (bool, error) {
 	if expr == nil {
 		return true, nil
 	}
-	return EvalExprReturnBool(expr, m.data)
-}
-
-func NewEvalMatcher(data map[string]any) *EvalMatcher {
-	return &EvalMatcher{
-		data: data,
-	}
+	return EvalExprReturnBool(expr, m.data.Map())
 }
 
 type EvalReplacer struct {
-	data  map[string]any
+	data  *EvalData
 	funcs EvalFuncs
 }
 
-func (r *EvalReplacer) Replace(str string, extraData map[string]any, extraFuncs EvalFuncs) (string, error) {
-	data := r.data
-	if extraData != nil {
-		data = make(map[string]any)
-		if r.data != nil {
-			maps.Copy(data, r.data)
-		}
-		maps.Copy(data, extraData)
-	}
-	funcs := r.funcs
-	if extraFuncs != nil {
-		funcs = make(EvalFuncs)
-		if r.funcs != nil {
-			maps.Copy(funcs, r.funcs)
-		}
-		maps.Copy(funcs, extraFuncs)
-	}
-	return EvalStringTemplate(str, data, r.funcs)
-}
-
-func (r *EvalReplacer) NewEvalReplacer(extraData map[string]any, extraFuncs EvalFuncs) *EvalReplacer {
-	data := make(map[string]any)
-	if r.data != nil {
-		maps.Copy(data, r.data)
-	}
-	if extraData != nil {
-		maps.Copy(data, extraData)
-	}
-	funcs := make(EvalFuncs)
-	if r.funcs != nil {
-		maps.Copy(funcs, r.funcs)
-	}
-	if extraFuncs != nil {
-		maps.Copy(funcs, extraFuncs)
-	}
+func NewEvalReplacer(data *EvalData, funcs EvalFuncs) *EvalReplacer {
 	return &EvalReplacer{
 		data:  data,
 		funcs: funcs,
 	}
 }
 
-func NewEvalReplacer(data map[string]any, funcs EvalFuncs) *EvalReplacer {
-	return &EvalReplacer{
-		data:  data,
-		funcs: funcs,
-	}
+func (r *EvalReplacer) ModifyData(fn func(data *EvalData) *EvalData) *EvalReplacer {
+	return NewEvalReplacer(fn(r.data), r.funcs)
+}
+
+func (r *EvalReplacer) Replace(str string) (string, error) {
+	return EvalStringTemplate(str, r.data.Map(), r.funcs)
 }

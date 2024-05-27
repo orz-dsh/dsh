@@ -364,3 +364,29 @@ func TestEvalExprModifyData(t *testing.T) {
 		kv("data", data),
 	))
 }
+
+func TestEvalData(t *testing.T) {
+	data0 := NewEvalData()
+	data1 := data0.Data("g1", map[string]any{
+		"g1key1": "g1value1",
+		"g1key2": "g1value2",
+	})
+	data2 := data1.Data("g2", map[string]any{
+		"g2key1": "g2value1",
+		"g2key2": "g2value2",
+	})
+	data3 := data2.Data("g3", map[string]any{
+		"g3key1": "g3value1",
+		"g3key2": "g3value2",
+	}).Main("g1")
+	t.Log(desc("test eval data",
+		kv("data0", data0),
+		kv("data0-map", data0.Map()),
+		kv("data1", data1),
+		kv("data1-map", data1.Map()),
+		kv("data2", data2),
+		kv("data2-map", data2.Map()),
+		kv("data3", data3),
+		kv("data3-map", data3.Map()),
+	))
+}

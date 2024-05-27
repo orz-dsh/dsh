@@ -77,12 +77,8 @@ func (w *Workspace) GetPath() string {
 	return w.path
 }
 
-func (w *Workspace) MakeAppFactory(profilePaths []string) (*AppFactory, error) {
-	profile, err := loadAppProfile(w, profilePaths)
-	if err != nil {
-		return nil, err
-	}
-	return newAppFactory(w, profile), nil
+func (w *Workspace) MakeAppFactory() (*AppFactory, error) {
+	return makeAppFactory(w)
 }
 
 func (w *Workspace) Clean(settings WorkspaceCleanSettings) error {

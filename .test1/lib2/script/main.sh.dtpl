@@ -7,7 +7,5 @@ lib2_test() {
   echo "lib2 get options['_shell']: {{ .options._shell }}"
   echo "lib2 get options['_hostname']: {{ .options._hostname }}"
   echo "lib2 get options['_username']: {{ .options._username }}"
-  echo "lib2 get options['_runtime_version']: {{ .options._runtime_version }}"
-  echo "lib2 get options['_runtime_version_code']: {{ .options._runtime_version_code }}"
   echo "lib2 get options['test']: {{ .options.test }}"
 }

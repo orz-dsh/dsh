@@ -77,17 +77,18 @@ func (m *workspaceManifest) init() (err error) {
 // region profile
 
 type workspaceManifestProfile struct {
-	Items []*workspaceManifestProfileItem
+	Items       []*workspaceManifestProfileItem
+	definitions workspaceProfileDefinitions
 }
 
 type workspaceManifestProfileItem struct {
 	File     string
 	Optional bool
 	Match    string
-	match    *vm.Program
 }
 
 func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error) {
+	definitions := workspaceProfileDefinitions{}
 	for i := 0; i < len(p.Items); i++ {
 		item := p.Items[i]
 		if item.File == "" {
@@ -97,8 +98,10 @@ func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error)
 				kv("field", fmt.Sprintf("profile.items[%d].file", i)),
 			)
 		}
+
+		var matchExpr *vm.Program
 		if item.Match != "" {
-			item.match, err = dsh_utils.CompileExpr(item.Match)
+			matchExpr, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
 				return errW(err, "workspace manifest invalid",
 					reason("value invalid"),
@@ -108,7 +111,10 @@ func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error)
 				)
 			}
 		}
+		definitions = append(definitions, newWorkspaceProfileDefinition(item.File, item.Optional, item.Match, matchExpr))
 	}
+
+	p.definitions = definitions
 	return nil
 }
 

@@ -13,13 +13,11 @@ import (
 // region option
 
 const (
-	GlobalOptionNameOs                 = "_os"
-	GlobalOptionNameArch               = "_arch"
-	GlobalOptionNameShell              = "_shell"
-	GlobalOptionNameHostname           = "_hostname"
-	GlobalOptionNameUsername           = "_username"
-	globalOptionNameRuntimeVersion     = "_runtime_version"
-	globalOptionNameRuntimeVersionCode = "_runtime_version_code"
+	GlobalOptionNameOs       = "_os"
+	GlobalOptionNameArch     = "_arch"
+	GlobalOptionNameShell    = "_shell"
+	GlobalOptionNameHostname = "_hostname"
+	GlobalOptionNameUsername = "_username"
 )
 
 var globalOptionDefaultOs string
@@ -142,13 +140,11 @@ func loadAppOption(manifest *projectManifest, values map[string]string) (*appOpt
 	}
 	option := &appOption{
 		GlobalOptions: map[string]any{
-			GlobalOptionNameOs:                 _os,
-			GlobalOptionNameArch:               _arch,
-			GlobalOptionNameShell:              _shell,
-			GlobalOptionNameHostname:           _hostname,
-			GlobalOptionNameUsername:           _username,
-			globalOptionNameRuntimeVersion:     string(dsh_utils.GetRuntimeVersion()),
-			globalOptionNameRuntimeVersionCode: dsh_utils.GetRuntimeVersionCode(),
+			GlobalOptionNameOs:       _os,
+			GlobalOptionNameArch:     _arch,
+			GlobalOptionNameShell:    _shell,
+			GlobalOptionNameHostname: _hostname,
+			GlobalOptionNameUsername: _username,
 		},
 		SpecifyOptions: map[string]map[string]string{
 			manifest.Name: specifyOptions,

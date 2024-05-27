@@ -1,2 +1,2 @@
-Write-Output "hello {{.projectName}}"
-Write-Output "workspace is {{.workspacePath}}"
+Write-Output "hello {{.local.working_dir}}"
+Write-Output "workspace is {{.local.workspace_dir}}"

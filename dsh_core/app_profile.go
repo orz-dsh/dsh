@@ -2,102 +2,88 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"path/filepath"
-	"slices"
 )
 
 type AppProfile struct {
 	workspace *Workspace
-	//projectManifest *projectManifest
-	evalData  *appProfileEvalData
-	evaluator *appProfileEvaluator
-	Manifests []*AppProfileManifest
+	evalData  *appEvalData
+	//evalData                           *appProfileEvalData
+	//evaluator                          *appProfileEvaluator
+	workspaceShellDefinitions          workspaceShellDefinitions
+	workspaceImportRegistryDefinitions workspaceImportRegistryDefinitions
+	workspaceImportRedirectDefinitions workspaceImportRedirectDefinitions
+	projectOptionDefinitions           projectOptionDefinitions
+	projectScriptSourceDefinitions     []*projectSourceDefinition
+	projectScriptImportDefinitions     []*projectImportDefinition
+	projectConfigSourceDefinitions     []*projectSourceDefinition
+	projectConfigImportDefinitions     []*projectImportDefinition
 }
 
-func loadAppProfile(workspace *Workspace /*projectManifest *projectManifest,*/, paths []string) (*AppProfile, error) {
-	workingPath, err := dsh_utils.GetWorkingDir()
-	if err != nil {
-		return nil, err
-	}
-	// TODO
-	evalData := newAppProfileEvalData(workingPath, workspace.path /*projectManifest.projectPath, projectManifest.Name*/, "", "")
-	evaluator := newAppProfileEvaluator(evalData)
+func makeAppProfile(workspace *Workspace, evalData *appEvalData, manifests []*AppProfileManifest) (*AppProfile, error) {
+	//workingPath, err := dsh_utils.GetWorkingDir()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//// TODO
+	//evalData := newAppProfileEvalData(workingPath, workspace.path /*projectManifest.projectPath, projectManifest.Name*/, "", "")
+	//evaluator := newAppProfileEvaluator(evalData)
 
-	var manifests []*AppProfileManifest
-	var allPaths []string
-	pathsDict := make(map[string]bool)
-
-	for i := len(paths) - 1; i >= 0; i-- {
-		path, err := evaluator.evalString(paths[i])
-		if err != nil {
-			return nil, err
+	workspaceShellDefinitions := workspaceShellDefinitions{}
+	workspaceImportRegistryDefinitions := workspaceImportRegistryDefinitions{}
+	workspaceImportRedirectDefinitions := workspaceImportRedirectDefinitions{}
+	projectOptionDefinitions := projectOptionDefinitions{}
+	projectScriptSourceDefinitions := []*projectSourceDefinition{}
+	projectScriptImportDefinitions := []*projectImportDefinition{}
+	projectConfigSourceDefinitions := []*projectSourceDefinition{}
+	projectConfigImportDefinitions := []*projectImportDefinition{}
+	for i := 0; i < len(manifests); i++ {
+		manifest := manifests[i]
+		for name, definitions := range manifest.Workspace.Shell.definitions {
+			workspaceShellDefinitions[name] = append(workspaceShellDefinitions[name], definitions...)
 		}
-		if path != "" && !pathsDict[path] {
-			allPaths = append(allPaths, path)
-			pathsDict[path] = true
+		for name, definitions := range manifest.Workspace.Import.registryDefinitions {
+			workspaceImportRegistryDefinitions[name] = append(workspaceImportRegistryDefinitions[name], definitions...)
 		}
+		workspaceImportRedirectDefinitions = append(workspaceImportRedirectDefinitions, manifest.Workspace.Import.redirectDefinitions...)
+		projectOptionDefinitions = append(projectOptionDefinitions, manifest.Project.Option.definitions...)
+		projectScriptSourceDefinitions = append(projectScriptSourceDefinitions, manifest.Project.Script.sourceDefinitions...)
+		projectScriptImportDefinitions = append(projectScriptImportDefinitions, manifest.Project.Script.importDefinitions...)
+		projectConfigSourceDefinitions = append(projectConfigSourceDefinitions, manifest.Project.Config.sourceDefinitions...)
+		projectConfigImportDefinitions = append(projectConfigImportDefinitions, manifest.Project.Config.importDefinitions...)
 	}
-
-	for i := len(workspace.manifest.Profile.Items) - 1; i >= 0; i-- {
-		item := workspace.manifest.Profile.Items[i]
-		path, err := evaluator.evalMatchAndString(item.match, item.File)
-		if err != nil {
-			return nil, err
-		}
-		if path != "" && !pathsDict[path] {
-			if dsh_utils.IsFileExists(path) || !item.Optional {
-				allPaths = append(allPaths, path)
-				pathsDict[path] = true
-			}
-		}
+	for name, definitions := range workspace.manifest.Shell.definitions {
+		workspaceShellDefinitions[name] = append(workspaceShellDefinitions[name], definitions...)
 	}
-
-	for i := len(allPaths) - 1; i >= 0; i-- {
-		path := allPaths[i]
-		manifest, err := loadAppProfileManifest(path)
-		if err != nil {
-			return nil, err
-		}
-		manifests = append(manifests, manifest)
+	for name, definitions := range workspace.manifest.Import.registryDefinitions {
+		workspaceImportRegistryDefinitions[name] = append(workspaceImportRegistryDefinitions[name], definitions...)
 	}
+	for name, definitions := range workspaceImportRegistryDefinitionsDefault {
+		workspaceImportRegistryDefinitions[name] = append(workspaceImportRegistryDefinitions[name], definitions...)
+	}
+	workspaceImportRedirectDefinitions = append(workspaceImportRedirectDefinitions, workspace.manifest.Import.redirectDefinitions...)
 
 	profile := &AppProfile{
 		workspace: workspace,
-		//projectManifest: projectManifest,
 		evalData:  evalData,
-		evaluator: evaluator,
-		Manifests: manifests,
+		//evaluator:                          evaluator,
+		workspaceShellDefinitions:          workspaceShellDefinitions,
+		workspaceImportRegistryDefinitions: workspaceImportRegistryDefinitions,
+		workspaceImportRedirectDefinitions: workspaceImportRedirectDefinitions,
+		projectOptionDefinitions:           projectOptionDefinitions,
+		projectScriptSourceDefinitions:     projectScriptSourceDefinitions,
+		projectScriptImportDefinitions:     projectScriptImportDefinitions,
+		projectConfigSourceDefinitions:     projectConfigSourceDefinitions,
+		projectConfigImportDefinitions:     projectConfigImportDefinitions,
 	}
 	return profile, nil
 }
 
-//func (p *AppProfile) MakeApp() (*App, error) {
-//	return loadApp(p.workspace, p.projectManifest, p)
-//}
-
-func (p *AppProfile) AddManifest(position int, manifest *AppProfileManifest) {
-	if position < 0 {
-		p.Manifests = append(p.Manifests, manifest)
-	} else {
-		p.Manifests = slices.Insert(p.Manifests, position, manifest)
-	}
-}
-
-func (p *AppProfile) AddManifestOptionValues(position int, values map[string]string) error {
-	manifest, err := MakeAppProfileManifest(nil, NewAppProfileManifestProject(NewAppProfileManifestProjectOption(values), nil, nil))
-	if err != nil {
-		return err
-	}
-	p.AddManifest(position, manifest)
-	return nil
-}
-
 func (p *AppProfile) getOptionValues() (options map[string]string, err error) {
+	evalData := p.evalData
+	matcher := dsh_utils.NewEvalMatcher(evalData)
 	options = make(map[string]string)
-	for i := 0; i < len(p.Manifests); i++ {
-		if err = p.Manifests[i].Project.Option.definitions.fillOptions(options, p.evaluator.newMatcher()); err != nil {
-			return nil, err
-		}
+	if err = p.projectOptionDefinitions.fillOptions(options, matcher); err != nil {
+		return nil, err
 	}
 	return options, nil
 }
@@ -119,11 +105,7 @@ func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projec
 	}
 	path := ""
 	if finalLink.Dir != nil {
-		absPath, err := filepath.Abs(finalLink.Dir.Dir)
-		if err != nil {
-			return nil, err
-		}
-		path = absPath
+		path = finalLink.Dir.Path
 	} else if finalLink.Git != nil {
 		path = p.workspace.getGitProjectPath(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
 	} else {
@@ -140,7 +122,7 @@ func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projec
 	if redirectLink != nil {
 		finalLink = redirectLink
 		if finalLink.Dir != nil {
-			path = finalLink.Dir.Dir
+			path = finalLink.Dir.Path
 		} else if finalLink.Git != nil {
 			path = p.workspace.getGitProjectPath(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
 		} else {
@@ -156,100 +138,42 @@ func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projec
 }
 
 func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
+	evalData := p.evalData
+	matcher := dsh_utils.NewEvalMatcher(evalData)
 	definition := newWorkspaceShellDefinitionEmpty(name)
-	for i := len(p.Manifests) - 1; i >= 0; i-- {
-		manifest := p.Manifests[i]
-		err := manifest.Workspace.Shell.definitions.fillDefinition(definition, p.evaluator.newMatcher())
-		if err != nil {
-			return nil, err
-		}
-		if definition.isCompleted() {
-			return definition, nil
-		}
-	}
-	err := p.workspace.manifest.Shell.definitions.fillDefinition(definition, p.evaluator.newMatcher())
-	if err != nil {
+	if err := p.workspaceShellDefinitions.fillDefinition(definition, matcher); err != nil {
 		return nil, err
 	}
-	if err = definition.fillDefault(); err != nil {
+	if err := definition.fillDefault(); err != nil {
 		return nil, err
 	}
 	return definition, nil
 }
 
 func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
-	data := p.evalData.mergeMap(map[string]any{
+	evalData := p.evalData.MainData("registry", map[string]any{
 		"name":    registry.Name,
 		"path":    registry.Path,
 		"ref":     registry.Ref,
 		"refType": registry.ref.Type,
 		"refName": registry.ref.Name,
 	})
-	matcher := dsh_utils.NewEvalMatcher(data)
-	replacer := dsh_utils.NewEvalReplacer(data, nil)
-	for i := len(p.Manifests) - 1; i >= 0; i-- {
-		manifest := p.Manifests[i]
-		if link, err = manifest.Workspace.Import.registryDefinitions.getLink(registry.Name, matcher, replacer); err != nil {
-			return nil, err
-		} else if link != nil {
-			return link, nil
-		}
-	}
-	if link, err = p.workspace.manifest.Import.registryDefinitions.getLink(registry.Name, matcher, replacer); err != nil {
-		return nil, err
-	} else if link != nil {
-		return link, nil
-	}
-	if link, err = workspaceImportRegistryDefinitionsDefault.getLink(registry.Name, matcher, replacer); err != nil {
+	matcher := dsh_utils.NewEvalMatcher(evalData)
+	replacer := dsh_utils.NewEvalReplacer(evalData, nil)
+	link, err = p.workspaceImportRegistryDefinitions.getLink(registry.Name, matcher, replacer)
+	if err != nil {
 		return nil, err
 	}
 	return link, nil
 }
 
 func (p *AppProfile) getWorkspaceImportRedirectLink(resources []string) (link *ProjectLink, resource string, err error) {
-	data := p.evalData.newMap()
-	matcher := dsh_utils.NewEvalMatcher(data)
-	replacer := dsh_utils.NewEvalReplacer(data, nil)
-	for i := len(p.Manifests) - 1; i >= 0; i-- {
-		manifest := p.Manifests[i]
-		if link, resource, err = manifest.Workspace.Import.redirectDefinitions.getLink(resources, matcher, replacer); err != nil {
-			return nil, "", err
-		} else if link != nil {
-			return link, resource, nil
-		}
-	}
-	if link, resource, err = p.workspace.manifest.Import.redirectDefinitions.getLink(resources, matcher, replacer); err != nil {
+	evalData := p.evalData
+	matcher := dsh_utils.NewEvalMatcher(evalData)
+	replacer := dsh_utils.NewEvalReplacer(evalData, nil)
+	link, resource, err = p.workspaceImportRedirectDefinitions.getLink(resources, matcher, replacer)
+	if err != nil {
 		return nil, "", err
-	} else if link != nil {
-		return link, resource, nil
 	}
-	return nil, "", nil
-}
-
-func (p *AppProfile) getProjectScriptSourceDefinitions() (definitions []*projectSourceDefinition) {
-	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Project.Script.sourceDefinitions...)
-	}
-	return definitions
-}
-
-func (p *AppProfile) getProjectScriptImportDefinitions() (definitions []*projectImportDefinition) {
-	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Project.Script.importDefinitions...)
-	}
-	return definitions
-}
-
-func (p *AppProfile) getProjectConfigSourceDefinitions() (definitions []*projectSourceDefinition) {
-	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Project.Config.sourceDefinitions...)
-	}
-	return definitions
-}
-
-func (p *AppProfile) getProjectConfigImportDefinitions() (definitions []*projectImportDefinition) {
-	for i := 0; i < len(p.Manifests); i++ {
-		definitions = append(definitions, p.Manifests[i].Project.Config.importDefinitions...)
-	}
-	return definitions
+	return link, resource, nil
 }

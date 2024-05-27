@@ -1,8 +1,9 @@
 profile:
   items:
-    - file: "{{.workingPath}}/profile.yml"
+    - file: "{{.local.working_dir}}/profile.yml"
       optional: true
-    - file: "{{.workspacePath}}/profile.test.yml"
+    - file: "{{.local.workspace_dir}}/profile.test.yml"
+      optional: true
 clean:
   output:
     count: 1
@@ -12,6 +13,6 @@ import:
     - regex: "^git:https://github.com/orz-dsh/shell-lib"
       link: "dir:../shell-lib"
     - regex: "^git:https://github.com/orz-dsh/(?P<path>.+)#ref=(?P<ref>.+)$"
-      link: "git:https://gitee.com/orz-dsh/{{.re.path}}#ref={{.re.ref}}"
+      link: "git:https://gitee.com/orz-dsh/{{.regex.path}}#ref={{.regex.ref}}"
 #    - prefix: "^dir:/some/local/path"
 #      link: "git:https://github.com/orz-dsh/some-remote-repo.git#ref=main"

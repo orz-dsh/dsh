@@ -4,8 +4,61 @@ import (
 	"dsh/dsh_utils"
 	"github.com/expr-lang/expr/vm"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 )
+
+// region workspace profile
+
+type workspaceProfileDefinition struct {
+	File     string
+	Optional bool
+	Match    string
+	match    *vm.Program
+}
+
+type workspaceProfileDefinitions []*workspaceProfileDefinition
+
+func newWorkspaceProfileDefinition(file string, optional bool, match string, matchExpr *vm.Program) *workspaceProfileDefinition {
+	return &workspaceProfileDefinition{
+		File:     file,
+		Optional: optional,
+		Match:    match,
+		match:    matchExpr,
+	}
+}
+
+func (ds workspaceProfileDefinitions) getFiles(matcher *dsh_utils.EvalMatcher, replacer *dsh_utils.EvalReplacer) ([]string, error) {
+	// TODO: error
+	var files []string
+	for i := 0; i < len(ds); i++ {
+		definition := ds[i]
+		if matched, err := matcher.Match(definition.match); err != nil {
+			return nil, err
+		} else if matched {
+			file, err := replacer.Replace(definition.File)
+			if err != nil {
+				return nil, err
+			}
+			absPath, err := filepath.Abs(file)
+			if err != nil {
+				return nil, err
+			}
+			if dsh_utils.IsFileExists(absPath) {
+				files = append(files, absPath)
+			} else if !definition.Optional {
+				return nil, errN("workspace profile file not found",
+					reason("file not found"),
+					kv("definition", definition),
+					kv("path", absPath),
+				)
+			}
+		}
+	}
+	return files, nil
+}
+
+// endregion
 
 // region workspace shell
 
@@ -51,10 +104,6 @@ func newWorkspaceShellDefinitionEmpty(name string) *workspaceShellDefinition {
 	}
 }
 
-func (d *workspaceShellDefinition) isCompleted() bool {
-	return d.Path != "" && d.Exts != nil && d.Args != nil
-}
-
 func (d *workspaceShellDefinition) fillDefault() error {
 	if d.Path == "" {
 		path, err := exec.LookPath(d.Name)
@@ -92,13 +141,15 @@ func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinit
 				return err
 			}
 			if matched {
-				if definition.Path != "" {
+				// TODO: optimize
+				// The priority of the previous one is higher than that of the later one.
+				if target.Path == "" && definition.Path != "" {
 					target.Path = definition.Path
 				}
-				if definition.Exts != nil {
+				if target.Exts == nil && definition.Exts != nil {
 					target.Exts = definition.Exts
 				}
-				if definition.Args != nil {
+				if target.Args == nil && definition.Args != nil {
 					target.Args = definition.Args
 				}
 			}
@@ -167,7 +218,7 @@ func (ds workspaceImportRegistryDefinitions) getLink(name string, matcher *dsh_u
 				return nil, err
 			}
 			if matched {
-				rawLink, err := replacer.Replace(definition.Link, nil, nil)
+				rawLink, err := replacer.Replace(definition.Link)
 				if err != nil {
 					return nil, err
 				}
@@ -197,9 +248,9 @@ func (ds workspaceImportRedirectDefinitions) getLink(links []string, matcher *ds
 				return nil, "", err
 			}
 			if matched {
-				rawLink, err := replacer.Replace(definition.Link, map[string]any{
-					"re": values,
-				}, nil)
+				rawLink, err := replacer.ModifyData(func(data *dsh_utils.EvalData) *dsh_utils.EvalData {
+					return data.Data("regex", dsh_utils.MapStrStrToMapStrAny(values))
+				}).Replace(definition.Link)
 				if err != nil {
 					return nil, "", err
 				}
@@ -237,9 +288,12 @@ func newProjectOptionDefinition(name string, value string, match string, matchEx
 }
 
 func (ds projectOptionDefinitions) fillOptions(target map[string]string, matcher *dsh_utils.EvalMatcher) error {
-	// TODO: priority
 	for i := 0; i < len(ds); i++ {
 		definition := ds[i]
+		if _, exist := target[definition.Name]; exist {
+			// The priority of the previous one is higher than that of the later one.
+			continue
+		}
 		matched, err := matcher.Match(definition.match)
 		if err != nil {
 			return err

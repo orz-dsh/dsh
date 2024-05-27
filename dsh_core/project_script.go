@@ -61,7 +61,7 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	}
 	definitions := manifest.Script.sourceDefinitions
 	if context.isMainProject(manifest) {
-		definitions = append(definitions, context.Profile.getProjectScriptSourceDefinitions()...)
+		definitions = append(definitions, context.Profile.projectScriptSourceDefinitions...)
 	}
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]
@@ -123,7 +123,7 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 	return nil
 }
 
-func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) (targetNames []string, err error) {
+func (c *projectScriptSourceContainer) makeSources(data *appEvalData, funcs template.FuncMap, outputPath string, useHardLink bool) (targetNames []string, err error) {
 	for i := 0; i < len(c.PlainSources); i++ {
 		startTime := time.Now()
 		source := c.PlainSources[i]
@@ -174,7 +174,7 @@ func (c *projectScriptSourceContainer) makeSources(data map[string]any, funcs te
 			kv("sourcePath", source.SourcePath),
 			kv("targetPath", targetPath),
 		)
-		if err = dsh_utils.EvalFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath, data, funcs); err != nil {
+		if err = dsh_utils.EvalFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath, data.Map(), funcs); err != nil {
 			return nil, errW(err, "make script sources error",
 				reason("make template error"),
 				kv("sourceType", dsh_utils.FileTypeTemplate),

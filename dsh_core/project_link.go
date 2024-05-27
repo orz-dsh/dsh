@@ -3,6 +3,7 @@ package dsh_core
 import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"net/url"
+	"path/filepath"
 	"strings"
 )
 
@@ -23,7 +24,8 @@ type ProjectLinkRegistry struct {
 }
 
 type ProjectLinkDir struct {
-	Dir string
+	Raw  string
+	Path string
 }
 
 type ProjectLinkGit struct {
@@ -165,13 +167,22 @@ func parseProjectLinkDir(rawLink string, content string) (link *ProjectLink, err
 			kv("rawLink", rawLink),
 		)
 	}
-	normalizeLink := projectLinkPrefixDir + dir
+	absPath, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, errW(err, "parse project link error",
+			reason("get abs-path error"),
+			kv("rawLink", rawLink),
+			kv("dir", dir),
+		)
+	}
+	normalizeLink := projectLinkPrefixDir + absPath
 	link = &ProjectLink{
 		Raw:        rawLink,
 		Normalized: normalizeLink,
 		Type:       ProjectLinkTypeDir,
 		Dir: &ProjectLinkDir{
-			Dir: dir,
+			Raw:  dir,
+			Path: absPath,
 		},
 	}
 	return link, nil

@@ -186,7 +186,7 @@ func loadProjectConfigSourceContainer(context *appContext, manifest *projectMani
 	}
 	definitions := manifest.Config.sourceDefinitions
 	if context.isMainProject(manifest) {
-		definitions = append(definitions, context.Profile.getProjectConfigSourceDefinitions()...)
+		definitions = append(definitions, context.Profile.projectConfigSourceDefinitions...)
 	}
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]

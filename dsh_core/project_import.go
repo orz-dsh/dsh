@@ -65,12 +65,12 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 	if scope == projectImportScopeScript {
 		definitions = manifest.Script.importDefinitions
 		if context.isMainProject(manifest) {
-			definitions = append(definitions, context.Profile.getProjectScriptImportDefinitions()...)
+			definitions = append(definitions, context.Profile.projectScriptImportDefinitions...)
 		}
 	} else if scope == projectImportScopeConfig {
 		definitions = manifest.Config.importDefinitions
 		if context.isMainProject(manifest) {
-			definitions = append(definitions, context.Profile.getProjectConfigImportDefinitions()...)
+			definitions = append(definitions, context.Profile.projectConfigImportDefinitions...)
 		}
 	} else {
 		impossible()
