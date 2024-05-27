@@ -16,10 +16,10 @@ type ProjectLink struct {
 }
 
 type ProjectLinkRegistry struct {
-	Name      string
-	Path      string
-	RawRef    string
-	parsedRef *ProjectLinkGitRef
+	Name string
+	Path string
+	Ref  string
+	ref  *ProjectLinkGitRef
 }
 
 type ProjectLinkDir struct {
@@ -27,8 +27,8 @@ type ProjectLinkDir struct {
 }
 
 type ProjectLinkGit struct {
-	RawUrl    string
-	RawRef    string
+	Url       string
+	Ref       string
 	parsedUrl *url.URL
 	parsedRef *ProjectLinkGitRef
 }
@@ -37,6 +37,7 @@ type ProjectLinkGitRef struct {
 	Raw           string
 	Normalized    string
 	Type          ProjectLinkGitRefType
+	Name          string
 	ReferenceName plumbing.ReferenceName
 }
 
@@ -147,10 +148,10 @@ func parseProjectLinkRegistry(rawLink string, content string) (link *ProjectLink
 		Normalized: normalizeLink,
 		Type:       ProjectLinkTypeRegistry,
 		Registry: &ProjectLinkRegistry{
-			Name:      name,
-			Path:      path,
-			RawRef:    rawRef,
-			parsedRef: parsedRef,
+			Name: name,
+			Path: path,
+			Ref:  parsedRef.Normalized,
+			ref:  parsedRef,
 		},
 	}
 	return link, nil
@@ -221,8 +222,8 @@ func parseProjectLinkGit(rawLink string, content string) (link *ProjectLink, err
 		Normalized: normalizeLink,
 		Type:       ProjectLinkTypeGit,
 		Git: &ProjectLinkGit{
-			RawUrl:    rawUrl,
-			RawRef:    rawRef,
+			Url:       rawUrl,
+			Ref:       parsedRef.Normalized,
 			parsedUrl: parsedUrl,
 			parsedRef: parsedRef,
 		},
@@ -245,11 +246,11 @@ func parseProjectLinkGitRef(rawRef string) (ref *ProjectLinkGitRef, err error) {
 				kv("rawRef", rawRef),
 			)
 		}
-		normalize := projectLinkGitRefPrefixTag + name
 		ref = &ProjectLinkGitRef{
 			Raw:           rawRef,
-			Normalized:    normalize,
+			Normalized:    projectLinkGitRefPrefixTag + name,
 			Type:          ProjectLinkGitRefTypeTag,
+			Name:          name,
 			ReferenceName: plumbing.NewTagReferenceName(name),
 		}
 	} else if name, matched = strings.CutPrefix(rawRef, projectLinkGitRefPrefixBranch); matched {
@@ -259,21 +260,23 @@ func parseProjectLinkGitRef(rawRef string) (ref *ProjectLinkGitRef, err error) {
 				kv("rawRef", rawRef),
 			)
 		}
-		normalize := projectLinkGitRefPrefixBranch + name
 		ref = &ProjectLinkGitRef{
 			Raw:           rawRef,
-			Normalized:    normalize,
+			Normalized:    projectLinkGitRefPrefixBranch + name,
 			Type:          ProjectLinkGitRefTypeBranch,
+			Name:          name,
 			ReferenceName: plumbing.NewBranchReferenceName(name),
 		}
 	} else {
-		normalize := projectLinkGitRefPrefixBranch + rawRef
+		name = rawRef
 		ref = &ProjectLinkGitRef{
 			Raw:           rawRef,
-			Normalized:    normalize,
+			Normalized:    projectLinkGitRefPrefixBranch + name,
 			Type:          ProjectLinkGitRefTypeBranch,
-			ReferenceName: plumbing.NewBranchReferenceName(rawRef),
+			Name:          name,
+			ReferenceName: plumbing.NewBranchReferenceName(name),
 		}
 	}
+
 	return ref, nil
 }

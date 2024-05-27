@@ -7,19 +7,20 @@ import (
 )
 
 type AppProfile struct {
-	workspace       *Workspace
-	projectManifest *projectManifest
-	evalData        *appProfileEvalData
-	evaluator       *appProfileEvaluator
-	Manifests       []*AppProfileManifest
+	workspace *Workspace
+	//projectManifest *projectManifest
+	evalData  *appProfileEvalData
+	evaluator *appProfileEvaluator
+	Manifests []*AppProfileManifest
 }
 
-func loadAppProfile(workspace *Workspace, projectManifest *projectManifest, paths []string) (*AppProfile, error) {
+func loadAppProfile(workspace *Workspace /*projectManifest *projectManifest,*/, paths []string) (*AppProfile, error) {
 	workingPath, err := dsh_utils.GetWorkingDir()
 	if err != nil {
 		return nil, err
 	}
-	evalData := newAppProfileEvalData(workingPath, workspace.path, projectManifest.projectPath, projectManifest.Name)
+	// TODO
+	evalData := newAppProfileEvalData(workingPath, workspace.path /*projectManifest.projectPath, projectManifest.Name*/, "", "")
 	evaluator := newAppProfileEvaluator(evalData)
 
 	var manifests []*AppProfileManifest
@@ -61,18 +62,18 @@ func loadAppProfile(workspace *Workspace, projectManifest *projectManifest, path
 	}
 
 	profile := &AppProfile{
-		workspace:       workspace,
-		projectManifest: projectManifest,
-		evalData:        evalData,
-		evaluator:       evaluator,
-		Manifests:       manifests,
+		workspace: workspace,
+		//projectManifest: projectManifest,
+		evalData:  evalData,
+		evaluator: evaluator,
+		Manifests: manifests,
 	}
 	return profile, nil
 }
 
-func (p *AppProfile) MakeApp() (*App, error) {
-	return loadApp(p.workspace, p.projectManifest, p)
-}
+//func (p *AppProfile) MakeApp() (*App, error) {
+//	return loadApp(p.workspace, p.projectManifest, p)
+//}
 
 func (p *AppProfile) AddManifest(position int, manifest *AppProfileManifest) {
 	if position < 0 {
@@ -178,10 +179,11 @@ func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDe
 
 func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
 	data := p.evalData.mergeMap(map[string]any{
-		"name":          registry.Name,
-		"path":          registry.Path,
-		"ref":           registry.RawRef,
-		"refNormalized": registry.parsedRef.Normalized,
+		"name":    registry.Name,
+		"path":    registry.Path,
+		"ref":     registry.Ref,
+		"refType": registry.ref.Type,
+		"refName": registry.ref.Name,
 	})
 	matcher := dsh_utils.NewEvalMatcher(data)
 	replacer := dsh_utils.NewEvalReplacer(data, nil)

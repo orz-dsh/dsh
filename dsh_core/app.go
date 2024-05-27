@@ -21,38 +21,20 @@ type AppMakeScriptsSettings struct {
 	UseHardLink     bool
 }
 
-func loadApp(workspace *Workspace, manifest *projectManifest, profile *AppProfile) (app *App, err error) {
-	workspace.logger.InfoDesc("load app", kv("name", manifest.Name))
+func loadApp(workspace *Workspace, link *projectResolvedLink, profile *AppProfile) (app *App, err error) {
+	workspace.logger.InfoDesc("load app", kv("link", link))
 
-	optionValues, err := profile.getOptionValues()
+	context, err := makeAppContext(workspace, link, profile)
 	if err != nil {
-		return nil, errW(err, "load app error",
-			reason("get option values error"),
-			kv("projectName", manifest.Name),
-			kv("projectPath", manifest.projectPath),
-		)
-	}
-	option, err := loadAppOption(manifest, optionValues)
-	if err != nil {
-		return nil, errW(err, "load app error",
-			reason("load app option error"),
-			kv("projectName", manifest.Name),
-			kv("projectPath", manifest.projectPath),
-			kv("optionValues", optionValues),
-		)
+		return nil, err
 	}
 
-	c := newAppContext(workspace, manifest, profile, option)
-	p, err := c.loadMainProject()
+	p, err := context.loadMainProject()
 	if err != nil {
-		return nil, errW(err, "load app error",
-			reason("load project error"),
-			kv("projectName", manifest.Name),
-			kv("projectPath", manifest.projectPath),
-		)
+		return nil, err
 	}
 	app = &App{
-		context:               c,
+		context:               context,
 		project:               p,
 		scriptImportContainer: newAppImportContainer(p, projectImportScopeScript),
 		configImportContainer: newAppImportContainer(p, projectImportScopeConfig),

@@ -28,7 +28,7 @@ func newProjectImport(context *appContext, manifest *projectManifest, definition
 
 func (i *projectImport) loadTarget() error {
 	if i.target == nil {
-		m, err := i.context.workspace.loadProjectManifest(i.Link)
+		m, err := i.context.loadProjectManifest(i.Link)
 		if err != nil {
 			return errW(err, "load import target error",
 				kv("reason", "load project manifest error"),

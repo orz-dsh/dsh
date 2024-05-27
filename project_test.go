@@ -13,18 +13,18 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	profile, err := workspace.PrepareLocalApp("./.test1/app1", nil)
+	factory, err := workspace.MakeAppFactory(nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = profile.AddManifestOptionValues(-1, map[string]string{
+	err = factory.Profile.AddManifestOptionValues(-1, map[string]string{
 		"_os":  "linux",
 		"test": "a",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := profile.MakeApp()
+	app, err := factory.MakeApp("dir:./.test1/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -50,17 +50,17 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	profile, err := workspace.PrepareGitApp("https://github.com/orz-dsh/not-exist-project.git", "main", nil)
+	factory, err := workspace.MakeAppFactory(nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = profile.AddManifestOptionValues(-1, map[string]string{
+	err = factory.Profile.AddManifestOptionValues(-1, map[string]string{
 		"option1": "value1",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = profile.MakeApp()
+	_, err = factory.MakeApp("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -72,7 +72,7 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	profile, err := workspace.PrepareLocalApp("./.test2/app1", nil)
+	factory, err := workspace.MakeAppFactory(nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -80,11 +80,11 @@ func TestProject3(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		options["_shell"] = "powershell"
 	}
-	err = profile.AddManifestOptionValues(-1, options)
+	err = factory.Profile.AddManifestOptionValues(-1, options)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := profile.MakeApp()
+	app, err := factory.MakeApp("dir:./.test2/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
