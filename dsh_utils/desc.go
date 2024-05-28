@@ -52,7 +52,7 @@ func (l DescList) String() string {
 type DescBody []string
 
 func NewDescBody(kvs DescKeyValues) DescBody {
-	return newDescBody("", kvs, make(map[uintptr]string), true, 0, 20)
+	return newDescBody("", kvs, map[uintptr]string{}, true, 0, 20)
 }
 
 func newDescBody(keyPrefix string, kvs DescKeyValues, pointers map[uintptr]string, nextLevel bool, depth int, maxDepth int) DescBody {

@@ -97,7 +97,7 @@ func (w *Workspace) cleanOutputDir(excludeOutputPath string) error {
 
 	var errorDirNames []string
 	var removeDirNames []string
-	var projectCounts = make(map[string]int)
+	var projectCounts = map[string]int{}
 	now := time.Now()
 	for i := 0; i < len(dirNames); i++ {
 		dirName := dirNames[i]

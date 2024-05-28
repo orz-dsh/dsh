@@ -241,13 +241,13 @@ func newAppOptionGenericItems(context *appContext, items map[string]string) appO
 }
 
 func (s appOptionGenericItems) copy() map[string]any {
-	result := make(map[string]any)
+	result := map[string]any{}
 	maps.Copy(result, s)
 	return result
 }
 
 func (s appOptionGenericItems) merge(items map[string]any) map[string]any {
-	result := make(map[string]any)
+	result := map[string]any{}
 	maps.Copy(result, s)
 	if items != nil {
 		maps.Copy(result, items)
@@ -270,7 +270,7 @@ func (s appOptionGenericItems) getShell() string {
 type appOptionSpecifyItems map[string]map[string]string
 
 func newAppOptionSpecifyItems(manifest *projectManifest, items map[string]string) appOptionSpecifyItems {
-	specifyItems := make(map[string]string)
+	specifyItems := map[string]string{}
 	for k, v := range items {
 		if strings.HasPrefix(k, "_") {
 			// generic option

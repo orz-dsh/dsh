@@ -56,7 +56,7 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	container = &projectScriptSourceContainer{
 		context:       context,
 		manifest:      manifest,
-		sourcesByName: make(map[string]*projectScriptSource),
+		sourcesByName: map[string]*projectScriptSource{},
 	}
 	definitions := manifest.Script.sourceDefinitions
 	if context.isMainProject(manifest) {

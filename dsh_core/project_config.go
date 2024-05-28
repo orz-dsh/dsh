@@ -76,7 +76,7 @@ func (s *projectConfigSource) mergeConfigs(configs map[string]any) error {
 
 func (s *projectConfigSource) merge(target map[string]any, source map[string]any, key string) (_ map[string]any, err error) {
 	if target == nil {
-		target = make(map[string]any)
+		target = map[string]any{}
 	}
 	for k, v := range source {
 		switch v.(type) {
@@ -182,7 +182,7 @@ type projectConfigSourceContainer struct {
 func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest, option *projectOption) (container *projectConfigSourceContainer, err error) {
 	container = &projectConfigSourceContainer{
 		context:       context,
-		sourcesByName: make(map[string]*projectConfigSource),
+		sourcesByName: map[string]*projectConfigSource{},
 	}
 	definitions := manifest.Config.sourceDefinitions
 	if context.isMainProject(manifest) {

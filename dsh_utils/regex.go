@@ -11,7 +11,7 @@ func RegexMatch(regex *regexp.Regexp, str string) (matched bool, values map[stri
 		return false, nil
 	}
 	groups := regex.SubexpNames()
-	values = make(map[string]string)
+	values = map[string]string{}
 	for i := 1; i < len(match); i++ {
 		group := groups[i]
 		if group != "" {

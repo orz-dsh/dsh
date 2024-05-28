@@ -271,7 +271,7 @@ func FindFile(dir string, fileNames []string, fileTypes []FileType) (string, Fil
 }
 
 func ScanFiles(dir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
-	var includeFilePathsDict = make(map[string]bool)
+	var includeFilePathsDict = map[string]bool{}
 	for i := 0; i < len(includeFiles); i++ {
 		includeFilePathsDict[filepath.Join(dir, includeFiles[i])] = true
 	}

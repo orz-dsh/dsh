@@ -29,7 +29,7 @@ func (c *appImportContainer) loadImports() (err error) {
 	}
 
 	var imports []*projectImport
-	var importsByPath = make(map[string]*projectImport)
+	var importsByPath = map[string]*projectImport{}
 
 	pic := c.project.getImportContainer(c.scope)
 	for i := 0; i < len(pic.Imports); i++ {
@@ -116,7 +116,7 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 		}
 	})
 
-	configs = make(map[string]any)
+	configs = map[string]any{}
 	for i := 0; i < len(sources); i++ {
 		source := sources[i]
 		if err = source.mergeConfigs(configs); err != nil {

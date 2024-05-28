@@ -21,7 +21,7 @@ type AppArtifact struct {
 }
 
 func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtifact {
-	var targetNamesDict = make(map[string]bool)
+	var targetNamesDict = map[string]bool{}
 	for i := 0; i < len(targetNames); i++ {
 		targetNamesDict[targetNames[i]] = true
 	}

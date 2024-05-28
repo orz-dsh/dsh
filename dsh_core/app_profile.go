@@ -64,7 +64,7 @@ func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appPr
 }
 
 func (p *appProfile) getProjectOptionItems() (items map[string]string, err error) {
-	items = make(map[string]string)
+	items = map[string]string{}
 	if err = p.projectOptionDefinitions.fillItems(items, p.evaluator); err != nil {
 		return nil, err
 	}

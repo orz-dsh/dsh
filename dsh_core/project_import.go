@@ -79,7 +79,7 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 		context:       context,
 		manifest:      manifest,
 		scope:         scope,
-		importsByPath: make(map[string]*projectImport),
+		importsByPath: map[string]*projectImport{},
 	}
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]

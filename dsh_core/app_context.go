@@ -26,9 +26,9 @@ func makeAppContext(workspace *Workspace, profile *appProfile, link *projectReso
 		workspace:              workspace,
 		evaluator:              profile.evaluator,
 		profile:                profile,
-		projectsByName:         make(map[string]*project),
-		projectManifestsByPath: make(map[string]*projectManifest),
-		projectManifestsByName: make(map[string]*projectManifest),
+		projectsByName:         map[string]*project{},
+		projectManifestsByPath: map[string]*projectManifest{},
+		projectManifestsByName: map[string]*projectManifest{},
 	}
 
 	manifest, err := context.loadProjectManifest(link)

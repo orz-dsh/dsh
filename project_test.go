@@ -67,7 +67,7 @@ func TestProject3(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	factory := workspace.NewAppFactory()
-	options := make(map[string]string)
+	options := map[string]string{}
 	if runtime.GOOS == "windows" {
 		options["_shell"] = "powershell"
 	}

@@ -146,7 +146,7 @@ const (
 )
 
 func (o *projectManifestOption) init(manifest *projectManifest) (err error) {
-	optionNamesDict := make(map[string]bool)
+	optionNamesDict := map[string]bool{}
 	for i := 0; i < len(o.Items); i++ {
 		option := o.Items[i]
 		if option.Name == "" {
@@ -204,7 +204,7 @@ func (o *projectManifestOption) init(manifest *projectManifest) (err error) {
 			option.defaultRawValue = defaultRawValue
 			option.defaultParsedValue = defaultParsedValue
 		}
-		assignTargetsDict := make(map[string]bool)
+		assignTargetsDict := map[string]bool{}
 		for j := 0; j < len(option.Assigns); j++ {
 			if option.Assigns[j].Project == "" {
 				return errN("project manifest invalid",

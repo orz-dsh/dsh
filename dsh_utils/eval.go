@@ -200,7 +200,7 @@ func (ds EvalDataset) MergeDataset(dataset EvalDataset) EvalDataset {
 }
 
 func (ds EvalDataset) ToMap(root string, funcs EvalFuncs) map[string]any {
-	result := make(map[string]any)
+	result := map[string]any{}
 	if funcs != nil {
 		result["funcs"] = funcs
 	}
