@@ -1,8 +1,8 @@
 package dsh_core
 
 import (
+	"dsh/dsh_utils"
 	"strings"
-	"text/template"
 )
 
 func projectScriptTemplateFuncShInitApp() string {
@@ -21,8 +21,8 @@ func projectScriptTemplateFuncShImport(importName string) string {
 fi`
 }
 
-func newProjectScriptTemplateFuncs() template.FuncMap {
-	return template.FuncMap{
+func newProjectScriptTemplateFuncs() dsh_utils.EvalFuncs {
+	return dsh_utils.EvalFuncs{
 		"SH_INIT_APP": projectScriptTemplateFuncShInitApp,
 		"SH_IMPORT":   projectScriptTemplateFuncShImport,
 	}

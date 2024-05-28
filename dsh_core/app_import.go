@@ -2,7 +2,6 @@ package dsh_core
 
 import (
 	"slices"
-	"text/template"
 )
 
 type appImportContainer struct {
@@ -130,7 +129,7 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 	return configs, nil
 }
 
-func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) ([]string, error) {
+func (c *appImportContainer) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
 	if c.scope != projectImportScopeScript {
 		panic(desc("make scripts only support scope script",
 			kv("scope", c.scope),
@@ -145,13 +144,13 @@ func (c *appImportContainer) makeScripts(configs map[string]any, funcs template.
 	}
 	var targetNames []string
 	for i := 0; i < len(c.Imports); i++ {
-		iTargetNames, err := c.Imports[i].target.makeScripts(configs, funcs, outputPath, useHardLink)
+		iTargetNames, err := c.Imports[i].target.makeScripts(evaluator, outputPath, useHardLink)
 		if err != nil {
 			return nil, err
 		}
 		targetNames = append(targetNames, iTargetNames...)
 	}
-	pTargetNames, err := c.project.makeScripts(configs, funcs, outputPath, useHardLink)
+	pTargetNames, err := c.project.makeScripts(evaluator, outputPath, useHardLink)
 	if err != nil {
 		return nil, err
 	}

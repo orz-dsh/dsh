@@ -7,18 +7,23 @@ import (
 
 type AppFactory struct {
 	workspace *Workspace
-	evalData  *appEvalData
+	evaluator *Evaluator
 	manifests []*AppProfileManifest
 }
 
 func makeAppFactory(workspace *Workspace) (*AppFactory, error) {
-	evalData, err := makeAppEvalData(workspace)
+	workingDir, err := dsh_utils.GetWorkingDir()
 	if err != nil {
 		return nil, err
 	}
-	matcher := dsh_utils.NewEvalMatcher(evalData)
-	replacer := dsh_utils.NewEvalReplacer(evalData, nil)
-	files, err := workspace.manifest.Profile.definitions.getFiles(matcher, replacer)
+	evaluator := dsh_utils.NewEvaluator().SetData("local", map[string]any{
+		"working_dir":          workingDir,
+		"workspace_dir":        workspace.path,
+		"runtime_version":      dsh_utils.GetRuntimeVersion(),
+		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
+	})
+
+	files, err := workspace.manifest.Profile.definitions.getFiles(evaluator)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +37,7 @@ func makeAppFactory(workspace *Workspace) (*AppFactory, error) {
 	}
 	factory := &AppFactory{
 		workspace: workspace,
-		evalData:  evalData,
+		evaluator: evaluator,
 		manifests: manifests,
 	}
 
@@ -57,7 +62,7 @@ func (f *AppFactory) AddManifestOptionValues(position int, values map[string]str
 }
 
 func (f *AppFactory) MakeApp(rawLink string) (*App, error) {
-	profile, err := makeAppProfile(f.workspace, f.evalData, f.manifests)
+	profile, err := makeAppProfile(f.workspace, f.evaluator, f.manifests)
 	if err != nil {
 		return nil, err
 	}

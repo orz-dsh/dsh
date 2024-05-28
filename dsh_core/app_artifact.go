@@ -17,7 +17,6 @@ type AppArtifact struct {
 	context         *appContext
 	targetNames     []string
 	targetNamesDict map[string]bool
-	evaluator       *appArtifactEvaluator
 	OutputPath      string
 }
 
@@ -31,7 +30,6 @@ func newAppArtifact(app *App, targetNames []string, outputPath string) *AppArtif
 		context:         app.context,
 		targetNames:     targetNames,
 		targetNamesDict: targetNamesDict,
-		evaluator:       newAppArtifactEvaluator(app.context.Profile.evalData),
 		OutputPath:      outputPath,
 	}
 }
@@ -157,7 +155,18 @@ func (a *AppArtifact) getShellArgs(definition *workspaceShellDefinition, targetG
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {
-		shellArgs, err = a.evaluator.evalShellArgs(definition.Name, definition.Path, targetGlob, targetName, targetPath, args)
+		evaluator := a.context.Profile.evaluator.SetRootData("executor", map[string]any{
+			"shell": map[string]any{
+				"name": definition.Name,
+				"path": definition.Path,
+			},
+			"target": map[string]any{
+				"glob": targetGlob,
+				"name": targetName,
+				"path": targetPath,
+			},
+		})
+		shellArgs, err = definition.Args.eval(evaluator)
 		if err != nil {
 			return nil, errW(err, "get shell args error",
 				reason("eval shell args error"),

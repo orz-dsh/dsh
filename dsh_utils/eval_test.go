@@ -4,13 +4,13 @@ import (
 	"testing"
 )
 
-func TestEvalExprReturnBool(t *testing.T) {
+func TestEvalBoolExpr(t *testing.T) {
 	// return true bool
 	program, err := CompileExpr("true")
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := EvalExprReturnBool(program, nil)
+	result, err := EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, map[string]any{
+	result, err = EvalBoolExpr(program, map[string]any{
 		"exists_variable": 1,
 	})
 	if err != nil {
@@ -155,7 +155,7 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,20 +166,20 @@ func TestEvalExprReturnBool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnBool(program, nil)
+	result, err = EvalBoolExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return nil:", result)
 }
 
-func TestEvalExprReturnString(t *testing.T) {
+func TestEvalStringExpr(t *testing.T) {
 	// return true bool
 	program, err := CompileExpr("true")
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := EvalExprReturnString(program, nil)
+	result, err := EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +278,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, map[string]any{
+	result, err = EvalStringExpr(program, map[string]any{
 		"exists_variable": 1,
 	})
 	if err != nil {
@@ -324,7 +324,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +335,7 @@ func TestEvalExprReturnString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalExprReturnString(program, nil)
+	result, err = EvalStringExpr(program, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +354,7 @@ func TestEvalExprModifyData(t *testing.T) {
 		data[k] = v
 		return v
 	}
-	result, err := EvalExprReturnString(program, data)
+	result, err := EvalStringExpr(program, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,28 +365,69 @@ func TestEvalExprModifyData(t *testing.T) {
 	))
 }
 
-func TestEvalData(t *testing.T) {
-	data0 := NewEvalData()
-	data1 := data0.Data("g1", map[string]any{
+func TestEvaluator(t *testing.T) {
+	evaluator0 := NewEvaluator()
+	evaluator1 := evaluator0.SetData("g1", map[string]any{
 		"g1key1": "g1value1",
 		"g1key2": "g1value2",
 	})
-	data2 := data1.Data("g2", map[string]any{
+	evaluator2 := evaluator1.SetData("g2", map[string]any{
 		"g2key1": "g2value1",
 		"g2key2": "g2value2",
 	})
-	data3 := data2.Data("g3", map[string]any{
+	evaluator3 := evaluator2.SetData("g3", map[string]any{
 		"g3key1": "g3value1",
 		"g3key2": "g3value2",
-	}).Main("g1")
-	t.Log(desc("test eval data",
-		kv("data0", data0),
-		kv("data0-map", data0.Map()),
-		kv("data1", data1),
-		kv("data1-map", data1.Map()),
-		kv("data2", data2),
-		kv("data2-map", data2.Map()),
-		kv("data3", data3),
-		kv("data3-map", data3.Map()),
+		"g3":     "conflict key",
+	})
+	evaluator4 := evaluator3.SetRoot("g3")
+	evaluator5 := evaluator4.SetFunc("test", func(input string) bool {
+		return input == "g3value1"
+	})
+
+	expr1, err := CompileExpr("funcs.test(g3key1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expr2, err := CompileExpr("funcs.test(g3key2)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	template1 := "{{test .g3key1}} / {{.g3key1}} / {{.g3key2}} / {{.g3.g3}}"
+	template2 := "{{test .g3key2}} / {{.g3key1}} / {{.g3key2}} / {{.g3.g3}}"
+	expr1Result, err := evaluator5.EvalBoolExpr(expr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expr2Result, err := evaluator5.EvalBoolExpr(expr2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template1Result, err := evaluator5.EvalStringTemplate(template1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template2Result, err := evaluator5.EvalStringTemplate(template2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(desc("test evaluator",
+		kv("evaluator0", evaluator0),
+		kv("evaluator0-map", evaluator0.ToMap(true)),
+		kv("evaluator1", evaluator1),
+		kv("evaluator1-map", evaluator1.ToMap(true)),
+		kv("evaluator2", evaluator2),
+		kv("evaluator2-map", evaluator2.ToMap(true)),
+		kv("evaluator3", evaluator3),
+		kv("evaluator3-map", evaluator3.ToMap(true)),
+		kv("evaluator4", evaluator4),
+		kv("evaluator4-map", evaluator4.ToMap(true)),
+		kv("evaluator5", evaluator5),
+		kv("evaluator5-map", evaluator5.ToMap(true)),
+		kv("expr1Result", expr1Result),
+		kv("expr2Result", expr2Result),
+		kv("template1Result", template1Result),
+		kv("template2Result", template2Result),
 	))
 }

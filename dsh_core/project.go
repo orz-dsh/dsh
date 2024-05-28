@@ -1,9 +1,5 @@
 package dsh_core
 
-import (
-	"text/template"
-)
-
 type project struct {
 	context  *appContext
 	Manifest *projectManifest
@@ -65,9 +61,9 @@ func (p *project) loadConfigSources() error {
 	return p.Config.SourceContainer.loadSources()
 }
 
-func (p *project) makeScripts(configs map[string]any, funcs template.FuncMap, outputPath string, useHardLink bool) ([]string, error) {
-	data := p.context.Profile.evalData.Data("options", p.context.Option.getProjectOptions(p.Manifest)).Data("configs", configs)
-	targetNames, err := p.Script.SourceContainer.makeSources(data, funcs, outputPath, useHardLink)
+func (p *project) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
+	evaluator = evaluator.SetData("options", p.context.Option.getProjectOptions(p.Manifest))
+	targetNames, err := p.Script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("make sources error"),

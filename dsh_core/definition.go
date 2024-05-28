@@ -28,15 +28,15 @@ func newWorkspaceProfileDefinition(file string, optional bool, match string, mat
 	}
 }
 
-func (ds workspaceProfileDefinitions) getFiles(matcher *dsh_utils.EvalMatcher, replacer *dsh_utils.EvalReplacer) ([]string, error) {
+func (ds workspaceProfileDefinitions) getFiles(evaluator *Evaluator) ([]string, error) {
 	// TODO: error
 	var files []string
 	for i := 0; i < len(ds); i++ {
 		definition := ds[i]
-		if matched, err := matcher.Match(definition.match); err != nil {
+		if matched, err := evaluator.EvalBoolExpr(definition.match); err != nil {
 			return nil, err
 		} else if matched {
-			file, err := replacer.Replace(definition.File)
+			file, err := evaluator.EvalStringTemplate(definition.File)
 			if err != nil {
 				return nil, err
 			}
@@ -66,12 +66,14 @@ type workspaceShellDefinition struct {
 	Name  string
 	Path  string
 	Exts  []string
-	Args  []string
+	Args  workspaceShellArgsDefinition
 	Match string
 	match *vm.Program
 }
 
 type workspaceShellDefinitions map[string][]*workspaceShellDefinition
+
+type workspaceShellArgsDefinition []string
 
 var workspaceShellExtsDefault = map[string][]string{
 	"cmd":        {".cmd", ".bat"},
@@ -81,7 +83,7 @@ var workspaceShellExtsDefault = map[string][]string{
 
 var workspaceShellExtsFallback = []string{".sh"}
 
-var workspaceShellArgsDefault = map[string][]string{
+var workspaceShellArgsDefault = map[string]workspaceShellArgsDefinition{
 	"cmd":        {"/C", "{{.target.path}}"},
 	"pwsh":       {"-NoProfile", "-File", "{{.target.path}}"},
 	"powershell": {"-NoProfile", "-File", "{{.target.path}}"},
@@ -131,12 +133,12 @@ func (d *workspaceShellDefinition) fillDefault() error {
 	return nil
 }
 
-func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinition, matcher *dsh_utils.EvalMatcher) error {
+func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinition, evaluator *Evaluator) error {
 	// TODO: priority
 	if definitions, exist := ds[target.Name]; exist {
 		for i := 0; i < len(definitions); i++ {
 			definition := definitions[i]
-			matched, err := matcher.Match(definition.match)
+			matched, err := evaluator.EvalBoolExpr(definition.match)
 			if err != nil {
 				return err
 			}
@@ -156,6 +158,23 @@ func (ds workspaceShellDefinitions) fillDefinition(target *workspaceShellDefinit
 		}
 	}
 	return nil
+}
+
+func (args workspaceShellArgsDefinition) eval(evaluator *Evaluator) ([]string, error) {
+	var result []string
+	for i := 0; i < len(args); i++ {
+		rawArg := args[i]
+		arg, err := evaluator.EvalStringTemplate(rawArg)
+		if err != nil {
+			return nil, errW(err, "eval shell args error",
+				reason("execute arg template error"),
+				kv("index", i),
+				kv("args", args),
+			)
+		}
+		result = append(result, arg)
+	}
+	return result, nil
 }
 
 // endregion
@@ -209,16 +228,16 @@ func newWorkspaceImportRedirectDefinition(regex *regexp.Regexp, link string, mat
 	}
 }
 
-func (ds workspaceImportRegistryDefinitions) getLink(name string, matcher *dsh_utils.EvalMatcher, replacer *dsh_utils.EvalReplacer) (*ProjectLink, error) {
+func (ds workspaceImportRegistryDefinitions) getLink(name string, evaluator *Evaluator) (*ProjectLink, error) {
 	if definitions, exist := ds[name]; exist {
 		for i := 0; i < len(definitions); i++ {
 			definition := definitions[i]
-			matched, err := matcher.Match(definition.match)
+			matched, err := evaluator.EvalBoolExpr(definition.match)
 			if err != nil {
 				return nil, err
 			}
 			if matched {
-				rawLink, err := replacer.Replace(definition.Link)
+				rawLink, err := evaluator.EvalStringTemplate(definition.Link)
 				if err != nil {
 					return nil, err
 				}
@@ -233,7 +252,7 @@ func (ds workspaceImportRegistryDefinitions) getLink(name string, matcher *dsh_u
 	return nil, nil
 }
 
-func (ds workspaceImportRedirectDefinitions) getLink(links []string, matcher *dsh_utils.EvalMatcher, replacer *dsh_utils.EvalReplacer) (*ProjectLink, string, error) {
+func (ds workspaceImportRedirectDefinitions) getLink(links []string, evaluator *Evaluator) (*ProjectLink, string, error) {
 	// TODO: priority
 	for i := 0; i < len(links); i++ {
 		link := links[i]
@@ -243,14 +262,13 @@ func (ds workspaceImportRedirectDefinitions) getLink(links []string, matcher *ds
 			if !matched {
 				continue
 			}
-			matched, err := matcher.Match(definition.match)
+			matched, err := evaluator.EvalBoolExpr(definition.match)
 			if err != nil {
 				return nil, "", err
 			}
 			if matched {
-				rawLink, err := replacer.ModifyData(func(data *dsh_utils.EvalData) *dsh_utils.EvalData {
-					return data.Data("regex", dsh_utils.MapStrStrToMapStrAny(values))
-				}).Replace(definition.Link)
+				evaluator2 := evaluator.SetData("regex", dsh_utils.MapStrStrToMapStrAny(values))
+				rawLink, err := evaluator2.EvalStringTemplate(definition.Link)
 				if err != nil {
 					return nil, "", err
 				}
@@ -287,14 +305,14 @@ func newProjectOptionDefinition(name string, value string, match string, matchEx
 	}
 }
 
-func (ds projectOptionDefinitions) fillOptions(target map[string]string, matcher *dsh_utils.EvalMatcher) error {
+func (ds projectOptionDefinitions) fillOptions(target map[string]string, evaluator *Evaluator) error {
 	for i := 0; i < len(ds); i++ {
 		definition := ds[i]
 		if _, exist := target[definition.Name]; exist {
 			// The priority of the previous one is higher than that of the later one.
 			continue
 		}
-		matched, err := matcher.Match(definition.match)
+		matched, err := evaluator.EvalBoolExpr(definition.match)
 		if err != nil {
 			return err
 		}

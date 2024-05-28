@@ -195,7 +195,7 @@ func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
 	verifies := manifest.Option.verifies
 	for i := 0; i < len(verifies); i++ {
 		verify := verifies[i]
-		result, err := dsh_utils.EvalExprReturnBool(verify, o.mergeGlobalOptions(options))
+		result, err := dsh_utils.EvalBoolExpr(verify, o.mergeGlobalOptions(options))
 		if err != nil {
 			return errW(err, "load project options error",
 				reason("eval verify error"),
@@ -242,7 +242,7 @@ func (o *appOption) evalMatch(manifest *projectManifest, expr *vm.Program) (bool
 	if expr == nil {
 		return true, nil
 	}
-	matched, err := dsh_utils.EvalExprReturnBool(expr, o.getProjectOptions(manifest))
+	matched, err := dsh_utils.EvalBoolExpr(expr, o.getProjectOptions(manifest))
 	if err != nil {
 		return false, errW(err, "eval project match expr error",
 			reason("eval expr error"),
@@ -301,7 +301,7 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	if assign, exist := o.Assigns[target]; exist {
 		if result, exist := o.Results[assign.Source]; exist {
 			if assign.mapping != nil {
-				mappingResult, err := dsh_utils.EvalExprReturnString(assign.mapping, o.mergeGlobalOptions(map[string]any{
+				mappingResult, err := dsh_utils.EvalStringExpr(assign.mapping, o.mergeGlobalOptions(map[string]any{
 					"value": result.ParsedValue,
 				}))
 				if err != nil {

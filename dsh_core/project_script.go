@@ -4,7 +4,6 @@ import (
 	"dsh/dsh_utils"
 	"path/filepath"
 	"strings"
-	"text/template"
 	"time"
 )
 
@@ -123,7 +122,7 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 	return nil
 }
 
-func (c *projectScriptSourceContainer) makeSources(data *appEvalData, funcs template.FuncMap, outputPath string, useHardLink bool) (targetNames []string, err error) {
+func (c *projectScriptSourceContainer) makeSources(evaluator *Evaluator, outputPath string, useHardLink bool) (targetNames []string, err error) {
 	for i := 0; i < len(c.PlainSources); i++ {
 		startTime := time.Now()
 		source := c.PlainSources[i]
@@ -174,7 +173,7 @@ func (c *projectScriptSourceContainer) makeSources(data *appEvalData, funcs temp
 			kv("sourcePath", source.SourcePath),
 			kv("targetPath", targetPath),
 		)
-		if err = dsh_utils.EvalFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath, data.Map(), funcs); err != nil {
+		if err = evaluator.EvalFileTemplate(source.SourcePath, templateLibSourcePaths, targetPath); err != nil {
 			return nil, errW(err, "make script sources error",
 				reason("make template error"),
 				kv("sourceType", dsh_utils.FileTypeTemplate),

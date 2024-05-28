@@ -13,8 +13,6 @@ import (
 	"text/template"
 )
 
-type EvalFuncs = template.FuncMap
-
 func CompileExpr(content string) (*vm.Program, error) {
 	program, err := expr.Compile(content)
 	if err != nil {
@@ -23,10 +21,10 @@ func CompileExpr(content string) (*vm.Program, error) {
 	return program, nil
 }
 
-func EvalExprReturnBool(program *vm.Program, data map[string]any) (bool, error) {
+func EvalBoolExpr(program *vm.Program, data map[string]any) (bool, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
-		return false, errW(err, "eval expr return bool error",
+		return false, errW(err, "eval bool expr error",
 			reason("eval expr error"),
 			kv("program", program.Source().Content()),
 			kv("data", data),
@@ -49,7 +47,7 @@ func EvalExprReturnBool(program *vm.Program, data map[string]any) (bool, error) 
 		case map[string]any:
 			return len(result.(map[string]any)) > 0, nil
 		default:
-			return false, errN("eval expr return bool error",
+			return false, errN("eval bool expr error",
 				reason("unsupported result type"),
 				kv("result", result),
 				kv("resultType", reflect.TypeOf(result)),
@@ -59,10 +57,10 @@ func EvalExprReturnBool(program *vm.Program, data map[string]any) (bool, error) 
 	return false, nil
 }
 
-func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, error) {
+func EvalStringExpr(program *vm.Program, data map[string]any) (*string, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
-		return nil, errW(err, "eval expr return string error",
+		return nil, errW(err, "eval string expr error",
 			reason("eval expr error"),
 			kv("program", program.Source().Content()),
 			kv("data", data),
@@ -83,7 +81,7 @@ func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, er
 			str = strconv.FormatFloat(result.(float64), 'f', -1, 64)
 		case []any:
 			if bytes, err := json.Marshal(result.([]any)); err != nil {
-				return nil, errW(err, "eval expr return string error",
+				return nil, errW(err, "eval string expr error",
 					reason("array result marshal json error"),
 					kv("result", result),
 				)
@@ -92,7 +90,7 @@ func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, er
 			}
 		case map[string]any:
 			if bytes, err := json.Marshal(result.(map[string]any)); err != nil {
-				return nil, errW(err, "eval expr return string error",
+				return nil, errW(err, "eval string expr error",
 					reason("map result marshal json error"),
 					kv("result", result),
 				)
@@ -100,7 +98,7 @@ func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, er
 				str = string(bytes)
 			}
 		default:
-			return nil, errN("eval expr return string error",
+			return nil, errN("eval string expr error",
 				reason("unsupported result type"),
 				kv("result", result),
 				kv("resultType", reflect.TypeOf(result)),
@@ -111,7 +109,7 @@ func EvalExprReturnString(program *vm.Program, data map[string]any) (*string, er
 	return nil, nil
 }
 
-func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string, data map[string]any, funcs EvalFuncs) error {
+func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string, data map[string]any, funcs template.FuncMap) error {
 	tpl := template.New(filepath.Base(inputPath)).Option("missingkey=error")
 	if funcs != nil {
 		tpl = tpl.Funcs(funcs)
@@ -156,7 +154,7 @@ func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string
 	return nil
 }
 
-func EvalStringTemplate(str string, data map[string]any, funcs EvalFuncs) (string, error) {
+func EvalStringTemplate(str string, data map[string]any, funcs template.FuncMap) (string, error) {
 	tpl := template.New("StringTemplate").Option("missingkey=error")
 	if funcs != nil {
 		tpl = tpl.Funcs(funcs)
@@ -183,97 +181,176 @@ func EvalStringTemplate(str string, data map[string]any, funcs EvalFuncs) (strin
 	return strings.TrimSpace(writer.String()), nil
 }
 
-type EvalData struct {
-	main   string
-	groups map[string]map[string]any
+type EvalData map[string]any
+
+type EvalDataset map[string]EvalData
+
+func (ds EvalDataset) SetData(name string, data map[string]any) EvalDataset {
+	dataset := EvalDataset{}
+	maps.Copy(dataset, ds)
+	dataset[name] = data
+	return dataset
 }
 
-func NewEvalData() *EvalData {
-	return &EvalData{}
+func (ds EvalDataset) MergeDataset(dataset EvalDataset) EvalDataset {
+	result := EvalDataset{}
+	maps.Copy(result, ds)
+	maps.Copy(result, dataset)
+	return result
 }
 
-func (d *EvalData) Data(name string, data map[string]any) *EvalData {
-	groups := make(map[string]map[string]any)
-	if d.groups != nil {
-		maps.Copy(groups, d.groups)
-	}
-	groups[name] = data
-	return &EvalData{
-		groups: groups,
-		main:   d.main,
-	}
-}
-
-func (d *EvalData) MainData(name string, data map[string]any) *EvalData {
-	return d.Data(name, data).Main(name)
-}
-
-func (d *EvalData) Main(name string) *EvalData {
-	return &EvalData{
-		groups: d.groups,
-		main:   name,
-	}
-}
-
-func (d *EvalData) Map() map[string]any {
+func (ds EvalDataset) ToMap(root string, funcs EvalFuncs) map[string]any {
 	result := make(map[string]any)
-	if d.main == "" {
-		for k, v := range d.groups {
-			result[k] = v
-		}
-	} else {
-		for k, v := range d.groups {
-			if k != d.main {
+	if funcs != nil {
+		result["funcs"] = funcs
+	}
+	for k, v := range ds {
+		result[k] = v
+	}
+	if root != "" {
+		for k, v := range ds[root] {
+			if _, exist := result[k]; !exist {
 				result[k] = v
 			}
-		}
-		for k, v := range d.groups[d.main] {
-			result[k] = v
 		}
 	}
 	return result
 }
 
-func (d *EvalData) DescExtraKeyValues() KVS {
+type EvalFuncs map[string]any
+
+func (fs EvalFuncs) SetFunc(name string, fn any) EvalFuncs {
+	result := EvalFuncs{}
+	maps.Copy(result, fs)
+	result[name] = fn
+	return result
+}
+
+func (fs EvalFuncs) MergeFuncs(funcs EvalFuncs) EvalFuncs {
+	result := EvalFuncs{}
+	maps.Copy(result, fs)
+	maps.Copy(result, funcs)
+	return result
+}
+
+func (fs EvalFuncs) ToTemplateFuncMap() template.FuncMap {
+	result := template.FuncMap{}
+	maps.Copy(result, fs)
+	return result
+}
+
+type Evaluator struct {
+	root    string
+	dataset EvalDataset
+	funcs   EvalFuncs
+}
+
+func NewEvaluator() *Evaluator {
+	return &Evaluator{
+		root:    "",
+		dataset: EvalDataset{},
+		funcs:   EvalFuncs{},
+	}
+}
+
+func (e *Evaluator) SetRoot(name string) *Evaluator {
+	return &Evaluator{
+		root:    name,
+		dataset: e.dataset,
+		funcs:   e.funcs,
+	}
+}
+
+func (e *Evaluator) ClearRoot() *Evaluator {
+	return e.SetRoot("")
+}
+
+func (e *Evaluator) SetData(name string, data map[string]any) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: e.dataset.SetData(name, data),
+		funcs:   e.funcs,
+	}
+}
+
+func (e *Evaluator) SetRootData(name string, data map[string]any) *Evaluator {
+	return &Evaluator{
+		root:    name,
+		dataset: e.dataset.SetData(name, data),
+		funcs:   e.funcs,
+	}
+}
+
+func (e *Evaluator) SetDataset(dataset EvalDataset) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: dataset,
+		funcs:   e.funcs,
+	}
+}
+
+func (e *Evaluator) MergeDataset(dataset EvalDataset) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: e.dataset.MergeDataset(dataset),
+		funcs:   e.funcs,
+	}
+}
+
+func (e *Evaluator) SetFunc(name string, fn any) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: e.dataset,
+		funcs:   e.funcs.SetFunc(name, fn),
+	}
+}
+
+func (e *Evaluator) SetFuncs(funcs EvalFuncs) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: e.dataset,
+		funcs:   funcs,
+	}
+}
+
+func (e *Evaluator) MergeFuncs(funcs EvalFuncs) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: e.dataset,
+		funcs:   e.funcs.MergeFuncs(funcs),
+	}
+}
+
+func (e *Evaluator) ToMap(includeFuncs bool) map[string]any {
+	return e.dataset.ToMap(e.root, t(includeFuncs, e.funcs, nil))
+}
+
+func (e *Evaluator) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("main", d.main),
-		kv("groups", d.groups),
+		kv("root", e.root),
+		kv("dataset", e.dataset),
+		kv("funcs", e.funcs),
 	}
 }
 
-type EvalMatcher struct {
-	data *EvalData
-}
-
-func NewEvalMatcher(data *EvalData) *EvalMatcher {
-	return &EvalMatcher{
-		data: data,
-	}
-}
-
-func (m *EvalMatcher) Match(expr *vm.Program) (bool, error) {
+func (e *Evaluator) EvalBoolExpr(expr *vm.Program) (bool, error) {
 	if expr == nil {
 		return true, nil
 	}
-	return EvalExprReturnBool(expr, m.data.Map())
+	return EvalBoolExpr(expr, e.ToMap(true))
 }
 
-type EvalReplacer struct {
-	data  *EvalData
-	funcs EvalFuncs
-}
-
-func NewEvalReplacer(data *EvalData, funcs EvalFuncs) *EvalReplacer {
-	return &EvalReplacer{
-		data:  data,
-		funcs: funcs,
+func (e *Evaluator) EvalStringExpr(expr *vm.Program) (*string, error) {
+	if expr == nil {
+		return nil, nil
 	}
+	return EvalStringExpr(expr, e.ToMap(true))
 }
 
-func (r *EvalReplacer) ModifyData(fn func(data *EvalData) *EvalData) *EvalReplacer {
-	return NewEvalReplacer(fn(r.data), r.funcs)
+func (e *Evaluator) EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string) error {
+	return EvalFileTemplate(inputPath, libraryPaths, outputPath, e.ToMap(false), e.funcs.ToTemplateFuncMap())
 }
 
-func (r *EvalReplacer) Replace(str string) (string, error) {
-	return EvalStringTemplate(str, r.data.Map(), r.funcs)
+func (e *Evaluator) EvalStringTemplate(str string) (string, error) {
+	return EvalStringTemplate(str, e.ToMap(false), e.funcs.ToTemplateFuncMap())
 }

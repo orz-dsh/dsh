@@ -105,9 +105,9 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 			}
 		}
 	}
-	funcs := newProjectScriptTemplateFuncs()
 
-	targetNames, err := a.scriptImportContainer.makeScripts(configs, funcs, outputPath, settings.UseHardLink)
+	evaluator := a.context.Profile.evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
+	targetNames, err := a.scriptImportContainer.makeScripts(evaluator, outputPath, settings.UseHardLink)
 	if err != nil {
 		return nil, err
 	}

@@ -1,12 +1,8 @@
 package dsh_core
 
-import (
-	"dsh/dsh_utils"
-)
-
 type AppProfile struct {
 	workspace                          *Workspace
-	evalData                           *appEvalData
+	evaluator                          *Evaluator
 	workspaceShellDefinitions          workspaceShellDefinitions
 	workspaceImportRegistryDefinitions workspaceImportRegistryDefinitions
 	workspaceImportRedirectDefinitions workspaceImportRedirectDefinitions
@@ -17,7 +13,7 @@ type AppProfile struct {
 	projectConfigImportDefinitions     []*projectImportDefinition
 }
 
-func makeAppProfile(workspace *Workspace, evalData *appEvalData, manifests []*AppProfileManifest) (*AppProfile, error) {
+func makeAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*AppProfileManifest) (*AppProfile, error) {
 	workspaceShellDefinitions := workspaceShellDefinitions{}
 	workspaceImportRegistryDefinitions := workspaceImportRegistryDefinitions{}
 	workspaceImportRedirectDefinitions := workspaceImportRedirectDefinitions{}
@@ -54,7 +50,7 @@ func makeAppProfile(workspace *Workspace, evalData *appEvalData, manifests []*Ap
 
 	profile := &AppProfile{
 		workspace:                          workspace,
-		evalData:                           evalData,
+		evaluator:                          evaluator,
 		workspaceShellDefinitions:          workspaceShellDefinitions,
 		workspaceImportRegistryDefinitions: workspaceImportRegistryDefinitions,
 		workspaceImportRedirectDefinitions: workspaceImportRedirectDefinitions,
@@ -68,10 +64,8 @@ func makeAppProfile(workspace *Workspace, evalData *appEvalData, manifests []*Ap
 }
 
 func (p *AppProfile) getOptionValues() (options map[string]string, err error) {
-	evalData := p.evalData
-	matcher := dsh_utils.NewEvalMatcher(evalData)
 	options = make(map[string]string)
-	if err = p.projectOptionDefinitions.fillOptions(options, matcher); err != nil {
+	if err = p.projectOptionDefinitions.fillOptions(options, p.evaluator); err != nil {
 		return nil, err
 	}
 	return options, nil
@@ -127,10 +121,8 @@ func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projec
 }
 
 func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
-	evalData := p.evalData
-	matcher := dsh_utils.NewEvalMatcher(evalData)
 	definition := newWorkspaceShellDefinitionEmpty(name)
-	if err := p.workspaceShellDefinitions.fillDefinition(definition, matcher); err != nil {
+	if err := p.workspaceShellDefinitions.fillDefinition(definition, p.evaluator); err != nil {
 		return nil, err
 	}
 	if err := definition.fillDefault(); err != nil {
@@ -140,16 +132,14 @@ func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDe
 }
 
 func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
-	evalData := p.evalData.MainData("registry", map[string]any{
+	evaluator := p.evaluator.SetRootData("registry", map[string]any{
 		"name":    registry.Name,
 		"path":    registry.Path,
 		"ref":     registry.Ref,
 		"refType": registry.ref.Type,
 		"refName": registry.ref.Name,
 	})
-	matcher := dsh_utils.NewEvalMatcher(evalData)
-	replacer := dsh_utils.NewEvalReplacer(evalData, nil)
-	link, err = p.workspaceImportRegistryDefinitions.getLink(registry.Name, matcher, replacer)
+	link, err = p.workspaceImportRegistryDefinitions.getLink(registry.Name, evaluator)
 	if err != nil {
 		return nil, err
 	}
@@ -157,10 +147,7 @@ func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistr
 }
 
 func (p *AppProfile) getWorkspaceImportRedirectLink(resources []string) (link *ProjectLink, resource string, err error) {
-	evalData := p.evalData
-	matcher := dsh_utils.NewEvalMatcher(evalData)
-	replacer := dsh_utils.NewEvalReplacer(evalData, nil)
-	link, resource, err = p.workspaceImportRedirectDefinitions.getLink(resources, matcher, replacer)
+	link, resource, err = p.workspaceImportRedirectDefinitions.getLink(resources, p.evaluator)
 	if err != nil {
 		return nil, "", err
 	}
