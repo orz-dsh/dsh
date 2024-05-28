@@ -12,7 +12,9 @@ import:
   redirects:
     - regex: "^git:https://github.com/orz-dsh/shell-lib"
       link: "dir:../shell-lib"
+      match: "local.os == 'windows'"
     - regex: "^git:https://github.com/orz-dsh/(?P<path>.+)#ref=(?P<ref>.+)$"
       link: "git:https://gitee.com/orz-dsh/{{.regex.path}}#ref={{.regex.ref}}"
+      match: "local.os == 'windows'"
 #    - prefix: "^dir:/some/local/path"
 #      link: "git:https://github.com/orz-dsh/some-remote-repo.git#ref=main"

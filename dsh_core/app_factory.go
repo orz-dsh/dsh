@@ -2,7 +2,9 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
+	"runtime"
 	"slices"
+	"strings"
 )
 
 type AppFactory struct {
@@ -21,6 +23,7 @@ func makeAppFactory(workspace *Workspace) (*AppFactory, error) {
 		"workspace_dir":        workspace.path,
 		"runtime_version":      dsh_utils.GetRuntimeVersion(),
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
+		"os":                   strings.ToLower(runtime.GOOS),
 	})
 
 	files, err := workspace.manifest.Profile.definitions.getFiles(evaluator)
