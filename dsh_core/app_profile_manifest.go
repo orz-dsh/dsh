@@ -125,8 +125,8 @@ func (w *AppProfileManifestWorkspace) init(manifest *AppProfileManifest) (err er
 // region workspace shell
 
 type AppProfileManifestWorkspaceShell struct {
-	Items       []*AppProfileManifestWorkspaceShellItem
-	definitions workspaceShellDefinitions
+	Items    []*AppProfileManifestWorkspaceShellItem
+	entities workspaceShellEntitySet
 }
 
 type AppProfileManifestWorkspaceShellItem struct {
@@ -138,7 +138,7 @@ type AppProfileManifestWorkspaceShellItem struct {
 }
 
 func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (err error) {
-	definitions := workspaceShellDefinitions{}
+	entities := workspaceShellEntitySet{}
 	for i := 0; i < len(s.Items); i++ {
 		item := s.Items[i]
 		if item.Name == "" {
@@ -186,10 +186,10 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 				)
 			}
 		}
-		definitions[item.Name] = append(definitions[item.Name], newWorkspaceShellDefinition(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
+		entities[item.Name] = append(entities[item.Name], newWorkspaceShellEntity(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
 	}
 
-	s.definitions = definitions
+	s.entities = entities
 	return nil
 }
 
@@ -200,8 +200,8 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 type AppProfileManifestWorkspaceImport struct {
 	Registries          []*AppProfileManifestImportRegistry
 	Redirects           []*AppProfileManifestImportRedirect
-	registryDefinitions workspaceImportRegistryDefinitions
-	redirectDefinitions workspaceImportRedirectDefinitions
+	registryDefinitions workspaceImportRegistryEntitySet
+	redirectDefinitions workspaceImportRedirectEntitySet
 }
 
 type AppProfileManifestImportRegistry struct {
@@ -217,7 +217,7 @@ type AppProfileManifestImportRedirect struct {
 }
 
 func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest) (err error) {
-	registryDefinitions := workspaceImportRegistryDefinitions{}
+	registryDefinitions := workspaceImportRegistryEntitySet{}
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
@@ -249,10 +249,10 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				)
 			}
 		}
-		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, registry.Link, registry.Match, matchExpr))
+		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
 	}
 
-	redirectDefinitions := workspaceImportRedirectDefinitions{}
+	redirectDefinitions := workspaceImportRedirectEntitySet{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Regex == "" {
@@ -262,7 +262,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				kv("field", fmt.Sprintf("workspace.import.redirects[%d].regex", i)),
 			)
 		}
-		regex, err := regexp.Compile(redirect.Regex)
+		regexObj, err := regexp.Compile(redirect.Regex)
 		if err != nil {
 			return errW(err, "app profile manifest invalid",
 				reason("value invalid"),
@@ -281,9 +281,9 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		}
 		// TODO: check link template
 
-		var matchExpr *vm.Program
+		var matchObj *vm.Program
 		if redirect.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(redirect.Match)
+			matchObj, err = dsh_utils.CompileExpr(redirect.Match)
 			if err != nil {
 				return errW(err, "app profile manifest invalid",
 					reason("value invalid"),
@@ -293,7 +293,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				)
 			}
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(regex, redirect.Link, redirect.Match, matchExpr))
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectEntity(redirect.Regex, redirect.Link, redirect.Match, regexObj, matchObj))
 	}
 
 	imp.registryDefinitions = registryDefinitions

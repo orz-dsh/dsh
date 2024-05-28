@@ -66,7 +66,7 @@ func OpenWorkspace(path string, logger *Logger) (workspace *Workspace, err error
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
 	})
 
-	profiles, err := manifest.Profile.definitions.getFiles(evaluator)
+	profiles, err := manifest.Profile.entities.getFiles(evaluator)
 	if err != nil {
 		return nil, err
 	}

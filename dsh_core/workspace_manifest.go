@@ -77,8 +77,8 @@ func (m *workspaceManifest) init() (err error) {
 // region profile
 
 type workspaceManifestProfile struct {
-	Items       []*workspaceManifestProfileItem
-	definitions workspaceProfileDefinitions
+	Items    []*workspaceManifestProfileItem
+	entities workspaceProfileEntitySet
 }
 
 type workspaceManifestProfileItem struct {
@@ -88,7 +88,7 @@ type workspaceManifestProfileItem struct {
 }
 
 func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error) {
-	definitions := workspaceProfileDefinitions{}
+	entities := workspaceProfileEntitySet{}
 	for i := 0; i < len(p.Items); i++ {
 		item := p.Items[i]
 		if item.File == "" {
@@ -111,10 +111,10 @@ func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error)
 				)
 			}
 		}
-		definitions = append(definitions, newWorkspaceProfileDefinition(item.File, item.Optional, item.Match, matchExpr))
+		entities = append(entities, newWorkspaceProfileEntity(item.File, item.Optional, item.Match, matchExpr))
 	}
 
-	p.definitions = definitions
+	p.entities = entities
 	return nil
 }
 
@@ -174,8 +174,8 @@ func (c *workspaceManifestClean) init(manifest *workspaceManifest) (err error) {
 // region shell
 
 type workspaceManifestShell struct {
-	Items       []*workspaceManifestShellItem
-	definitions workspaceShellDefinitions
+	Items    []*workspaceManifestShellItem
+	entities workspaceShellEntitySet
 }
 
 type workspaceManifestShellItem struct {
@@ -187,7 +187,7 @@ type workspaceManifestShellItem struct {
 }
 
 func (s *workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
-	definitions := workspaceShellDefinitions{}
+	entities := workspaceShellEntitySet{}
 	for i := 0; i < len(s.Items); i++ {
 		item := s.Items[i]
 		if item.Name == "" {
@@ -235,10 +235,10 @@ func (s *workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
 				)
 			}
 		}
-		definitions[item.Name] = append(definitions[item.Name], newWorkspaceShellDefinition(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
+		entities[item.Name] = append(entities[item.Name], newWorkspaceShellEntity(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
 	}
 
-	s.definitions = definitions
+	s.entities = entities
 	return nil
 }
 
@@ -249,8 +249,8 @@ func (s *workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
 type workspaceManifestImport struct {
 	Registries          []*workspaceManifestImportRegistry
 	Redirects           []*workspaceManifestImportRedirect
-	registryDefinitions workspaceImportRegistryDefinitions
-	redirectDefinitions workspaceImportRedirectDefinitions
+	registryDefinitions workspaceImportRegistryEntitySet
+	redirectDefinitions workspaceImportRedirectEntitySet
 }
 
 type workspaceManifestImportRegistry struct {
@@ -266,7 +266,7 @@ type workspaceManifestImportRedirect struct {
 }
 
 func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error) {
-	registryDefinitions := workspaceImportRegistryDefinitions{}
+	registryDefinitions := workspaceImportRegistryEntitySet{}
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
@@ -298,10 +298,10 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryDefinition(registry.Name, registry.Link, registry.Match, matchExpr))
+		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
 	}
 
-	redirectDefinitions := workspaceImportRedirectDefinitions{}
+	redirectDefinitions := workspaceImportRedirectEntitySet{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Regex == "" {
@@ -311,7 +311,7 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				kv("field", fmt.Sprintf("import.redirects[%d].regex", i)),
 			)
 		}
-		regex, err := regexp.Compile(redirect.Regex)
+		regexObj, err := regexp.Compile(redirect.Regex)
 		if err != nil {
 			return errW(err, "workspace manifest invalid",
 				reason("value invalid"),
@@ -330,9 +330,9 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 		}
 		// TODO: check link template
 
-		var matchExpr *vm.Program
+		var matchObj *vm.Program
 		if redirect.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(redirect.Match)
+			matchObj, err = dsh_utils.CompileExpr(redirect.Match)
 			if err != nil {
 				return errW(err, "workspace manifest invalid",
 					reason("value invalid"),
@@ -342,7 +342,7 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectDefinition(regex, redirect.Link, redirect.Match, matchExpr))
+		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectEntity(redirect.Regex, redirect.Link, redirect.Match, regexObj, matchObj))
 	}
 
 	imp.registryDefinitions = registryDefinitions

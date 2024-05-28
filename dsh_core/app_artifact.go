@@ -72,15 +72,15 @@ func (a *AppArtifact) ExecuteInThisProcess(targetGlob string) (err error) {
 
 func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactExecutor, err error) {
 	shellName := a.app.context.Option.GenericItems.getShell()
-	definition, err := a.context.profile.getWorkspaceShellDefinition(shellName)
+	entity, err := a.context.profile.getWorkspaceShellEntity(shellName)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
-			reason("get workspace shell definition error"),
+			reason("get workspace shell entity error"),
 			kv("shellName", shellName),
 		)
 	}
 
-	targetName, err := a.getTargetName(definition, targetGlob)
+	targetName, err := a.getTargetName(entity, targetGlob)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get target name error"),
@@ -90,11 +90,11 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	}
 	targetPath := filepath.Join(a.OutputPath, targetName)
 
-	shellArgs, err := a.getShellArgs(definition, targetGlob, targetName, targetPath)
+	shellArgs, err := a.getShellArgs(entity, targetGlob, targetName, targetPath)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get shell args error"),
-			kv("definition", definition),
+			kv("entity", entity),
 			kv("targetGlob", targetGlob),
 			kv("targetName", targetName),
 			kv("targetPath", targetPath),
@@ -103,8 +103,8 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 
 	executor = &appArtifactExecutor{
 		context:    a.context,
-		ShellName:  definition.Name,
-		ShellPath:  definition.Path,
+		ShellName:  entity.Name,
+		ShellPath:  entity.Path,
 		ShellArgs:  shellArgs,
 		TargetGlob: targetGlob,
 		TargetName: targetName,
@@ -113,7 +113,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	return executor, nil
 }
 
-func (a *AppArtifact) getTargetName(definition *workspaceShellDefinition, targetGlob string) (targetName string, err error) {
+func (a *AppArtifact) getTargetName(entity *workspaceShellEntity, targetGlob string) (targetName string, err error) {
 	if targetGlob == "" {
 		return "", errN("get target name error",
 			reason("target glob empty"),
@@ -135,7 +135,7 @@ func (a *AppArtifact) getTargetName(definition *workspaceShellDefinition, target
 		return targetName, nil
 	}
 
-	exts := definition.Exts
+	exts := entity.Exts
 	for i := 0; i < len(exts); i++ {
 		targetName = targetGlob + exts[i]
 		if a.targetNamesDict[targetName] {
@@ -145,20 +145,20 @@ func (a *AppArtifact) getTargetName(definition *workspaceShellDefinition, target
 
 	return "", errN("get target name error",
 		reason("target name not found"),
-		kv("definition", definition),
+		kv("entity", entity),
 		kv("targetGlob", targetGlob),
 	)
 }
 
-func (a *AppArtifact) getShellArgs(definition *workspaceShellDefinition, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
-	args := definition.Args
+func (a *AppArtifact) getShellArgs(entity *workspaceShellEntity, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
+	args := entity.Args
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {
 		evaluator := a.context.evaluator.SetRootData("executor", map[string]any{
 			"shell": map[string]any{
-				"name": definition.Name,
-				"path": definition.Path,
+				"name": entity.Name,
+				"path": entity.Path,
 			},
 			"target": map[string]any{
 				"glob": targetGlob,
@@ -166,11 +166,11 @@ func (a *AppArtifact) getShellArgs(definition *workspaceShellDefinition, targetG
 				"path": targetPath,
 			},
 		})
-		shellArgs, err = definition.Args.eval(evaluator)
+		shellArgs, err = entity.Args.getArgs(evaluator)
 		if err != nil {
 			return nil, errW(err, "get shell args error",
 				reason("eval shell args error"),
-				kv("definition", definition),
+				kv("entity", entity),
 				kv("targetGlob", targetGlob),
 				kv("targetName", targetName),
 				kv("targetPath", targetPath),

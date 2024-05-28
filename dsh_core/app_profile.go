@@ -1,22 +1,22 @@
 package dsh_core
 
 type appProfile struct {
-	workspace                          *Workspace
-	evaluator                          *Evaluator
-	workspaceShellDefinitions          workspaceShellDefinitions
-	workspaceImportRegistryDefinitions workspaceImportRegistryDefinitions
-	workspaceImportRedirectDefinitions workspaceImportRedirectDefinitions
-	projectOptionDefinitions           projectOptionDefinitions
-	projectScriptSourceDefinitions     []*projectSourceDefinition
-	projectScriptImportDefinitions     []*projectImportDefinition
-	projectConfigSourceDefinitions     []*projectSourceDefinition
-	projectConfigImportDefinitions     []*projectImportDefinition
+	workspace                       *Workspace
+	evaluator                       *Evaluator
+	workspaceShellEntities          workspaceShellEntitySet
+	workspaceImportRegistryEntities workspaceImportRegistryEntitySet
+	workspaceImportRedirectEntities workspaceImportRedirectEntitySet
+	projectOptionDefinitions        projectOptionDefinitions
+	projectScriptSourceDefinitions  []*projectSourceDefinition
+	projectScriptImportDefinitions  []*projectImportDefinition
+	projectConfigSourceDefinitions  []*projectSourceDefinition
+	projectConfigImportDefinitions  []*projectImportDefinition
 }
 
 func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appProfile {
-	workspaceShellDefinitions := workspaceShellDefinitions{}
-	workspaceImportRegistryDefinitions := workspaceImportRegistryDefinitions{}
-	workspaceImportRedirectDefinitions := workspaceImportRedirectDefinitions{}
+	workspaceShellEntities := workspaceShellEntitySet{}
+	workspaceImportRegistryEntities := workspaceImportRegistryEntitySet{}
+	workspaceImportRedirectEntities := workspaceImportRedirectEntitySet{}
 	projectOptionDefinitions := projectOptionDefinitions{}
 	projectScriptSourceDefinitions := []*projectSourceDefinition{}
 	projectScriptImportDefinitions := []*projectImportDefinition{}
@@ -24,51 +24,57 @@ func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appPr
 	projectConfigImportDefinitions := []*projectImportDefinition{}
 	for i := 0; i < len(manifests); i++ {
 		manifest := manifests[i]
-		for name, definitions := range manifest.Workspace.Shell.definitions {
-			workspaceShellDefinitions[name] = append(workspaceShellDefinitions[name], definitions...)
-		}
-		for name, definitions := range manifest.Workspace.Import.registryDefinitions {
-			workspaceImportRegistryDefinitions[name] = append(workspaceImportRegistryDefinitions[name], definitions...)
-		}
-		workspaceImportRedirectDefinitions = append(workspaceImportRedirectDefinitions, manifest.Workspace.Import.redirectDefinitions...)
+		workspaceShellEntities.merge(manifest.Workspace.Shell.entities)
+		workspaceImportRegistryEntities.merge(manifest.Workspace.Import.registryDefinitions)
+		workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, manifest.Workspace.Import.redirectDefinitions...)
 		projectOptionDefinitions = append(projectOptionDefinitions, manifest.Project.Option.definitions...)
 		projectScriptSourceDefinitions = append(projectScriptSourceDefinitions, manifest.Project.Script.sourceDefinitions...)
 		projectScriptImportDefinitions = append(projectScriptImportDefinitions, manifest.Project.Script.importDefinitions...)
 		projectConfigSourceDefinitions = append(projectConfigSourceDefinitions, manifest.Project.Config.sourceDefinitions...)
 		projectConfigImportDefinitions = append(projectConfigImportDefinitions, manifest.Project.Config.importDefinitions...)
 	}
-	for name, definitions := range workspace.manifest.Shell.definitions {
-		workspaceShellDefinitions[name] = append(workspaceShellDefinitions[name], definitions...)
-	}
-	for name, definitions := range workspace.manifest.Import.registryDefinitions {
-		workspaceImportRegistryDefinitions[name] = append(workspaceImportRegistryDefinitions[name], definitions...)
-	}
-	for name, definitions := range workspaceImportRegistryDefinitionsDefault {
-		workspaceImportRegistryDefinitions[name] = append(workspaceImportRegistryDefinitions[name], definitions...)
-	}
-	workspaceImportRedirectDefinitions = append(workspaceImportRedirectDefinitions, workspace.manifest.Import.redirectDefinitions...)
+	workspaceShellEntities.merge(workspace.manifest.Shell.entities)
+	workspaceShellEntities.mergeDefault()
+	workspaceImportRegistryEntities.merge(workspace.manifest.Import.registryDefinitions)
+	workspaceImportRegistryEntities.mergeDefault()
+	workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, workspace.manifest.Import.redirectDefinitions...)
 
 	profile := &appProfile{
-		workspace:                          workspace,
-		evaluator:                          workspace.evaluator,
-		workspaceShellDefinitions:          workspaceShellDefinitions,
-		workspaceImportRegistryDefinitions: workspaceImportRegistryDefinitions,
-		workspaceImportRedirectDefinitions: workspaceImportRedirectDefinitions,
-		projectOptionDefinitions:           projectOptionDefinitions,
-		projectScriptSourceDefinitions:     projectScriptSourceDefinitions,
-		projectScriptImportDefinitions:     projectScriptImportDefinitions,
-		projectConfigSourceDefinitions:     projectConfigSourceDefinitions,
-		projectConfigImportDefinitions:     projectConfigImportDefinitions,
+		workspace:                       workspace,
+		evaluator:                       workspace.evaluator,
+		workspaceShellEntities:          workspaceShellEntities,
+		workspaceImportRegistryEntities: workspaceImportRegistryEntities,
+		workspaceImportRedirectEntities: workspaceImportRedirectEntities,
+		projectOptionDefinitions:        projectOptionDefinitions,
+		projectScriptSourceDefinitions:  projectScriptSourceDefinitions,
+		projectScriptImportDefinitions:  projectScriptImportDefinitions,
+		projectConfigSourceDefinitions:  projectConfigSourceDefinitions,
+		projectConfigImportDefinitions:  projectConfigImportDefinitions,
 	}
 	return profile
 }
 
 func (p *appProfile) getProjectOptionItems() (items map[string]string, err error) {
-	items = map[string]string{}
-	if err = p.projectOptionDefinitions.fillItems(items, p.evaluator); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return p.projectOptionDefinitions.getItems(p.evaluator)
+}
+
+func (p *appProfile) getWorkspaceShellEntity(name string) (*workspaceShellEntity, error) {
+	return p.workspaceShellEntities.getEntity(name, p.evaluator)
+}
+
+func (p *appProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (*ProjectLink, error) {
+	evaluator := p.evaluator.SetRootData("registry", map[string]any{
+		"name":    registry.Name,
+		"path":    registry.Path,
+		"ref":     registry.Ref,
+		"refType": registry.ref.Type,
+		"refName": registry.ref.Name,
+	})
+	return p.workspaceImportRegistryEntities.getLink(registry.Name, evaluator)
+}
+
+func (p *appProfile) getWorkspaceImportRedirectLink(resources []string) (*ProjectLink, string, error) {
+	return p.workspaceImportRedirectEntities.getLink(resources, p.evaluator)
 }
 
 func (p *appProfile) resolveProjectRawLink(rawLink string) (resolvedLink *projectResolvedLink, err error) {
@@ -130,38 +136,4 @@ func (p *appProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projec
 		Git:  finalLink.Git,
 	}
 	return resolvedLink, nil
-}
-
-func (p *appProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
-	definition := newWorkspaceShellDefinitionEmpty(name)
-	if err := p.workspaceShellDefinitions.fillDefinition(definition, p.evaluator); err != nil {
-		return nil, err
-	}
-	if err := definition.fillDefault(); err != nil {
-		return nil, err
-	}
-	return definition, nil
-}
-
-func (p *appProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
-	evaluator := p.evaluator.SetRootData("registry", map[string]any{
-		"name":    registry.Name,
-		"path":    registry.Path,
-		"ref":     registry.Ref,
-		"refType": registry.ref.Type,
-		"refName": registry.ref.Name,
-	})
-	link, err = p.workspaceImportRegistryDefinitions.getLink(registry.Name, evaluator)
-	if err != nil {
-		return nil, err
-	}
-	return link, nil
-}
-
-func (p *appProfile) getWorkspaceImportRedirectLink(resources []string) (link *ProjectLink, resource string, err error) {
-	link, resource, err = p.workspaceImportRedirectDefinitions.getLink(resources, p.evaluator)
-	if err != nil {
-		return nil, "", err
-	}
-	return link, resource, nil
 }
