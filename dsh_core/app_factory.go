@@ -38,16 +38,16 @@ func makeAppFactory(workspace *Workspace) (*AppFactory, error) {
 		}
 		manifests = append(manifests, manifest)
 	}
+
 	factory := &AppFactory{
 		workspace: workspace,
 		evaluator: evaluator,
 		manifests: manifests,
 	}
-
 	return factory, nil
 }
 
-func (f *AppFactory) AddManifest(position int, manifest *AppProfileManifest) {
+func (f *AppFactory) AddProfileManifest(position int, manifest *AppProfileManifest) {
 	if position < 0 {
 		f.manifests = append(f.manifests, manifest)
 	} else {
@@ -55,29 +55,45 @@ func (f *AppFactory) AddManifest(position int, manifest *AppProfileManifest) {
 	}
 }
 
-func (f *AppFactory) AddManifestOptionValues(position int, values map[string]string) error {
+func (f *AppFactory) AddProfile(position int, file string) error {
+	manifest, err := loadAppProfileManifest(file)
+	if err != nil {
+		return err
+	}
+	f.AddProfileManifest(position, manifest)
+	return nil
+}
+
+func (f *AppFactory) AddProfileProjectOption(position int, values map[string]string) error {
 	manifest, err := MakeAppProfileManifest(nil, NewAppProfileManifestProject(NewAppProfileManifestProjectOption(values), nil, nil))
 	if err != nil {
 		return err
 	}
-	f.AddManifest(position, manifest)
+	f.AddProfileManifest(position, manifest)
 	return nil
 }
 
-func (f *AppFactory) MakeApp(rawLink string) (*App, error) {
-	profile, err := makeAppProfile(f.workspace, f.evaluator, f.manifests)
+func (f *AppFactory) MakeApp(link string) (*App, error) {
+	f.workspace.logger.InfoDesc("load app", kv("link", link))
+
+	profile := newAppProfile(f.workspace, f.evaluator, f.manifests)
+
+	resolvedLink, err := profile.resolveProjectRawLink(link)
 	if err != nil {
 		return nil, err
 	}
-	link, err := ParseProjectLink(rawLink)
+
+	context, err := makeAppContext(f.workspace, f.evaluator, profile, resolvedLink)
 	if err != nil {
 		return nil, err
 	}
-	resolvedLink, err := profile.resolveProjectLink(link)
+
+	proj, err := context.loadMainProject()
 	if err != nil {
 		return nil, err
 	}
-	app, err := loadApp(f.workspace, resolvedLink, profile)
+
+	app, err := newApp(context, proj)
 	if err != nil {
 		return nil, err
 	}

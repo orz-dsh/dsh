@@ -65,12 +65,12 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 	if scope == projectImportScopeScript {
 		definitions = manifest.Script.importDefinitions
 		if context.isMainProject(manifest) {
-			definitions = append(definitions, context.Profile.projectScriptImportDefinitions...)
+			definitions = append(definitions, context.profile.projectScriptImportDefinitions...)
 		}
 	} else if scope == projectImportScopeConfig {
 		definitions = manifest.Config.importDefinitions
 		if context.isMainProject(manifest) {
-			definitions = append(definitions, context.Profile.projectConfigImportDefinitions...)
+			definitions = append(definitions, context.profile.projectConfigImportDefinitions...)
 		}
 	} else {
 		impossible()
@@ -81,8 +81,17 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 		scope:         scope,
 		importsByPath: make(map[string]*projectImport),
 	}
+	evaluator := context.evaluator.SetRootData("options", context.Option.getProjectOptions(manifest))
 	for i := 0; i < len(definitions); i++ {
-		if err = container.addImport(definitions[i]); err != nil {
+		definition := definitions[i]
+		matched, err := evaluator.EvalBoolExpr(definition.match)
+		if err != nil {
+			return nil, err
+		}
+		if !matched {
+			continue
+		}
+		if err = container.addImport(definition); err != nil {
 			return nil, err
 		}
 	}
@@ -90,20 +99,7 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 }
 
 func (c *projectImportContainer) addImport(definition *projectImportDefinition) (err error) {
-	if definition.match != nil {
-		matched, err := c.context.Option.evalMatch(c.manifest, definition.match)
-		if err != nil {
-			return errW(err, "add import error",
-				reason("eval match error"),
-				kv("scope", c.scope),
-				kv("definition", definition),
-			)
-		}
-		if !matched {
-			return nil
-		}
-	}
-	resolved, err := c.context.Profile.resolveProjectLink(definition.Link)
+	resolved, err := c.context.profile.resolveProjectLink(definition.Link)
 	if err != nil {
 		return errW(err, "add import error",
 			reason("resolve project link error"),

@@ -72,7 +72,7 @@ func (a *AppArtifact) ExecuteInThisProcess(targetGlob string) (err error) {
 
 func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactExecutor, err error) {
 	shellName := a.app.context.Option.getGlobalOptionsShell()
-	definition, err := a.context.Profile.getWorkspaceShellDefinition(shellName)
+	definition, err := a.context.profile.getWorkspaceShellDefinition(shellName)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get workspace shell definition error"),
@@ -155,7 +155,7 @@ func (a *AppArtifact) getShellArgs(definition *workspaceShellDefinition, targetG
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
 	} else {
-		evaluator := a.context.Profile.evaluator.SetRootData("executor", map[string]any{
+		evaluator := a.context.evaluator.SetRootData("executor", map[string]any{
 			"shell": map[string]any{
 				"name": definition.Name,
 				"path": definition.Path,

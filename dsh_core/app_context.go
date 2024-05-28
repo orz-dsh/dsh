@@ -8,20 +8,22 @@ import (
 
 type appContext struct {
 	logger                 *dsh_utils.Logger
+	evaluator              *Evaluator
 	workspace              *Workspace
 	manifest               *projectManifest
-	Profile                *AppProfile
+	profile                *appProfile
 	Option                 *appOption
 	projectsByName         map[string]*project
 	projectManifestsByPath map[string]*projectManifest
 	projectManifestsByName map[string]*projectManifest
 }
 
-func makeAppContext(workspace *Workspace, link *projectResolvedLink, profile *AppProfile) (*appContext, error) {
+func makeAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfile, link *projectResolvedLink) (*appContext, error) {
 	context := &appContext{
 		logger:                 workspace.logger,
 		workspace:              workspace,
-		Profile:                profile,
+		evaluator:              evaluator,
+		profile:                profile,
 		projectsByName:         make(map[string]*project),
 		projectManifestsByPath: make(map[string]*projectManifest),
 		projectManifestsByName: make(map[string]*projectManifest),
@@ -33,11 +35,11 @@ func makeAppContext(workspace *Workspace, link *projectResolvedLink, profile *Ap
 	}
 	context.manifest = manifest
 
-	optionValues, err := profile.getOptionValues()
+	options, err := profile.getProjectOptions()
 	if err != nil {
 		return nil, err
 	}
-	option, err := loadAppOption(manifest, optionValues)
+	option, err := loadAppOption(context, manifest, options)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +115,7 @@ func (c *appContext) loadDirProjectManifest(path string) (manifest *projectManif
 func (c *appContext) loadGitProjectManifest(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *ProjectLinkGitRef) (manifest *projectManifest, err error) {
 	if parsedUrl == nil {
 		if parsedUrl, err = url.Parse(rawUrl); err != nil {
-			return nil, errW(err, "load git project manifest error",
+			return nil, errW(err, "load project manifest error",
 				reason("parse url error"),
 				kv("url", rawUrl),
 				kv("ref", rawRef),
@@ -122,7 +124,7 @@ func (c *appContext) loadGitProjectManifest(path string, rawUrl string, parsedUr
 	}
 	if parsedRef == nil {
 		if parsedRef, err = parseProjectLinkGitRef(rawRef); err != nil {
-			return nil, errW(err, "load git project manifest error",
+			return nil, errW(err, "load project manifest error",
 				reason("parse ref error"),
 				kv("url", rawUrl),
 				kv("ref", rawRef),
@@ -133,7 +135,7 @@ func (c *appContext) loadGitProjectManifest(path string, rawUrl string, parsedUr
 		path = c.workspace.getGitProjectPath(parsedUrl, parsedRef)
 	}
 	if err = c.workspace.downloadGitProject(path, rawUrl, parsedUrl, rawRef, parsedRef); err != nil {
-		return nil, errW(err, "load git project manifest error",
+		return nil, errW(err, "load project manifest error",
 			reason("download project error"),
 			kv("url", rawUrl),
 			kv("ref", rawRef),
@@ -141,7 +143,7 @@ func (c *appContext) loadGitProjectManifest(path string, rawUrl string, parsedUr
 	}
 	manifest, err = c.loadDirProjectManifest(path)
 	if err != nil {
-		return nil, errW(err, "load git project manifest error",
+		return nil, errW(err, "load project manifest error",
 			reason("load manifest error"),
 			kv("url", rawUrl),
 			kv("ref", rawRef),

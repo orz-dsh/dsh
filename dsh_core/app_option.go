@@ -1,7 +1,6 @@
 package dsh_core
 
 import (
-	"dsh/dsh_utils"
 	"github.com/expr-lang/expr/vm"
 	"maps"
 	"os"
@@ -27,6 +26,7 @@ var globalOptionDefaultHostname string
 var globalOptionDefaultUsername string
 
 type appOption struct {
+	context        *appContext
 	GlobalOptions  map[string]any
 	SpecifyOptions map[string]map[string]string
 	ProjectOptions map[string]map[string]any
@@ -96,7 +96,7 @@ func getGlobalOptionDefaultUsername() (string, error) {
 	return globalOptionDefaultUsername, nil
 }
 
-func loadAppOption(manifest *projectManifest, values map[string]string) (*appOption, error) {
+func loadAppOption(context *appContext, manifest *projectManifest, values map[string]string) (*appOption, error) {
 	_os := ""
 	if _os = values[GlobalOptionNameOs]; _os == "" {
 		_os = getGlobalOptionDefaultOs()
@@ -139,6 +139,7 @@ func loadAppOption(manifest *projectManifest, values map[string]string) (*appOpt
 		specifyOptions[k] = v
 	}
 	option := &appOption{
+		context: context,
 		GlobalOptions: map[string]any{
 			GlobalOptionNameOs:       _os,
 			GlobalOptionNameArch:     _arch,
@@ -149,9 +150,9 @@ func loadAppOption(manifest *projectManifest, values map[string]string) (*appOpt
 		SpecifyOptions: map[string]map[string]string{
 			manifest.Name: specifyOptions,
 		},
-		ProjectOptions: make(map[string]map[string]any),
-		Results:        make(map[string]*appOptionResult),
-		Assigns:        make(map[string]*appOptionAssign),
+		ProjectOptions: map[string]map[string]any{},
+		Results:        map[string]*appOptionResult{},
+		Assigns:        map[string]*appOptionAssign{},
 	}
 	return option, nil
 }
@@ -195,7 +196,8 @@ func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
 	verifies := manifest.Option.verifies
 	for i := 0; i < len(verifies); i++ {
 		verify := verifies[i]
-		result, err := dsh_utils.EvalBoolExpr(verify, o.mergeGlobalOptions(options))
+		evaluator := o.context.evaluator.SetRootData("options", o.mergeGlobalOptions(options))
+		result, err := evaluator.EvalBoolExpr(verify)
 		if err != nil {
 			return errW(err, "load project options error",
 				reason("eval verify error"),
@@ -236,22 +238,6 @@ func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
 
 func (o *appOption) getProjectOptions(manifest *projectManifest) map[string]any {
 	return o.mergeGlobalOptions(o.ProjectOptions[manifest.Name])
-}
-
-func (o *appOption) evalMatch(manifest *projectManifest, expr *vm.Program) (bool, error) {
-	if expr == nil {
-		return true, nil
-	}
-	matched, err := dsh_utils.EvalBoolExpr(expr, o.getProjectOptions(manifest))
-	if err != nil {
-		return false, errW(err, "eval project match expr error",
-			reason("eval expr error"),
-			kv("projectName", manifest.Name),
-			kv("projectPath", manifest.projectPath),
-			kv("matchExpr", expr.Source().Content()),
-		)
-	}
-	return matched, nil
 }
 
 func (o *appOption) addAssign(sourceProject string, sourceOption string, assignProject string, assignOption string, assignMapping *vm.Program) error {
@@ -301,9 +287,10 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	if assign, exist := o.Assigns[target]; exist {
 		if result, exist := o.Results[assign.Source]; exist {
 			if assign.mapping != nil {
-				mappingResult, err := dsh_utils.EvalStringExpr(assign.mapping, o.mergeGlobalOptions(map[string]any{
+				evaluator := o.context.evaluator.SetRootData("options", o.mergeGlobalOptions(map[string]any{
 					"value": result.ParsedValue,
 				}))
+				mappingResult, err := evaluator.EvalStringExpr(assign.mapping)
 				if err != nil {
 					return assign, nil, errW(err, "find option assign value error",
 						reason("mapping value error"),

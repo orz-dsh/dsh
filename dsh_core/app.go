@@ -21,23 +21,12 @@ type AppMakeScriptsSettings struct {
 	UseHardLink     bool
 }
 
-func loadApp(workspace *Workspace, link *projectResolvedLink, profile *AppProfile) (app *App, err error) {
-	workspace.logger.InfoDesc("load app", kv("link", link))
-
-	context, err := makeAppContext(workspace, link, profile)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := context.loadMainProject()
-	if err != nil {
-		return nil, err
-	}
+func newApp(context *appContext, project *project) (app *App, err error) {
 	app = &App{
 		context:               context,
-		project:               p,
-		scriptImportContainer: newAppImportContainer(p, projectImportScopeScript),
-		configImportContainer: newAppImportContainer(p, projectImportScopeConfig),
+		project:               project,
+		scriptImportContainer: newAppImportContainer(project, projectImportScopeScript),
+		configImportContainer: newAppImportContainer(project, projectImportScopeConfig),
 	}
 	return app, nil
 }
@@ -106,7 +95,7 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 		}
 	}
 
-	evaluator := a.context.Profile.evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
+	evaluator := a.context.evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
 	targetNames, err := a.scriptImportContainer.makeScripts(evaluator, outputPath, settings.UseHardLink)
 	if err != nil {
 		return nil, err

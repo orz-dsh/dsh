@@ -60,11 +60,12 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	}
 	definitions := manifest.Script.sourceDefinitions
 	if context.isMainProject(manifest) {
-		definitions = append(definitions, context.Profile.projectScriptSourceDefinitions...)
+		definitions = append(definitions, context.profile.projectScriptSourceDefinitions...)
 	}
+	evaluator := context.evaluator.SetRootData("options", context.Option.getProjectOptions(manifest))
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]
-		matched, err := context.Option.evalMatch(manifest, definition.match)
+		matched, err := evaluator.EvalBoolExpr(definition.match)
 		if err != nil {
 			return nil, err
 		}

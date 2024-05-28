@@ -1,6 +1,6 @@
 package dsh_core
 
-type AppProfile struct {
+type appProfile struct {
 	workspace                          *Workspace
 	evaluator                          *Evaluator
 	workspaceShellDefinitions          workspaceShellDefinitions
@@ -13,7 +13,7 @@ type AppProfile struct {
 	projectConfigImportDefinitions     []*projectImportDefinition
 }
 
-func makeAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*AppProfileManifest) (*AppProfile, error) {
+func newAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*AppProfileManifest) *appProfile {
 	workspaceShellDefinitions := workspaceShellDefinitions{}
 	workspaceImportRegistryDefinitions := workspaceImportRegistryDefinitions{}
 	workspaceImportRedirectDefinitions := workspaceImportRedirectDefinitions{}
@@ -48,7 +48,7 @@ func makeAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*App
 	}
 	workspaceImportRedirectDefinitions = append(workspaceImportRedirectDefinitions, workspace.manifest.Import.redirectDefinitions...)
 
-	profile := &AppProfile{
+	profile := &appProfile{
 		workspace:                          workspace,
 		evaluator:                          evaluator,
 		workspaceShellDefinitions:          workspaceShellDefinitions,
@@ -60,10 +60,10 @@ func makeAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*App
 		projectConfigSourceDefinitions:     projectConfigSourceDefinitions,
 		projectConfigImportDefinitions:     projectConfigImportDefinitions,
 	}
-	return profile, nil
+	return profile
 }
 
-func (p *AppProfile) getOptionValues() (options map[string]string, err error) {
+func (p *appProfile) getProjectOptions() (options map[string]string, err error) {
 	options = make(map[string]string)
 	if err = p.projectOptionDefinitions.fillOptions(options, p.evaluator); err != nil {
 		return nil, err
@@ -71,7 +71,19 @@ func (p *AppProfile) getOptionValues() (options map[string]string, err error) {
 	return options, nil
 }
 
-func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projectResolvedLink, err error) {
+func (p *appProfile) resolveProjectRawLink(rawLink string) (resolvedLink *projectResolvedLink, err error) {
+	link, err := ParseProjectLink(rawLink)
+	if err != nil {
+		return nil, err
+	}
+	resolvedLink, err = p.resolveProjectLink(link)
+	if err != nil {
+		return nil, err
+	}
+	return resolvedLink, nil
+}
+
+func (p *appProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projectResolvedLink, err error) {
 	finalLink := link
 	if link.Registry != nil {
 		registryLink, err := p.getWorkspaceImportRegistryLink(link.Registry)
@@ -120,7 +132,7 @@ func (p *AppProfile) resolveProjectLink(link *ProjectLink) (resolvedLink *projec
 	return resolvedLink, nil
 }
 
-func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
+func (p *appProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDefinition, error) {
 	definition := newWorkspaceShellDefinitionEmpty(name)
 	if err := p.workspaceShellDefinitions.fillDefinition(definition, p.evaluator); err != nil {
 		return nil, err
@@ -131,7 +143,7 @@ func (p *AppProfile) getWorkspaceShellDefinition(name string) (*workspaceShellDe
 	return definition, nil
 }
 
-func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
+func (p *appProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistry) (link *ProjectLink, err error) {
 	evaluator := p.evaluator.SetRootData("registry", map[string]any{
 		"name":    registry.Name,
 		"path":    registry.Path,
@@ -146,7 +158,7 @@ func (p *AppProfile) getWorkspaceImportRegistryLink(registry *ProjectLinkRegistr
 	return link, nil
 }
 
-func (p *AppProfile) getWorkspaceImportRedirectLink(resources []string) (link *ProjectLink, resource string, err error) {
+func (p *appProfile) getWorkspaceImportRedirectLink(resources []string) (link *ProjectLink, resource string, err error) {
 	link, resource, err = p.workspaceImportRedirectDefinitions.getLink(resources, p.evaluator)
 	if err != nil {
 		return nil, "", err
