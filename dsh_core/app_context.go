@@ -18,11 +18,11 @@ type appContext struct {
 	projectManifestsByName map[string]*projectManifest
 }
 
-func makeAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfile, link *projectResolvedLink) (*appContext, error) {
+func makeAppContext(workspace *Workspace, profile *appProfile, link *projectResolvedLink) (*appContext, error) {
 	context := &appContext{
 		logger:                 workspace.logger,
 		workspace:              workspace,
-		evaluator:              evaluator,
+		evaluator:              profile.evaluator,
 		profile:                profile,
 		projectsByName:         make(map[string]*project),
 		projectManifestsByPath: make(map[string]*projectManifest),

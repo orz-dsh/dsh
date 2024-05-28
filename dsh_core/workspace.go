@@ -4,17 +4,16 @@ import (
 	"dsh/dsh_utils"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 type Workspace struct {
-	logger   *dsh_utils.Logger
-	path     string
-	manifest *workspaceManifest
-}
-
-type WorkspaceOpenAppSettings struct {
-	ProfilePaths []string
-	Options      map[string]string
+	logger           *dsh_utils.Logger
+	path             string
+	manifest         *workspaceManifest
+	evaluator        *Evaluator
+	profileManifests []*AppProfileManifest
 }
 
 type WorkspaceCleanSettings struct {
@@ -48,10 +47,38 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 			kv("path", path),
 		)
 	}
+
+	workingDir, err := dsh_utils.GetWorkingDir()
+	if err != nil {
+		return nil, err
+	}
+	evaluator := dsh_utils.NewEvaluator().SetData("local", map[string]any{
+		"working_dir":          workingDir,
+		"workspace_dir":        path,
+		"runtime_version":      dsh_utils.GetRuntimeVersion(),
+		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
+		"os":                   strings.ToLower(runtime.GOOS),
+	})
+
+	profiles, err := manifest.Profile.definitions.getFiles(evaluator)
+	if err != nil {
+		return nil, err
+	}
+	var profileManifests []*AppProfileManifest
+	for i := 0; i < len(profiles); i++ {
+		profileManifest, err := loadAppProfileManifest(profiles[i])
+		if err != nil {
+			return nil, err
+		}
+		profileManifests = append(profileManifests, profileManifest)
+	}
+
 	workspace = &Workspace{
-		logger:   logger,
-		path:     path,
-		manifest: manifest,
+		logger:           logger,
+		path:             path,
+		manifest:         manifest,
+		evaluator:        evaluator,
+		profileManifests: profileManifests,
 	}
 	return workspace, nil
 }
@@ -77,8 +104,8 @@ func (w *Workspace) GetPath() string {
 	return w.path
 }
 
-func (w *Workspace) MakeAppFactory() (*AppFactory, error) {
-	return makeAppFactory(w)
+func (w *Workspace) NewAppFactory() *AppFactory {
+	return newAppFactory(w)
 }
 
 func (w *Workspace) Clean(settings WorkspaceCleanSettings) error {

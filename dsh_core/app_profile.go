@@ -13,7 +13,7 @@ type appProfile struct {
 	projectConfigImportDefinitions     []*projectImportDefinition
 }
 
-func newAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*AppProfileManifest) *appProfile {
+func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appProfile {
 	workspaceShellDefinitions := workspaceShellDefinitions{}
 	workspaceImportRegistryDefinitions := workspaceImportRegistryDefinitions{}
 	workspaceImportRedirectDefinitions := workspaceImportRedirectDefinitions{}
@@ -50,7 +50,7 @@ func newAppProfile(workspace *Workspace, evaluator *Evaluator, manifests []*AppP
 
 	profile := &appProfile{
 		workspace:                          workspace,
-		evaluator:                          evaluator,
+		evaluator:                          workspace.evaluator,
 		workspaceShellDefinitions:          workspaceShellDefinitions,
 		workspaceImportRegistryDefinitions: workspaceImportRegistryDefinitions,
 		workspaceImportRedirectDefinitions: workspaceImportRedirectDefinitions,
