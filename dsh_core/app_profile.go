@@ -63,12 +63,12 @@ func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appPr
 	return profile
 }
 
-func (p *appProfile) getProjectOptions() (options map[string]string, err error) {
-	options = make(map[string]string)
-	if err = p.projectOptionDefinitions.fillOptions(options, p.evaluator); err != nil {
+func (p *appProfile) getProjectOptionItems() (items map[string]string, err error) {
+	items = make(map[string]string)
+	if err = p.projectOptionDefinitions.fillItems(items, p.evaluator); err != nil {
 		return nil, err
 	}
-	return options, nil
+	return items, nil
 }
 
 func (p *appProfile) resolveProjectRawLink(rawLink string) (resolvedLink *projectResolvedLink, err error) {

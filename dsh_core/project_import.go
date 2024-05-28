@@ -60,7 +60,7 @@ type projectImportContainer struct {
 	importsLoaded bool
 }
 
-func makeProjectImportContainer(context *appContext, manifest *projectManifest, scope projectImportScope) (container *projectImportContainer, err error) {
+func makeProjectImportContainer(context *appContext, manifest *projectManifest, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
 	var definitions []*projectImportDefinition
 	if scope == projectImportScopeScript {
 		definitions = manifest.Script.importDefinitions
@@ -81,10 +81,9 @@ func makeProjectImportContainer(context *appContext, manifest *projectManifest, 
 		scope:         scope,
 		importsByPath: make(map[string]*projectImport),
 	}
-	evaluator := context.evaluator.SetRootData("options", context.Option.getProjectOptions(manifest))
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]
-		matched, err := evaluator.EvalBoolExpr(definition.match)
+		matched, err := option.evaluator.EvalBoolExpr(definition.match)
 		if err != nil {
 			return nil, err
 		}

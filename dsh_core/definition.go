@@ -305,7 +305,7 @@ func newProjectOptionDefinition(name string, value string, match string, matchEx
 	}
 }
 
-func (ds projectOptionDefinitions) fillOptions(target map[string]string, evaluator *Evaluator) error {
+func (ds projectOptionDefinitions) fillItems(target map[string]string, evaluator *Evaluator) error {
 	for i := 0; i < len(ds); i++ {
 		definition := ds[i]
 		if _, exist := target[definition.Name]; exist {

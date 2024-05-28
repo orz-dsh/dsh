@@ -7,7 +7,8 @@ import (
 )
 
 type appContext struct {
-	logger                 *dsh_utils.Logger
+	systemInfo             *SystemInfo
+	logger                 *Logger
 	evaluator              *Evaluator
 	workspace              *Workspace
 	manifest               *projectManifest
@@ -20,6 +21,7 @@ type appContext struct {
 
 func makeAppContext(workspace *Workspace, profile *appProfile, link *projectResolvedLink) (*appContext, error) {
 	context := &appContext{
+		systemInfo:             workspace.systemInfo,
 		logger:                 workspace.logger,
 		workspace:              workspace,
 		evaluator:              profile.evaluator,
@@ -35,15 +37,11 @@ func makeAppContext(workspace *Workspace, profile *appProfile, link *projectReso
 	}
 	context.manifest = manifest
 
-	options, err := profile.getProjectOptions()
+	optionItems, err := profile.getProjectOptionItems()
 	if err != nil {
 		return nil, err
 	}
-	option, err := loadAppOption(context, manifest, options)
-	if err != nil {
-		return nil, err
-	}
-	context.Option = option
+	context.Option = newAppOption(context, manifest, optionItems)
 
 	return context, nil
 }

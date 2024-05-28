@@ -4,12 +4,11 @@ import (
 	"dsh/dsh_utils"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 )
 
 type Workspace struct {
-	logger           *dsh_utils.Logger
+	systemInfo       *SystemInfo
+	logger           *Logger
 	path             string
 	manifest         *workspaceManifest
 	evaluator        *Evaluator
@@ -20,9 +19,16 @@ type WorkspaceCleanSettings struct {
 	ExcludeOutputPath string
 }
 
-func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace, err error) {
+func OpenWorkspace(path string, logger *Logger) (workspace *Workspace, err error) {
+	systemInfo, err := dsh_utils.GetSystemInfo()
+	if err != nil {
+		return nil, errW(err, "open workspace error",
+			reason("get system info error"),
+			kv("path", path),
+		)
+	}
 	if path == "" {
-		path = getWorkspaceDefaultPath()
+		path = getWorkspacePathDefault(systemInfo)
 	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -48,16 +54,16 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 		)
 	}
 
-	workingDir, err := dsh_utils.GetWorkingDir()
-	if err != nil {
-		return nil, err
-	}
 	evaluator := dsh_utils.NewEvaluator().SetData("local", map[string]any{
-		"working_dir":          workingDir,
+		"os":                   systemInfo.Os,
+		"arch":                 systemInfo.Arch,
+		"hostname":             systemInfo.Hostname,
+		"username":             systemInfo.Username,
+		"home_dir":             systemInfo.HomeDir,
+		"working_dir":          systemInfo.WorkingDir,
 		"workspace_dir":        path,
 		"runtime_version":      dsh_utils.GetRuntimeVersion(),
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
-		"os":                   strings.ToLower(runtime.GOOS),
 	})
 
 	profiles, err := manifest.Profile.definitions.getFiles(evaluator)
@@ -74,6 +80,7 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 	}
 
 	workspace = &Workspace{
+		systemInfo:       systemInfo,
 		logger:           logger,
 		path:             path,
 		manifest:         manifest,
@@ -83,12 +90,12 @@ func OpenWorkspace(path string, logger *dsh_utils.Logger) (workspace *Workspace,
 	return workspace, nil
 }
 
-func getWorkspaceDefaultPath() string {
+func getWorkspacePathDefault(systemInfo *SystemInfo) string {
 	if path, exist := os.LookupEnv("DSH_WORKSPACE"); exist {
 		return path
 	}
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		return filepath.Join(homeDir, "dsh")
+	if systemInfo.HomeDir != "" {
+		return filepath.Join(systemInfo.HomeDir, "dsh")
 	}
 	return filepath.Join(os.TempDir(), "dsh")
 }

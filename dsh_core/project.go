@@ -3,21 +3,22 @@ package dsh_core
 type project struct {
 	context  *appContext
 	Manifest *projectManifest
+	Option   *projectOption
 	Script   *projectScript
 	Config   *projectConfig
 }
 
 func loadProject(context *appContext, manifest *projectManifest) (p *project, err error) {
 	context.logger.InfoDesc("load project", kv("name", manifest.Name))
-	err = context.Option.loadProjectOptions(manifest)
+	option, err := makeProjectOption(context, manifest)
 	if err != nil {
 		return nil, errW(err, "load project error",
-			reason("load project options error"),
+			reason("make project option error"),
 			kv("projectName", manifest.Name),
 			kv("projectPath", manifest.projectPath),
 		)
 	}
-	script, err := loadProjectScript(context, manifest)
+	script, err := loadProjectScript(context, manifest, option)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("load project script error"),
@@ -25,7 +26,7 @@ func loadProject(context *appContext, manifest *projectManifest) (p *project, er
 			kv("projectPath", manifest.projectPath),
 		)
 	}
-	config, err := loadProjectConfig(context, manifest)
+	config, err := loadProjectConfig(context, manifest, option)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("load project config error"),
@@ -36,6 +37,7 @@ func loadProject(context *appContext, manifest *projectManifest) (p *project, er
 	p = &project{
 		context:  context,
 		Manifest: manifest,
+		Option:   option,
 		Script:   script,
 		Config:   config,
 	}
@@ -62,7 +64,7 @@ func (p *project) loadConfigSources() error {
 }
 
 func (p *project) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
-	evaluator = evaluator.SetData("options", p.context.Option.getProjectOptions(p.Manifest))
+	evaluator = evaluator.SetData("options", p.Option.Items)
 	targetNames, err := p.Script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",

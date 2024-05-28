@@ -327,20 +327,3 @@ func ListChildDirs(path string) (names []string, err error) {
 	}
 	return names, nil
 }
-
-func GetWorkingDir() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", errW(err, "get working dir error",
-			reason("os get wd error"),
-		)
-	}
-	absPath, err := filepath.Abs(dir)
-	if err != nil {
-		return "", errW(err, "get working dir error",
-			reason("get abs path error"),
-			kv("dir", dir),
-		)
-	}
-	return absPath, nil
-}

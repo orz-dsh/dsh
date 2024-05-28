@@ -14,12 +14,12 @@ type projectConfig struct {
 	ImportContainer *projectImportContainer
 }
 
-func loadProjectConfig(context *appContext, manifest *projectManifest) (config *projectConfig, err error) {
-	sc, err := loadProjectConfigSourceContainer(context, manifest)
+func loadProjectConfig(context *appContext, manifest *projectManifest, option *projectOption) (config *projectConfig, err error) {
+	sc, err := loadProjectConfigSourceContainer(context, manifest, option)
 	if err != nil {
 		return nil, err
 	}
-	ic, err := makeProjectImportContainer(context, manifest, projectImportScopeConfig)
+	ic, err := makeProjectImportContainer(context, manifest, option, projectImportScopeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ type projectConfigSourceContainer struct {
 	sourcesByName map[string]*projectConfigSource
 }
 
-func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest) (container *projectConfigSourceContainer, err error) {
+func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest, option *projectOption) (container *projectConfigSourceContainer, err error) {
 	container = &projectConfigSourceContainer{
 		context:       context,
 		sourcesByName: make(map[string]*projectConfigSource),
@@ -188,10 +188,9 @@ func loadProjectConfigSourceContainer(context *appContext, manifest *projectMani
 	if context.isMainProject(manifest) {
 		definitions = append(definitions, context.profile.projectConfigSourceDefinitions...)
 	}
-	evaluator := context.evaluator.SetRootData("options", context.Option.getProjectOptions(manifest))
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]
-		matched, err := evaluator.EvalBoolExpr(definition.match)
+		matched, err := option.evaluator.EvalBoolExpr(definition.match)
 		if err != nil {
 			return nil, err
 		}

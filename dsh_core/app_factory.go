@@ -15,12 +15,12 @@ func newAppFactory(workspace *Workspace) *AppFactory {
 		manifests: []*AppProfileManifest{},
 	}
 	for i := 0; i < len(workspace.profileManifests); i++ {
-		factory.AddProfileManifest(-1, workspace.profileManifests[i])
+		factory.AddManifest(-1, workspace.profileManifests[i])
 	}
 	return factory
 }
 
-func (f *AppFactory) AddProfileManifest(position int, manifest *AppProfileManifest) {
+func (f *AppFactory) AddManifest(position int, manifest *AppProfileManifest) {
 	if position < 0 {
 		f.manifests = append(f.manifests, manifest)
 	} else {
@@ -33,16 +33,16 @@ func (f *AppFactory) AddProfile(position int, file string) error {
 	if err != nil {
 		return err
 	}
-	f.AddProfileManifest(position, manifest)
+	f.AddManifest(position, manifest)
 	return nil
 }
 
-func (f *AppFactory) AddProfileProjectOption(position int, values map[string]string) error {
-	manifest, err := MakeAppProfileManifest(nil, NewAppProfileManifestProject(NewAppProfileManifestProjectOption(values), nil, nil))
+func (f *AppFactory) AddProjectOptionItems(position int, items map[string]string) error {
+	manifest, err := MakeAppProfileManifest(nil, NewAppProfileManifestProject(NewAppProfileManifestProjectOption(items), nil, nil))
 	if err != nil {
 		return err
 	}
-	f.AddProfileManifest(position, manifest)
+	f.AddManifest(position, manifest)
 	return nil
 }
 

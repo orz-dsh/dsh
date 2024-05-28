@@ -14,7 +14,7 @@ func TestProject1(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	factory := workspace.NewAppFactory()
-	err = factory.AddProfileProjectOption(0, map[string]string{
+	err = factory.AddProjectOptionItems(0, map[string]string{
 		"_os":  "linux",
 		"test": "a",
 	})
@@ -48,7 +48,7 @@ func TestProject2(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	factory := workspace.NewAppFactory()
-	err = factory.AddProfileProjectOption(0, map[string]string{
+	err = factory.AddProjectOptionItems(0, map[string]string{
 		"option1": "value1",
 	})
 	if err != nil {
@@ -71,7 +71,7 @@ func TestProject3(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		options["_shell"] = "powershell"
 	}
-	err = factory.AddProfileProjectOption(0, options)
+	err = factory.AddProjectOptionItems(0, options)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

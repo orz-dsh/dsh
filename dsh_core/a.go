@@ -4,6 +4,10 @@ import "dsh/dsh_utils"
 
 type Evaluator = dsh_utils.Evaluator
 
+type SystemInfo = dsh_utils.SystemInfo
+
+type Logger = dsh_utils.Logger
+
 type KVS = dsh_utils.DescKeyValues
 
 func kv(key string, value any) dsh_utils.DescKeyValue {

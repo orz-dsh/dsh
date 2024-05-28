@@ -14,12 +14,12 @@ type projectScript struct {
 	ImportContainer *projectImportContainer
 }
 
-func loadProjectScript(context *appContext, manifest *projectManifest) (script *projectScript, err error) {
-	sc, err := loadProjectScriptSourceContainer(context, manifest)
+func loadProjectScript(context *appContext, manifest *projectManifest, option *projectOption) (script *projectScript, err error) {
+	sc, err := loadProjectScriptSourceContainer(context, manifest, option)
 	if err != nil {
 		return nil, err
 	}
-	ic, err := makeProjectImportContainer(context, manifest, projectImportScopeScript)
+	ic, err := makeProjectImportContainer(context, manifest, option, projectImportScopeScript)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ type projectScriptSourceContainer struct {
 	sourcesByName      map[string]*projectScriptSource
 }
 
-func loadProjectScriptSourceContainer(context *appContext, manifest *projectManifest) (container *projectScriptSourceContainer, err error) {
+func loadProjectScriptSourceContainer(context *appContext, manifest *projectManifest, option *projectOption) (container *projectScriptSourceContainer, err error) {
 	container = &projectScriptSourceContainer{
 		context:       context,
 		manifest:      manifest,
@@ -62,10 +62,9 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 	if context.isMainProject(manifest) {
 		definitions = append(definitions, context.profile.projectScriptSourceDefinitions...)
 	}
-	evaluator := context.evaluator.SetRootData("options", context.Option.getProjectOptions(manifest))
 	for i := 0; i < len(definitions); i++ {
 		definition := definitions[i]
-		matched, err := evaluator.EvalBoolExpr(definition.match)
+		matched, err := option.evaluator.EvalBoolExpr(definition.match)
 		if err != nil {
 			return nil, err
 		}

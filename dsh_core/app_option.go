@@ -3,241 +3,27 @@ package dsh_core
 import (
 	"github.com/expr-lang/expr/vm"
 	"maps"
-	"os"
-	"os/user"
-	"runtime"
 	"strings"
 )
 
 // region option
 
-const (
-	GlobalOptionNameOs       = "_os"
-	GlobalOptionNameArch     = "_arch"
-	GlobalOptionNameShell    = "_shell"
-	GlobalOptionNameHostname = "_hostname"
-	GlobalOptionNameUsername = "_username"
-)
-
-var globalOptionDefaultOs string
-var globalOptionDefaultArch string
-var globalOptionDefaultShell string
-var globalOptionDefaultHostname string
-var globalOptionDefaultUsername string
-
 type appOption struct {
-	context        *appContext
-	GlobalOptions  map[string]any
-	SpecifyOptions map[string]map[string]string
-	ProjectOptions map[string]map[string]any
-	Assigns        map[string]*appOptionAssign
-	Results        map[string]*appOptionResult
+	context      *appContext
+	GenericItems appOptionGenericItems
+	SpecifyItems appOptionSpecifyItems
+	Assigns      map[string]*appOptionAssign
+	Results      map[string]*appOptionResult
 }
 
-func getGlobalOptionDefaultOs() string {
-	if globalOptionDefaultOs == "" {
-		globalOptionDefaultOs = strings.ToLower(runtime.GOOS)
+func newAppOption(context *appContext, manifest *projectManifest, items map[string]string) *appOption {
+	return &appOption{
+		context:      context,
+		GenericItems: newAppOptionGenericItems(context, items),
+		SpecifyItems: newAppOptionSpecifyItems(manifest, items),
+		Results:      map[string]*appOptionResult{},
+		Assigns:      map[string]*appOptionAssign{},
 	}
-	return globalOptionDefaultOs
-}
-
-func getGlobalOptionDefaultArch() string {
-	if globalOptionDefaultArch == "" {
-		arch := strings.ToLower(runtime.GOARCH)
-		if arch == "amd64" {
-			globalOptionDefaultArch = "x64"
-		} else if arch == "386" {
-			globalOptionDefaultArch = "x32"
-		} else {
-			globalOptionDefaultArch = arch
-		}
-	}
-	return globalOptionDefaultArch
-}
-
-func getGlobalOptionDefaultShell(os string) string {
-	if globalOptionDefaultShell == "" {
-		if os == "windows" {
-			globalOptionDefaultShell = "cmd"
-		} else {
-			globalOptionDefaultShell = "sh"
-		}
-	}
-	return globalOptionDefaultShell
-}
-
-func getGlobalOptionDefaultHostname() (string, error) {
-	if globalOptionDefaultHostname == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return "", errW(err, "get global option default hostname error",
-				reason("get os hostname error"),
-			)
-		}
-		globalOptionDefaultHostname = hostname
-	}
-	return globalOptionDefaultHostname, nil
-}
-
-func getGlobalOptionDefaultUsername() (string, error) {
-	if globalOptionDefaultUsername == "" {
-		currentUser, err := user.Current()
-		if err != nil {
-			return "", errW(err, "get global option default username error",
-				reason("get current user error"),
-			)
-		}
-		username := currentUser.Username
-		if strings.Contains(username, "\\") {
-			username = strings.Split(username, "\\")[1]
-		}
-		globalOptionDefaultUsername = username
-	}
-	return globalOptionDefaultUsername, nil
-}
-
-func loadAppOption(context *appContext, manifest *projectManifest, values map[string]string) (*appOption, error) {
-	_os := ""
-	if _os = values[GlobalOptionNameOs]; _os == "" {
-		_os = getGlobalOptionDefaultOs()
-	}
-	_arch := ""
-	if _arch = values[GlobalOptionNameArch]; _arch == "" {
-		_arch = getGlobalOptionDefaultArch()
-	}
-	_shell := ""
-	if _shell = values[GlobalOptionNameShell]; _shell == "" {
-		_shell = getGlobalOptionDefaultShell(_os)
-	}
-	_hostname := ""
-	if _hostname = values[GlobalOptionNameHostname]; _hostname == "" {
-		hostname, err := getGlobalOptionDefaultHostname()
-		if err != nil {
-			return nil, err
-		}
-		_hostname = hostname
-	}
-	_username := ""
-	if _username = values[GlobalOptionNameUsername]; _username == "" {
-		username, err := getGlobalOptionDefaultUsername()
-		if err != nil {
-			return nil, err
-		}
-		_username = username
-	}
-	specifyOptions := make(map[string]string)
-	for k, v := range values {
-		if strings.HasPrefix(k, "_") {
-			// global option
-			continue
-		}
-		if strings.Contains(k, ".") {
-			// Because of the Option Assign feature
-			// You should not specify option values for items other than the main project
-			continue
-		}
-		specifyOptions[k] = v
-	}
-	option := &appOption{
-		context: context,
-		GlobalOptions: map[string]any{
-			GlobalOptionNameOs:       _os,
-			GlobalOptionNameArch:     _arch,
-			GlobalOptionNameShell:    _shell,
-			GlobalOptionNameHostname: _hostname,
-			GlobalOptionNameUsername: _username,
-		},
-		SpecifyOptions: map[string]map[string]string{
-			manifest.Name: specifyOptions,
-		},
-		ProjectOptions: map[string]map[string]any{},
-		Results:        map[string]*appOptionResult{},
-		Assigns:        map[string]*appOptionAssign{},
-	}
-	return option, nil
-}
-
-func (o *appOption) mergeGlobalOptions(options map[string]any) map[string]any {
-	result := make(map[string]any)
-	maps.Copy(result, o.GlobalOptions)
-	if options != nil {
-		maps.Copy(result, options)
-	}
-	return result
-}
-
-func (o *appOption) loadProjectOptions(manifest *projectManifest) error {
-	if _, exist := o.ProjectOptions[manifest.Name]; exist {
-		return nil
-	}
-	options := make(map[string]any)
-	for i := 0; i < len(manifest.Option.Items); i++ {
-		item := manifest.Option.Items[i]
-		result, err := o.findResult(manifest, item)
-		if err != nil {
-			return errW(err, "load project options error",
-				reason("find option result error"),
-				kv("projectName", manifest.Name),
-				kv("projectPath", manifest.projectPath),
-				kv("optionName", item.Name),
-			)
-		}
-		if err = o.addResult(manifest.Name, item.Name, result); err != nil {
-			return errW(err, "load project options error",
-				reason("add option result error"),
-				kv("projectName", manifest.Name),
-				kv("projectPath", manifest.projectPath),
-				kv("optionName", item.Name),
-			)
-		}
-		options[item.Name] = result.ParsedValue
-	}
-
-	verifies := manifest.Option.verifies
-	for i := 0; i < len(verifies); i++ {
-		verify := verifies[i]
-		evaluator := o.context.evaluator.SetRootData("options", o.mergeGlobalOptions(options))
-		result, err := evaluator.EvalBoolExpr(verify)
-		if err != nil {
-			return errW(err, "load project options error",
-				reason("eval verify error"),
-				kv("projectName", manifest.Name),
-				kv("projectPath", manifest.projectPath),
-				kv("verify", verify.Source().Content()),
-			)
-		}
-		if !result {
-			return errN("load project options error",
-				reason("verify options error"),
-				kv("projectName", manifest.Name),
-				kv("projectPath", manifest.projectPath),
-				kv("verify", verify.Source().Content()),
-			)
-		}
-	}
-
-	for i := 0; i < len(manifest.Option.Items); i++ {
-		item := manifest.Option.Items[i]
-		for j := 0; j < len(item.Assigns); j++ {
-			assign := item.Assigns[j]
-			if err := o.addAssign(manifest.Name, item.Name, assign.Project, assign.Option, assign.mapping); err != nil {
-				return errW(err, "load project options error",
-					reason("add option assign error"),
-					kv("projectName", manifest.Name),
-					kv("projectPath", manifest.projectPath),
-					kv("optionName", item.Name),
-					kv("assignProject", assign.Project),
-					kv("assignOption", assign.Option),
-				)
-			}
-		}
-	}
-	o.ProjectOptions[manifest.Name] = options
-	return nil
-}
-
-func (o *appOption) getProjectOptions(manifest *projectManifest) map[string]any {
-	return o.mergeGlobalOptions(o.ProjectOptions[manifest.Name])
 }
 
 func (o *appOption) addAssign(sourceProject string, sourceOption string, assignProject string, assignOption string, assignMapping *vm.Program) error {
@@ -256,8 +42,8 @@ func (o *appOption) addAssign(sourceProject string, sourceOption string, assignP
 			return errN("add option assign error",
 				reason("option assign conflict"),
 				kv("target", target),
-				kv("assign1", assign.Source),
-				kv("assign2", existAssign.Source),
+				kv("assign", assign),
+				kv("existAssign", existAssign),
 			)
 		}
 	} else {
@@ -272,10 +58,8 @@ func (o *appOption) addResult(projectName string, optionName string, result *app
 		return errN("add option result error",
 			reason("option result exists"),
 			kv("target", target),
-			kv("result1", result),
-			kv("result2", existResult),
-			kv("result1Assign", result.Assign),
-			kv("result2assign", existResult.Assign),
+			kv("result", result),
+			kv("existResult", existResult),
 		)
 	}
 	o.Results[target] = result
@@ -287,7 +71,7 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	if assign, exist := o.Assigns[target]; exist {
 		if result, exist := o.Results[assign.Source]; exist {
 			if assign.mapping != nil {
-				evaluator := o.context.evaluator.SetRootData("options", o.mergeGlobalOptions(map[string]any{
+				evaluator := o.context.evaluator.SetRootData("options", o.GenericItems.merge(map[string]any{
 					"value": result.ParsedValue,
 				}))
 				mappingResult, err := evaluator.EvalStringExpr(assign.mapping)
@@ -295,10 +79,8 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 					return assign, nil, errW(err, "find option assign value error",
 						reason("mapping value error"),
 						kv("target", target),
-						kv("targetAssign", assign),
-						kv("targetAssignMapping", assign.mapping.Source().Content()),
-						kv("sourceResult", result),
-						kv("sourceResultAssign", result.Assign),
+						kv("assign", assign),
+						kv("result", result),
 					)
 				}
 				return assign, mappingResult, nil
@@ -309,7 +91,7 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 			return assign, nil, errN("find option assign value error",
 				reason("source result not found"),
 				kv("target", target),
-				kv("targetAssign", assign),
+				kv("assign", assign),
 			)
 		}
 	}
@@ -323,8 +105,8 @@ func (o *appOption) findResult(manifest *projectManifest, item *projectManifestO
 	var source appOptionResultSource = appOptionResultSourceUnset
 	var assign *appOptionAssign = nil
 
-	if specifyOptions, exist := o.SpecifyOptions[manifest.Name]; exist {
-		if value, exist := specifyOptions[item.Name]; exist {
+	if specifyItems, exist := o.SpecifyItems[manifest.Name]; exist {
+		if value, exist := specifyItems[item.Name]; exist {
 			rawValue = value
 			parsedValue, err = item.parseValue(rawValue)
 			if err != nil {
@@ -397,15 +179,113 @@ func (o *appOption) findResult(manifest *projectManifest, item *projectManifestO
 		Source:      source,
 		Assign:      assign,
 	}
+
+	if err = o.addResult(manifest.Name, item.Name, result); err != nil {
+		return nil, errW(err, "find option result error",
+			reason("add option result error"),
+			kv("projectName", manifest.Name),
+			kv("projectPath", manifest.projectPath),
+			kv("optionName", item.Name),
+		)
+	}
+
 	return result, nil
 }
 
-func (o *appOption) getGlobalOptionsOs() string {
-	return o.GlobalOptions[GlobalOptionNameOs].(string)
+// endregion
+
+// region generic items
+
+type appOptionGenericItems map[string]any
+
+const (
+	GenericOptionNameOs       = "_os"
+	GenericOptionNameArch     = "_arch"
+	GenericOptionNameShell    = "_shell"
+	GenericOptionNameHostname = "_hostname"
+	GenericOptionNameUsername = "_username"
+)
+
+func newAppOptionGenericItems(context *appContext, items map[string]string) appOptionGenericItems {
+	os := ""
+	if os = items[GenericOptionNameOs]; os == "" {
+		os = context.systemInfo.Os
+	}
+	arch := ""
+	if arch = items[GenericOptionNameArch]; arch == "" {
+		arch = context.systemInfo.Arch
+	}
+	shell := ""
+	if shell = items[GenericOptionNameShell]; shell == "" {
+		if os == "windows" {
+			shell = "cmd"
+		} else {
+			shell = "sh"
+		}
+	}
+	hostname := ""
+	if hostname = items[GenericOptionNameHostname]; hostname == "" {
+		hostname = context.systemInfo.Os
+	}
+	username := ""
+	if username = items[GenericOptionNameUsername]; username == "" {
+		username = context.systemInfo.Username
+	}
+	return appOptionGenericItems{
+		GenericOptionNameOs:       os,
+		GenericOptionNameArch:     arch,
+		GenericOptionNameShell:    shell,
+		GenericOptionNameHostname: hostname,
+		GenericOptionNameUsername: username,
+	}
 }
 
-func (o *appOption) getGlobalOptionsShell() string {
-	return o.GlobalOptions[GlobalOptionNameShell].(string)
+func (s appOptionGenericItems) copy() map[string]any {
+	result := make(map[string]any)
+	maps.Copy(result, s)
+	return result
+}
+
+func (s appOptionGenericItems) merge(items map[string]any) map[string]any {
+	result := make(map[string]any)
+	maps.Copy(result, s)
+	if items != nil {
+		maps.Copy(result, items)
+	}
+	return result
+}
+
+func (s appOptionGenericItems) getOs() string {
+	return s[GenericOptionNameOs].(string)
+}
+
+func (s appOptionGenericItems) getShell() string {
+	return s[GenericOptionNameShell].(string)
+}
+
+// endregion
+
+// region specify items
+
+type appOptionSpecifyItems map[string]map[string]string
+
+func newAppOptionSpecifyItems(manifest *projectManifest, items map[string]string) appOptionSpecifyItems {
+	specifyItems := make(map[string]string)
+	for k, v := range items {
+		if strings.HasPrefix(k, "_") {
+			// generic option
+			continue
+		}
+		if strings.Contains(k, ".") {
+			// Because of the Option Assign feature
+			// You should not specify option values for items other than the main project
+			continue
+		}
+		specifyItems[k] = v
+	}
+	return map[string]map[string]string{
+		manifest.Name: specifyItems,
+	}
 }
 
 // endregion

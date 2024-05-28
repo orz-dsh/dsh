@@ -356,16 +356,16 @@ type AppProfileManifestProjectOptionItem struct {
 	Match string
 }
 
-func NewAppProfileManifestProjectOption(keyValues map[string]string) *AppProfileManifestProjectOption {
-	var items []*AppProfileManifestProjectOptionItem
-	for k, v := range keyValues {
-		items = append(items, &AppProfileManifestProjectOptionItem{
+func NewAppProfileManifestProjectOption(items map[string]string) *AppProfileManifestProjectOption {
+	var optionItems []*AppProfileManifestProjectOptionItem
+	for k, v := range items {
+		optionItems = append(optionItems, &AppProfileManifestProjectOptionItem{
 			Name:  k,
 			Value: v,
 		})
 	}
 	return &AppProfileManifestProjectOption{
-		Items: items,
+		Items: optionItems,
 	}
 }
 
