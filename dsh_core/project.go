@@ -1,5 +1,7 @@
 package dsh_core
 
+// region project
+
 type project struct {
 	context  *appContext
 	Manifest *projectManifest
@@ -75,3 +77,5 @@ func (p *project) makeScripts(evaluator *Evaluator, outputPath string, useHardLi
 	}
 	return targetNames, nil
 }
+
+// endregion

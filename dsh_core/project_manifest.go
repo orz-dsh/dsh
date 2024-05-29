@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/expr-lang/expr/vm"
 	"regexp"
-	"slices"
 )
 
 // region manifest
@@ -113,204 +112,176 @@ func (r *projectManifestRuntime) init(manifest *projectManifest) (err error) {
 // region option
 
 type projectManifestOption struct {
-	Items    []*projectManifestOptionItem
-	Verifies []string
-	verifies []*vm.Program
+	Items           []*projectManifestOptionItem
+	Verifies        []string
+	declareEntities projectOptionDeclareEntitySet
+	verifyEntities  projectOptionVerifyEntitySet
 }
 
 type projectManifestOptionItem struct {
-	Name               string
-	Type               projectManifestOptionItemType
-	Choices            []string
-	Default            *string
-	Optional           bool
-	Assigns            []*projectManifestOptionItemAssign
-	defaultRawValue    string
-	defaultParsedValue any
+	Name     string
+	Type     projectOptionValueType
+	Choices  []string
+	Default  *string
+	Optional bool
+	Assigns  []*projectManifestOptionItemAssign
 }
 
 type projectManifestOptionItemAssign struct {
 	Project string
 	Option  string
 	Mapping string
-	mapping *vm.Program
 }
 
-type projectManifestOptionItemType string
-
-const (
-	projectManifestOptionItemTypeString  projectManifestOptionItemType = "string"
-	projectManifestOptionItemTypeBool    projectManifestOptionItemType = "bool"
-	projectManifestOptionItemTypeInteger projectManifestOptionItemType = "integer"
-	projectManifestOptionItemTypeDecimal projectManifestOptionItemType = "decimal"
-)
-
-func (o *projectManifestOption) init(manifest *projectManifest) (err error) {
+func (o *projectManifestOption) init(manifest *projectManifest) error {
+	declareEntities := projectOptionDeclareEntitySet{}
 	optionNamesDict := map[string]bool{}
+	assignTargetsDict := map[string]bool{}
 	for i := 0; i < len(o.Items); i++ {
-		option := o.Items[i]
-		if option.Name == "" {
-			return errN("project manifest invalid",
-				reason("name empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("option.items[%d].name", i)),
-			)
-		}
-		if checked := projectNameCheckRegex.MatchString(option.Name); !checked {
-			return errN("project manifest invalid",
-				reason("value invalid"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("option.items[%d].name", i)),
-				kv("value", option.Name),
-			)
-		}
-		if _, exist := optionNamesDict[option.Name]; exist {
-			return errN("project manifest invalid",
-				reason("name duplicated"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("option.items[%d].name", i)),
-				kv("value", option.Name),
-			)
-		}
-		optionNamesDict[option.Name] = true
-		if option.Type == "" {
-			option.Type = projectManifestOptionItemTypeString
-		}
-		if option.Default != nil {
-			switch option.Type {
-			case projectManifestOptionItemTypeString:
-			case projectManifestOptionItemTypeBool:
-			case projectManifestOptionItemTypeInteger:
-			case projectManifestOptionItemTypeDecimal:
-			default:
-				return errN("project manifest invalid",
-					reason("value invalid"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].type", i)),
-					kv("value", option.Type),
-				)
-			}
-
-			defaultRawValue := *option.Default
-			defaultParsedValue, err := option.parseValue(defaultRawValue)
-			if err != nil {
-				return errW(err, "project manifest invalid",
-					reason("value invalid"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].default", i)),
-					kv("value", defaultRawValue),
-				)
-			}
-			option.defaultRawValue = defaultRawValue
-			option.defaultParsedValue = defaultParsedValue
-		}
-		assignTargetsDict := map[string]bool{}
-		for j := 0; j < len(option.Assigns); j++ {
-			if option.Assigns[j].Project == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].assigns[%d].project", i, j)),
-				)
-			}
-			if option.Assigns[j].Project == manifest.Name {
-				return errN("project manifest invalid",
-					reason("can not assign to self project option"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].assigns[%d].project", i, j)),
-				)
-			}
-			if option.Assigns[j].Option == "" {
-				return errN("project manifest invalid",
-					reason("value empty"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].assigns[%d].option", i, j)),
-				)
-			}
-			assignTarget := option.Assigns[j].Project + "." + option.Assigns[j].Option
-			if _, exists := assignTargetsDict[assignTarget]; exists {
-				return errN("project manifest invalid",
-					reason("option assign target duplicated"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].assigns[%d]", i, j)),
-					kv("target", assignTarget),
-				)
-			}
-			assignTargetsDict[assignTarget] = true
-			if option.Assigns[j].Mapping != "" {
-				option.Assigns[j].mapping, err = dsh_utils.CompileExpr(option.Assigns[j].Mapping)
-				if err != nil {
-					return errW(err, "project manifest invalid",
-						reason("value invalid"),
-						kv("path", manifest.manifestPath),
-						kv("field", fmt.Sprintf("option.items[%d].assigns[%d].mapping", i, j)),
-						kv("value", option.Assigns[j].Mapping),
-					)
-				}
-			}
+		if declareEntity, err := o.Items[i].init(manifest, optionNamesDict, assignTargetsDict, i); err != nil {
+			return err
+		} else {
+			declareEntities = append(declareEntities, declareEntity)
 		}
 	}
+
+	verifyEntities := projectOptionVerifyEntitySet{}
 	for i := 0; i < len(o.Verifies); i++ {
-		if o.Verifies[i] == "" {
+		expr := o.Verifies[i]
+		if expr == "" {
 			return errN("project manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("option.verifies[%d]", i)),
 			)
 		}
-		verify, err := dsh_utils.CompileExpr(o.Verifies[i])
+		exprObj, err := dsh_utils.CompileExpr(expr)
 		if err != nil {
 			return errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("option.verifies[%d]", i)),
-				kv("value", o.Verifies[i]),
+				kv("value", expr),
 			)
 		}
-		o.verifies = append(o.verifies, verify)
+		verifyEntities = append(verifyEntities, newProjectOptionVerifyEntity(expr, exprObj))
 	}
+
+	o.declareEntities = declareEntities
+	o.verifyEntities = verifyEntities
 	return nil
 }
 
-func (i *projectManifestOptionItem) parseValue(rawValue string) (any, error) {
-	if len(i.Choices) > 0 && !slices.Contains(i.Choices, rawValue) {
-		return nil, errN("option parse value error",
-			reason("not in choices"),
-			kv("name", i.Name),
-			kv("value", rawValue),
-			kv("choices", i.Choices),
+func (i *projectManifestOptionItem) init(manifest *projectManifest, itemNamesDict, assignTargetsDict map[string]bool, itemIndex int) (entity *projectOptionDeclareEntity, err error) {
+	if i.Name == "" {
+		return nil, errN("project manifest invalid",
+			reason("name empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].name", itemIndex)),
 		)
 	}
-	var parsedValue any = nil
-	switch i.Type {
-	case projectManifestOptionItemTypeString:
-		parsedValue = rawValue
-	case projectManifestOptionItemTypeBool:
-		parsedValue = rawValue == "true"
-	case projectManifestOptionItemTypeInteger:
-		integer, err := dsh_utils.ParseInteger(rawValue)
-		if err != nil {
-			return nil, errW(err, "option parse value error",
-				reason("parse integer error"),
-				kv("name", i.Name),
-				kv("value", rawValue),
-			)
-		}
-		parsedValue = integer
-	case projectManifestOptionItemTypeDecimal:
-		decimal, err := dsh_utils.ParseDecimal(rawValue)
-		if err != nil {
-			return nil, errW(err, "option parse value error",
-				reason("parse decimal error"),
-				kv("name", i.Name),
-				kv("value", rawValue),
-			)
-		}
-		parsedValue = decimal
-	default:
-		impossible()
+	if checked := projectNameCheckRegex.MatchString(i.Name); !checked {
+		return nil, errN("project manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].name", itemIndex)),
+			kv("value", i.Name),
+		)
 	}
-	return parsedValue, nil
+	if _, exist := itemNamesDict[i.Name]; exist {
+		return nil, errN("project manifest invalid",
+			reason("name duplicated"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].name", itemIndex)),
+			kv("value", i.Name),
+		)
+	}
+	valueType := i.Type
+	if valueType == "" {
+		valueType = projectOptionValueTypeString
+	}
+	switch valueType {
+	case projectOptionValueTypeString:
+	case projectOptionValueTypeBool:
+	case projectOptionValueTypeInteger:
+	case projectOptionValueTypeDecimal:
+	default:
+		return nil, errN("project manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].type", itemIndex)),
+			kv("value", i.Type),
+		)
+	}
+	entity = newProjectOptionDeclareEntity(i.Name, valueType, i.Choices, i.Optional)
+	if err = entity.setDefaultValue(i.Default); err != nil {
+		return nil, errW(err, "project manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].default", itemIndex)),
+			kv("value", *i.Default),
+		)
+	}
+
+	for assignIndex := 0; assignIndex < len(i.Assigns); assignIndex++ {
+		assign := i.Assigns[assignIndex]
+		if assignEntity, err := assign.init(manifest, assignTargetsDict, itemIndex, assignIndex); err != nil {
+			return nil, err
+		} else {
+			entity.addAssign(assignEntity)
+		}
+	}
+
+	itemNamesDict[i.Name] = true
+	return entity, nil
+}
+
+func (a *projectManifestOptionItemAssign) init(manifest *projectManifest, targetsDict map[string]bool, itemIndex int, assignIndex int) (entity *projectOptionAssignEntity, err error) {
+	if a.Project == "" {
+		return nil, errN("project manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].assigns[%d].project", itemIndex, assignIndex)),
+		)
+	}
+	if a.Project == manifest.Name {
+		return nil, errN("project manifest invalid",
+			reason("can not assign to self project option"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].assigns[%d].project", itemIndex, assignIndex)),
+		)
+	}
+	if a.Option == "" {
+		return nil, errN("project manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].assigns[%d].option", itemIndex, assignIndex)),
+		)
+	}
+	assignTarget := a.Project + "." + a.Option
+	if _, exists := targetsDict[assignTarget]; exists {
+		return nil, errN("project manifest invalid",
+			reason("option assign target duplicated"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].assigns[%d]", itemIndex, assignIndex)),
+			kv("target", assignTarget),
+		)
+	}
+	var mappingObj *vm.Program
+	if a.Mapping != "" {
+		mappingObj, err = dsh_utils.CompileExpr(a.Mapping)
+		if err != nil {
+			return nil, errW(err, "project manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("option.items[%d].assigns[%d].mapping", itemIndex, assignIndex)),
+				kv("value", a.Mapping),
+			)
+		}
+	}
+
+	targetsDict[assignTarget] = true
+	return newProjectOptionAssignEntity(a.Project, a.Option, a.Mapping, mappingObj), nil
 }
 
 // endregion
@@ -320,28 +291,28 @@ func (i *projectManifestOptionItem) parseValue(rawValue string) (any, error) {
 type projectManifestScript struct {
 	Sources        []*projectManifestSource
 	Imports        []*projectManifestImport
-	sourceEntities []*projectSourceEntity
-	importEntities []*projectImportEntity
+	sourceEntities projectSourceEntitySet
+	importEntities projectImportEntitySet
 }
 
-func (s *projectManifestScript) init(manifest *projectManifest) (err error) {
+func (s *projectManifestScript) init(manifest *projectManifest) error {
 	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(s.Sources); i++ {
 		src := s.Sources[i]
-		if entity, err := src.init(manifest, "script", i); err != nil {
+		if sourceEntity, err := src.init(manifest, "script", i); err != nil {
 			return err
 		} else {
-			sourceEntities = append(sourceEntities, entity)
+			sourceEntities = append(sourceEntities, sourceEntity)
 		}
 	}
 
 	importEntities := projectImportEntitySet{}
 	for i := 0; i < len(s.Imports); i++ {
 		imp := s.Imports[i]
-		if entity, err := imp.init(manifest, "script", i); err != nil {
+		if importEntity, err := imp.init(manifest, "script", i); err != nil {
 			return err
 		} else {
-			importEntities = append(importEntities, entity)
+			importEntities = append(importEntities, importEntity)
 		}
 	}
 
@@ -357,28 +328,28 @@ func (s *projectManifestScript) init(manifest *projectManifest) (err error) {
 type projectManifestConfig struct {
 	Sources        []*projectManifestSource
 	Imports        []*projectManifestImport
-	sourceEntities []*projectSourceEntity
-	importEntities []*projectImportEntity
+	sourceEntities projectSourceEntitySet
+	importEntities projectImportEntitySet
 }
 
-func (c *projectManifestConfig) init(manifest *projectManifest) (err error) {
+func (c *projectManifestConfig) init(manifest *projectManifest) error {
 	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(c.Sources); i++ {
 		src := c.Sources[i]
-		if entity, err := src.init(manifest, "config", i); err != nil {
+		if sourceEntity, err := src.init(manifest, "config", i); err != nil {
 			return err
 		} else {
-			sourceEntities = append(sourceEntities, entity)
+			sourceEntities = append(sourceEntities, sourceEntity)
 		}
 	}
 
 	importEntities := projectImportEntitySet{}
 	for i := 0; i < len(c.Imports); i++ {
 		imp := c.Imports[i]
-		if entity, err := imp.init(manifest, "config", i); err != nil {
+		if importEntity, err := imp.init(manifest, "config", i); err != nil {
 			return err
 		} else {
-			importEntities = append(importEntities, entity)
+			importEntities = append(importEntities, importEntity)
 		}
 	}
 

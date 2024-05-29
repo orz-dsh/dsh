@@ -7,31 +7,30 @@ type projectOption struct {
 
 func makeProjectOption(context *appContext, manifest *projectManifest) (*projectOption, error) {
 	items := context.Option.GenericItems.copy()
-	for i := 0; i < len(manifest.Option.Items); i++ {
-		item := manifest.Option.Items[i]
-		result, err := context.Option.findResult(manifest, item)
+	for i := 0; i < len(manifest.Option.declareEntities); i++ {
+		declare := manifest.Option.declareEntities[i]
+		result, err := context.Option.findResult(manifest, declare)
 		if err != nil {
 			return nil, errW(err, "load project options error",
 				reason("find option result error"),
 				kv("projectName", manifest.Name),
 				kv("projectPath", manifest.projectPath),
-				kv("optionName", item.Name),
+				kv("optionName", declare.Name),
 			)
 		}
-		items[item.Name] = result.ParsedValue
+		items[declare.Name] = result.ParsedValue
 	}
 
 	evaluator := context.evaluator.SetRootData("options", items)
-	verifies := manifest.Option.verifies
-	for i := 0; i < len(verifies); i++ {
-		verify := verifies[i]
-		result, err := evaluator.EvalBoolExpr(verify)
+	for i := 0; i < len(manifest.Option.verifyEntities); i++ {
+		verify := manifest.Option.verifyEntities[i]
+		result, err := evaluator.EvalBoolExpr(verify.expr)
 		if err != nil {
 			return nil, errW(err, "load project options error",
 				reason("eval verify error"),
 				kv("projectName", manifest.Name),
 				kv("projectPath", manifest.projectPath),
-				kv("verify", verify.Source().Content()),
+				kv("verify", verify),
 			)
 		}
 		if !result {
@@ -39,21 +38,21 @@ func makeProjectOption(context *appContext, manifest *projectManifest) (*project
 				reason("verify options error"),
 				kv("projectName", manifest.Name),
 				kv("projectPath", manifest.projectPath),
-				kv("verify", verify.Source().Content()),
+				kv("verify", verify),
 			)
 		}
 	}
 
-	for i := 0; i < len(manifest.Option.Items); i++ {
-		item := manifest.Option.Items[i]
-		for j := 0; j < len(item.Assigns); j++ {
-			assign := item.Assigns[j]
-			if err := context.Option.addAssign(manifest.Name, item.Name, assign.Project, assign.Option, assign.mapping); err != nil {
+	for i := 0; i < len(manifest.Option.declareEntities); i++ {
+		declare := manifest.Option.declareEntities[i]
+		for j := 0; j < len(declare.Assigns); j++ {
+			assign := declare.Assigns[j]
+			if err := context.Option.addAssign(manifest.Name, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
 				return nil, errW(err, "load project options error",
 					reason("add option assign error"),
 					kv("projectName", manifest.Name),
 					kv("projectPath", manifest.projectPath),
-					kv("optionName", item.Name),
+					kv("optionName", declare.Name),
 					kv("assignProject", assign.Project),
 					kv("assignOption", assign.Option),
 				)

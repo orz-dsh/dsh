@@ -1,6 +1,134 @@
 package dsh_core
 
-import "github.com/expr-lang/expr/vm"
+import (
+	"dsh/dsh_utils"
+	"github.com/expr-lang/expr/vm"
+	"slices"
+)
+
+// region option declare
+
+type projectOptionDeclareEntity struct {
+	Name               string
+	ValueType          projectOptionValueType
+	Choices            []string
+	Optional           bool
+	DefaultRawValue    string
+	DefaultParsedValue any
+	Assigns            projectOptionAssignEntitySet
+}
+
+type projectOptionDeclareEntitySet []*projectOptionDeclareEntity
+
+type projectOptionAssignEntity struct {
+	Project string
+	Option  string
+	Mapping string
+	mapping *vm.Program
+}
+
+type projectOptionAssignEntitySet []*projectOptionAssignEntity
+
+type projectOptionVerifyEntity struct {
+	Expr string
+	expr *vm.Program
+}
+
+type projectOptionVerifyEntitySet []*projectOptionVerifyEntity
+
+type projectOptionValueType string
+
+const (
+	projectOptionValueTypeString  projectOptionValueType = "string"
+	projectOptionValueTypeBool    projectOptionValueType = "bool"
+	projectOptionValueTypeInteger projectOptionValueType = "integer"
+	projectOptionValueTypeDecimal projectOptionValueType = "decimal"
+)
+
+func newProjectOptionDeclareEntity(name string, valueType projectOptionValueType, choices []string, optional bool) *projectOptionDeclareEntity {
+	return &projectOptionDeclareEntity{
+		Name:      name,
+		ValueType: valueType,
+		Choices:   choices,
+		Optional:  optional,
+	}
+}
+
+func newProjectOptionAssignEntity(project string, option string, mapping string, mappingObj *vm.Program) *projectOptionAssignEntity {
+	return &projectOptionAssignEntity{
+		Project: project,
+		Option:  option,
+		Mapping: mapping,
+		mapping: mappingObj,
+	}
+}
+
+func newProjectOptionVerifyEntity(expr string, exprObj *vm.Program) *projectOptionVerifyEntity {
+	return &projectOptionVerifyEntity{
+		Expr: expr,
+		expr: exprObj,
+	}
+}
+
+func (e *projectOptionDeclareEntity) setDefaultValue(defaultValue *string) error {
+	if defaultValue != nil {
+		defaultRawValue := *defaultValue
+		defaultParsedValue, err := e.parseValue(defaultRawValue)
+		if err != nil {
+			return err
+		}
+		e.DefaultRawValue = defaultRawValue
+		e.DefaultParsedValue = defaultParsedValue
+	}
+	return nil
+}
+
+func (e *projectOptionDeclareEntity) addAssign(assign *projectOptionAssignEntity) {
+	e.Assigns = append(e.Assigns, assign)
+}
+
+func (e *projectOptionDeclareEntity) parseValue(rawValue string) (any, error) {
+	if len(e.Choices) > 0 && !slices.Contains(e.Choices, rawValue) {
+		return nil, errN("option parse value error",
+			reason("not in choices"),
+			kv("name", e.Name),
+			kv("value", rawValue),
+			kv("choices", e.Choices),
+		)
+	}
+	var parsedValue any = nil
+	switch e.ValueType {
+	case projectOptionValueTypeString:
+		parsedValue = rawValue
+	case projectOptionValueTypeBool:
+		parsedValue = rawValue == "true"
+	case projectOptionValueTypeInteger:
+		integer, err := dsh_utils.ParseInteger(rawValue)
+		if err != nil {
+			return nil, errW(err, "option parse value error",
+				reason("parse integer error"),
+				kv("name", e.Name),
+				kv("value", rawValue),
+			)
+		}
+		parsedValue = integer
+	case projectOptionValueTypeDecimal:
+		decimal, err := dsh_utils.ParseDecimal(rawValue)
+		if err != nil {
+			return nil, errW(err, "option parse value error",
+				reason("parse decimal error"),
+				kv("name", e.Name),
+				kv("value", rawValue),
+			)
+		}
+		parsedValue = decimal
+	default:
+		impossible()
+	}
+	return parsedValue, nil
+}
+
+// endregion
 
 // region option specify
 

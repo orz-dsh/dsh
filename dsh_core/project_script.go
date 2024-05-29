@@ -63,15 +63,15 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 		entities = append(entities, context.profile.projectScriptSourceEntities...)
 	}
 	for i := 0; i < len(entities); i++ {
-		entry := entities[i]
-		matched, err := option.evaluator.EvalBoolExpr(entry.match)
+		entity := entities[i]
+		matched, err := option.evaluator.EvalBoolExpr(entity.match)
 		if err != nil {
 			return nil, err
 		}
 		if !matched {
 			continue
 		}
-		if err = container.scanSources(filepath.Join(manifest.projectPath, entry.Dir), entry.Files); err != nil {
+		if err = container.scanSources(filepath.Join(manifest.projectPath, entity.Dir), entity.Files); err != nil {
 			return nil, err
 		}
 	}
