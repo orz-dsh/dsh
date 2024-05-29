@@ -41,10 +41,10 @@ func (c *appImportContainer) loadImports() (err error) {
 	projectImports := pic.Imports
 	for i := 0; i < len(projectImports); i++ {
 		imp1 := projectImports[i]
-		if err = imp1.target.loadImports(pic.scope); err != nil {
+		if err = imp1.project.loadImports(pic.scope); err != nil {
 			return err
 		}
-		pic1 := imp1.target.getImportContainer(pic.scope)
+		pic1 := imp1.project.getImportContainer(pic.scope)
 		for j := 0; j < len(pic1.Imports); j++ {
 			imp2 := pic1.Imports[j]
 			if imp2.Link.Path == c.project.Path {
@@ -76,10 +76,10 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 		)
 	}
 	for i := 0; i < len(c.Imports); i++ {
-		if err = c.Imports[i].target.loadConfigSources(); err != nil {
+		if err = c.Imports[i].project.loadConfigSources(); err != nil {
 			return nil, errW(err, "make configs error",
 				reason("load config sources error"),
-				kv("project", c.Imports[i].target),
+				kv("project", c.Imports[i].project),
 			)
 		}
 	}
@@ -92,8 +92,8 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 
 	var sources []*projectConfigSource
 	for i := 0; i < len(c.Imports); i++ {
-		for j := 0; j < len(c.Imports[i].target.config.SourceContainer.Sources); j++ {
-			source := c.Imports[i].target.config.SourceContainer.Sources[j]
+		for j := 0; j < len(c.Imports[i].project.config.SourceContainer.Sources); j++ {
+			source := c.Imports[i].project.config.SourceContainer.Sources[j]
 			sources = append(sources, source)
 		}
 	}
@@ -140,7 +140,7 @@ func (c *appImportContainer) makeScripts(evaluator *Evaluator, outputPath string
 	}
 	var targetNames []string
 	for i := 0; i < len(c.Imports); i++ {
-		iTargetNames, err := c.Imports[i].target.makeScripts(evaluator, outputPath, useHardLink)
+		iTargetNames, err := c.Imports[i].project.makeScripts(evaluator, outputPath, useHardLink)
 		if err != nil {
 			return nil, err
 		}

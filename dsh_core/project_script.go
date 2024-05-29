@@ -103,8 +103,8 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 			}
 			return errN("scan script sources error",
 				reason("source name duplicated"),
-				kv("source1", existSource),
-				kv("source2", source),
+				kv("source", source),
+				kv("existSource", existSource),
 			)
 		}
 		switch fileType {

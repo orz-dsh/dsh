@@ -174,15 +174,15 @@ func (s *projectConfigSource) merge(target map[string]any, source map[string]any
 // region container
 
 type projectConfigSourceContainer struct {
-	context       *appContext
-	Sources       []*projectConfigSource
-	sourcesByName map[string]*projectConfigSource
+	context         *appContext
+	Sources         []*projectConfigSource
+	sourcePathsDict map[string]bool
 }
 
 func makeProjectConfigSourceContainer(context *appContext, manifest *ProjectManifest, option *projectOption) (container *projectConfigSourceContainer, err error) {
 	container = &projectConfigSourceContainer{
-		context:       context,
-		sourcesByName: map[string]*projectConfigSource{},
+		context:         context,
+		sourcePathsDict: map[string]bool{},
 	}
 	entities := manifest.Config.sourceEntities
 	if context.isMainProject(manifest) {
@@ -229,21 +229,14 @@ func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFile
 		}
 		source := &projectConfigSource{
 			SourcePath: filepath.Join(sourceDir, filePath),
-			SourceName: dsh_utils.RemoveFileExt(filePath),
+			SourceName: filePath,
 			SourceType: sourceType,
 		}
-		if existSource, exist := c.sourcesByName[source.SourcePath]; exist {
-			if existSource.SourcePath == source.SourcePath {
-				continue
-			}
-			return errN("scan config sources error",
-				reason("source name duplicated"),
-				kv("source1", existSource),
-				kv("source2", source),
-			)
+		if c.sourcePathsDict[source.SourcePath] {
+			continue
 		}
 		c.Sources = append(c.Sources, source)
-		c.sourcesByName[source.SourceName] = source
+		c.sourcePathsDict[source.SourcePath] = true
 	}
 	return nil
 }
