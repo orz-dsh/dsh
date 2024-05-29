@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-// region workspace profile
+// region profile
 
 type workspaceProfileEntity struct {
 	File     string
@@ -70,7 +70,7 @@ func (s workspaceProfileEntitySet) getFiles(evaluator *Evaluator) ([]string, err
 
 // endregion
 
-// region workspace shell
+// region shell
 
 type workspaceShellEntity struct {
 	Name  string
@@ -203,7 +203,7 @@ func (s workspaceShellEntitySet) getEntity(name string, evaluator *Evaluator) (*
 
 // endregion
 
-// region workspace import
+// region import
 
 type workspaceImportRegistryEntity struct {
 	Name  string

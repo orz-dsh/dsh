@@ -318,33 +318,35 @@ func (i *projectManifestOptionItem) parseValue(rawValue string) (any, error) {
 // region script
 
 type projectManifestScript struct {
-	Sources           []*projectManifestSource
-	Imports           []*projectManifestImport
-	sourceDefinitions []*projectSourceDefinition
-	importDefinitions []*projectImportDefinition
+	Sources        []*projectManifestSource
+	Imports        []*projectManifestImport
+	sourceEntities []*projectSourceEntity
+	importEntities []*projectImportEntity
 }
 
 func (s *projectManifestScript) init(manifest *projectManifest) (err error) {
-	var sourceDefinitions []*projectSourceDefinition
+	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(s.Sources); i++ {
 		src := s.Sources[i]
-		if err = src.init(manifest, "script", i); err != nil {
+		if entity, err := src.init(manifest, "script", i); err != nil {
 			return err
+		} else {
+			sourceEntities = append(sourceEntities, entity)
 		}
-		sourceDefinitions = append(sourceDefinitions, src.definition)
 	}
 
-	var importDefinitions []*projectImportDefinition
+	importEntities := projectImportEntitySet{}
 	for i := 0; i < len(s.Imports); i++ {
 		imp := s.Imports[i]
-		if err = imp.init(manifest, "script", i); err != nil {
+		if entity, err := imp.init(manifest, "script", i); err != nil {
 			return err
+		} else {
+			importEntities = append(importEntities, entity)
 		}
-		importDefinitions = append(importDefinitions, imp.definition)
 	}
 
-	s.sourceDefinitions = sourceDefinitions
-	s.importDefinitions = importDefinitions
+	s.sourceEntities = sourceEntities
+	s.importEntities = importEntities
 	return nil
 }
 
@@ -353,33 +355,35 @@ func (s *projectManifestScript) init(manifest *projectManifest) (err error) {
 // region config
 
 type projectManifestConfig struct {
-	Sources           []*projectManifestSource
-	Imports           []*projectManifestImport
-	sourceDefinitions []*projectSourceDefinition
-	importDefinitions []*projectImportDefinition
+	Sources        []*projectManifestSource
+	Imports        []*projectManifestImport
+	sourceEntities []*projectSourceEntity
+	importEntities []*projectImportEntity
 }
 
 func (c *projectManifestConfig) init(manifest *projectManifest) (err error) {
-	var sourceDefinitions []*projectSourceDefinition
+	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(c.Sources); i++ {
 		src := c.Sources[i]
-		if err = src.init(manifest, "config", i); err != nil {
+		if entity, err := src.init(manifest, "config", i); err != nil {
 			return err
+		} else {
+			sourceEntities = append(sourceEntities, entity)
 		}
-		sourceDefinitions = append(sourceDefinitions, src.definition)
 	}
 
-	var importDefinitions []*projectImportDefinition
+	importEntities := projectImportEntitySet{}
 	for i := 0; i < len(c.Imports); i++ {
 		imp := c.Imports[i]
-		if err = imp.init(manifest, "config", i); err != nil {
+		if entity, err := imp.init(manifest, "config", i); err != nil {
 			return err
+		} else {
+			importEntities = append(importEntities, entity)
 		}
-		importDefinitions = append(importDefinitions, imp.definition)
 	}
 
-	c.sourceDefinitions = sourceDefinitions
-	c.importDefinitions = importDefinitions
+	c.sourceEntities = sourceEntities
+	c.importEntities = importEntities
 	return nil
 }
 
@@ -388,25 +392,24 @@ func (c *projectManifestConfig) init(manifest *projectManifest) (err error) {
 // region source
 
 type projectManifestSource struct {
-	Dir        string
-	Files      []string
-	Match      string
-	definition *projectSourceDefinition
+	Dir   string
+	Files []string
+	Match string
 }
 
-func (s *projectManifestSource) init(manifest *projectManifest, scope string, index int) (err error) {
+func (s *projectManifestSource) init(manifest *projectManifest, scope string, index int) (entity *projectSourceEntity, err error) {
 	if s.Dir == "" {
-		return errN("project manifest invalid",
+		return nil, errN("project manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("%s.sources[%d].dir", scope, index)),
 		)
 	}
-	var matchExpr *vm.Program
+	var matchObj *vm.Program
 	if s.Match != "" {
-		matchExpr, err = dsh_utils.CompileExpr(s.Match)
+		matchObj, err = dsh_utils.CompileExpr(s.Match)
 		if err != nil {
-			return errW(err, "project manifest invalid",
+			return nil, errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("%s.sources[%d].match", scope, index)),
@@ -415,8 +418,7 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 		}
 	}
 
-	s.definition = newProjectSourceDefinition(s.Dir, s.Files, s.Match, matchExpr)
-	return nil
+	return newProjectSourceEntity(s.Dir, s.Files, s.Match, matchObj), nil
 }
 
 // endregion
@@ -424,33 +426,33 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 // region import
 
 type projectManifestImport struct {
-	Link       string
-	Match      string
-	definition *projectImportDefinition
+	Link  string
+	Match string
 }
 
-func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (err error) {
+func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (entity *projectImportEntity, err error) {
 	if i.Link == "" {
-		return errN("project manifest invalid",
+		return nil, errN("project manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("%s.imports[%d].link", scope, index)),
 		)
 	}
-	link, err := ParseProjectLink(i.Link)
+	linkObj, err := ParseProjectLink(i.Link)
 	if err != nil {
-		return errW(err, "project manifest invalid",
+		return nil, errW(err, "project manifest invalid",
 			reason("value invalid"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("%s.imports[%d].link", scope, index)),
 			kv("value", i.Link),
 		)
 	}
-	var matchExpr *vm.Program
+
+	var matchObj *vm.Program
 	if i.Match != "" {
-		matchExpr, err = dsh_utils.CompileExpr(i.Match)
+		matchObj, err = dsh_utils.CompileExpr(i.Match)
 		if err != nil {
-			return errW(err, "project manifest invalid",
+			return nil, errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("%s.imports[%d].match", scope, index)),
@@ -459,8 +461,7 @@ func (i *projectManifestImport) init(manifest *projectManifest, scope string, in
 		}
 	}
 
-	i.definition = newProjectImportDefinition(link, i.Match, matchExpr)
-	return nil
+	return newProjectImportEntity(i.Link, i.Match, linkObj, matchObj), nil
 }
 
 // endregion

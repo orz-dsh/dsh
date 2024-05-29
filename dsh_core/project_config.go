@@ -184,20 +184,20 @@ func loadProjectConfigSourceContainer(context *appContext, manifest *projectMani
 		context:       context,
 		sourcesByName: map[string]*projectConfigSource{},
 	}
-	definitions := manifest.Config.sourceDefinitions
+	entities := manifest.Config.sourceEntities
 	if context.isMainProject(manifest) {
-		definitions = append(definitions, context.profile.projectConfigSourceDefinitions...)
+		entities = append(entities, context.profile.projectConfigSourceEntities...)
 	}
-	for i := 0; i < len(definitions); i++ {
-		definition := definitions[i]
-		matched, err := option.evaluator.EvalBoolExpr(definition.match)
+	for i := 0; i < len(entities); i++ {
+		entity := entities[i]
+		matched, err := option.evaluator.EvalBoolExpr(entity.match)
 		if err != nil {
 			return nil, err
 		}
 		if !matched {
 			continue
 		}
-		if err = container.scanSources(filepath.Join(manifest.projectPath, definition.Dir), definition.Files); err != nil {
+		if err = container.scanSources(filepath.Join(manifest.projectPath, entity.Dir), entity.Files); err != nil {
 			return nil, err
 		}
 	}

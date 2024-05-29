@@ -58,20 +58,20 @@ func loadProjectScriptSourceContainer(context *appContext, manifest *projectMani
 		manifest:      manifest,
 		sourcesByName: map[string]*projectScriptSource{},
 	}
-	definitions := manifest.Script.sourceDefinitions
+	entities := manifest.Script.sourceEntities
 	if context.isMainProject(manifest) {
-		definitions = append(definitions, context.profile.projectScriptSourceDefinitions...)
+		entities = append(entities, context.profile.projectScriptSourceEntities...)
 	}
-	for i := 0; i < len(definitions); i++ {
-		definition := definitions[i]
-		matched, err := option.evaluator.EvalBoolExpr(definition.match)
+	for i := 0; i < len(entities); i++ {
+		entry := entities[i]
+		matched, err := option.evaluator.EvalBoolExpr(entry.match)
 		if err != nil {
 			return nil, err
 		}
 		if !matched {
 			continue
 		}
-		if err = container.scanSources(filepath.Join(manifest.projectPath, definition.Dir), definition.Files); err != nil {
+		if err = container.scanSources(filepath.Join(manifest.projectPath, entry.Dir), entry.Files); err != nil {
 			return nil, err
 		}
 	}

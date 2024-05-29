@@ -198,10 +198,10 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 // region workspace import
 
 type AppProfileManifestWorkspaceImport struct {
-	Registries          []*AppProfileManifestImportRegistry
-	Redirects           []*AppProfileManifestImportRedirect
-	registryDefinitions workspaceImportRegistryEntitySet
-	redirectDefinitions workspaceImportRedirectEntitySet
+	Registries       []*AppProfileManifestImportRegistry
+	Redirects        []*AppProfileManifestImportRedirect
+	registryEntities workspaceImportRegistryEntitySet
+	redirectEntities workspaceImportRedirectEntitySet
 }
 
 type AppProfileManifestImportRegistry struct {
@@ -217,7 +217,7 @@ type AppProfileManifestImportRedirect struct {
 }
 
 func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest) (err error) {
-	registryDefinitions := workspaceImportRegistryEntitySet{}
+	registryEntities := workspaceImportRegistryEntitySet{}
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
@@ -249,10 +249,10 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				)
 			}
 		}
-		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
+		registryEntities[registry.Name] = append(registryEntities[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
 	}
 
-	redirectDefinitions := workspaceImportRedirectEntitySet{}
+	redirectEntities := workspaceImportRedirectEntitySet{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Regex == "" {
@@ -293,11 +293,11 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 				)
 			}
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectEntity(redirect.Regex, redirect.Link, redirect.Match, regexObj, matchObj))
+		redirectEntities = append(redirectEntities, newWorkspaceImportRedirectEntity(redirect.Regex, redirect.Link, redirect.Match, regexObj, matchObj))
 	}
 
-	imp.registryDefinitions = registryDefinitions
-	imp.redirectDefinitions = redirectDefinitions
+	imp.registryEntities = registryEntities
+	imp.redirectEntities = redirectEntities
 	return nil
 }
 
@@ -346,8 +346,8 @@ func (p *AppProfileManifestProject) init(manifest *AppProfileManifest) (err erro
 // region project option
 
 type AppProfileManifestProjectOption struct {
-	Items       []*AppProfileManifestProjectOptionItem
-	definitions projectOptionDefinitions
+	Items    []*AppProfileManifestProjectOptionItem
+	entities projectOptionSpecifyEntitySet
 }
 
 type AppProfileManifestProjectOptionItem struct {
@@ -370,7 +370,7 @@ func NewAppProfileManifestProjectOption(items map[string]string) *AppProfileMani
 }
 
 func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (err error) {
-	definitions := projectOptionDefinitions{}
+	entities := projectOptionSpecifyEntitySet{}
 	for i := 0; i < len(o.Items); i++ {
 		item := o.Items[i]
 		if item.Name == "" {
@@ -380,9 +380,9 @@ func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (er
 				kv("field", fmt.Sprintf("project.option.items[%d].name", i)),
 			)
 		}
-		var matchExpr *vm.Program
+		var matchObj *vm.Program
 		if item.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(item.Match)
+			matchObj, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
 				return errW(err, "app profile manifest invalid",
 					reason("value invalid"),
@@ -392,10 +392,10 @@ func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (er
 				)
 			}
 		}
-		definitions = append(definitions, newProjectOptionDefinition(item.Name, item.Value, item.Match, matchExpr))
+		entities = append(entities, newProjectOptionSpecifyEntity(item.Name, item.Value, item.Match, matchObj))
 	}
 
-	o.definitions = definitions
+	o.entities = entities
 	return nil
 }
 
@@ -404,10 +404,10 @@ func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (er
 // region project script
 
 type AppProfileManifestProjectScript struct {
-	Sources           []*AppProfileManifestProjectSource
-	Imports           []*AppProfileManifestProjectImport
-	sourceDefinitions []*projectSourceDefinition
-	importDefinitions []*projectImportDefinition
+	Sources        []*AppProfileManifestProjectSource
+	Imports        []*AppProfileManifestProjectImport
+	sourceEntities projectSourceEntitySet
+	importEntities []*projectImportEntity
 }
 
 func NewAppProfileManifestProjectScript(sources []*AppProfileManifestProjectSource, imports []*AppProfileManifestProjectImport) *AppProfileManifestProjectScript {
@@ -418,26 +418,28 @@ func NewAppProfileManifestProjectScript(sources []*AppProfileManifestProjectSour
 }
 
 func (s *AppProfileManifestProjectScript) init(manifest *AppProfileManifest) (err error) {
-	var sourceDefinitions []*projectSourceDefinition
+	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(s.Sources); i++ {
 		src := s.Sources[i]
-		if err = src.init(manifest, "script", i); err != nil {
+		if entity, err := src.init(manifest, "script", i); err != nil {
 			return err
+		} else {
+			sourceEntities = append(sourceEntities, entity)
 		}
-		sourceDefinitions = append(sourceDefinitions, src.definition)
 	}
 
-	var importDefinitions []*projectImportDefinition
+	importEntities := projectImportEntitySet{}
 	for i := 0; i < len(s.Imports); i++ {
 		imp := s.Imports[i]
-		if err = imp.init(manifest, "script", i); err != nil {
+		if entity, err := imp.init(manifest, "script", i); err != nil {
 			return err
+		} else {
+			importEntities = append(importEntities, entity)
 		}
-		importDefinitions = append(importDefinitions, imp.definition)
 	}
 
-	s.sourceDefinitions = sourceDefinitions
-	s.importDefinitions = importDefinitions
+	s.sourceEntities = sourceEntities
+	s.importEntities = importEntities
 	return nil
 }
 
@@ -446,10 +448,10 @@ func (s *AppProfileManifestProjectScript) init(manifest *AppProfileManifest) (er
 // region project config
 
 type AppProfileManifestProjectConfig struct {
-	Sources           []*AppProfileManifestProjectSource
-	Imports           []*AppProfileManifestProjectImport
-	sourceDefinitions []*projectSourceDefinition
-	importDefinitions []*projectImportDefinition
+	Sources        []*AppProfileManifestProjectSource
+	Imports        []*AppProfileManifestProjectImport
+	sourceEntities []*projectSourceEntity
+	importEntities []*projectImportEntity
 }
 
 func NewAppProfileManifestProjectConfig(sources []*AppProfileManifestProjectSource, imports []*AppProfileManifestProjectImport) *AppProfileManifestProjectConfig {
@@ -460,26 +462,28 @@ func NewAppProfileManifestProjectConfig(sources []*AppProfileManifestProjectSour
 }
 
 func (c *AppProfileManifestProjectConfig) init(manifest *AppProfileManifest) (err error) {
-	var sourceDefinitions []*projectSourceDefinition
+	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(c.Sources); i++ {
 		src := c.Sources[i]
-		if err = src.init(manifest, "config", i); err != nil {
+		if entity, err := src.init(manifest, "config", i); err != nil {
 			return err
+		} else {
+			sourceEntities = append(sourceEntities, entity)
 		}
-		sourceDefinitions = append(sourceDefinitions, src.definition)
 	}
 
-	var importDefinitions []*projectImportDefinition
+	var importEntities []*projectImportEntity
 	for i := 0; i < len(c.Imports); i++ {
 		imp := c.Imports[i]
-		if err = imp.init(manifest, "config", i); err != nil {
+		if entity, err := imp.init(manifest, "config", i); err != nil {
 			return err
+		} else {
+			importEntities = append(importEntities, entity)
 		}
-		importDefinitions = append(importDefinitions, imp.definition)
 	}
 
-	c.sourceDefinitions = sourceDefinitions
-	c.importDefinitions = importDefinitions
+	c.sourceEntities = sourceEntities
+	c.importEntities = importEntities
 	return nil
 }
 
@@ -488,10 +492,9 @@ func (c *AppProfileManifestProjectConfig) init(manifest *AppProfileManifest) (er
 // region project source
 
 type AppProfileManifestProjectSource struct {
-	Dir        string
-	Files      []string
-	Match      string
-	definition *projectSourceDefinition
+	Dir   string
+	Files []string
+	Match string
 }
 
 func NewAppProfileManifestProjectSource(dir string, files []string, match string) *AppProfileManifestProjectSource {
@@ -502,20 +505,20 @@ func NewAppProfileManifestProjectSource(dir string, files []string, match string
 	}
 }
 
-func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, scope string, index int) (err error) {
+func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, scope string, index int) (entity *projectSourceEntity, err error) {
 	if s.Dir == "" {
-		return errN("project manifest invalid",
+		return nil, errN("project manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("project.%s.sources[%d].dir", scope, index)),
 		)
 	}
 
-	var matchExpr *vm.Program
+	var matchObj *vm.Program
 	if s.Match != "" {
-		matchExpr, err = dsh_utils.CompileExpr(s.Match)
+		matchObj, err = dsh_utils.CompileExpr(s.Match)
 		if err != nil {
-			return errW(err, "project manifest invalid",
+			return nil, errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("project.%s.sources[%d].match", scope, index)),
@@ -524,8 +527,7 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 		}
 	}
 
-	s.definition = newProjectSourceDefinition(s.Dir, s.Files, s.Match, matchExpr)
-	return nil
+	return newProjectSourceEntity(s.Dir, s.Files, s.Match, matchObj), nil
 }
 
 // endregion
@@ -533,9 +535,8 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 // region project import
 
 type AppProfileManifestProjectImport struct {
-	Link       string
-	Match      string
-	definition *projectImportDefinition
+	Link  string
+	Match string
 }
 
 func NewAppProfileManifestProjectImport(link string, match string) *AppProfileManifestProjectImport {
@@ -545,17 +546,17 @@ func NewAppProfileManifestProjectImport(link string, match string) *AppProfileMa
 	}
 }
 
-func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, scope string, index int) (err error) {
+func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, scope string, index int) (entity *projectImportEntity, err error) {
 	if i.Link == "" {
-		return errN("project manifest invalid",
+		return nil, errN("project manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
 		)
 	}
-	link, err := ParseProjectLink(i.Link)
+	linkObj, err := ParseProjectLink(i.Link)
 	if err != nil {
-		return errW(err, "project manifest invalid",
+		return nil, errW(err, "project manifest invalid",
 			reason("value invalid"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
@@ -563,11 +564,11 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 		)
 	}
 
-	var matchExpr *vm.Program
+	var matchObj *vm.Program
 	if i.Match != "" {
-		matchExpr, err = dsh_utils.CompileExpr(i.Match)
+		matchObj, err = dsh_utils.CompileExpr(i.Match)
 		if err != nil {
-			return errW(err, "project manifest invalid",
+			return nil, errW(err, "project manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("project.%s.imports[%d].match", scope, index)),
@@ -576,8 +577,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 		}
 	}
 
-	i.definition = newProjectImportDefinition(link, i.Match, matchExpr)
-	return nil
+	return newProjectImportEntity(i.Link, i.Match, linkObj, matchObj), nil
 }
 
 // endregion

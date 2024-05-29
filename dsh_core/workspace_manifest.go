@@ -247,10 +247,10 @@ func (s *workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
 // region import
 
 type workspaceManifestImport struct {
-	Registries          []*workspaceManifestImportRegistry
-	Redirects           []*workspaceManifestImportRedirect
-	registryDefinitions workspaceImportRegistryEntitySet
-	redirectDefinitions workspaceImportRedirectEntitySet
+	Registries       []*workspaceManifestImportRegistry
+	Redirects        []*workspaceManifestImportRedirect
+	registryEntities workspaceImportRegistryEntitySet
+	redirectEntities workspaceImportRedirectEntitySet
 }
 
 type workspaceManifestImportRegistry struct {
@@ -266,7 +266,7 @@ type workspaceManifestImportRedirect struct {
 }
 
 func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error) {
-	registryDefinitions := workspaceImportRegistryEntitySet{}
+	registryEntities := workspaceImportRegistryEntitySet{}
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
@@ -298,10 +298,10 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		registryDefinitions[registry.Name] = append(registryDefinitions[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
+		registryEntities[registry.Name] = append(registryEntities[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
 	}
 
-	redirectDefinitions := workspaceImportRedirectEntitySet{}
+	redirectEntities := workspaceImportRedirectEntitySet{}
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Regex == "" {
@@ -342,11 +342,11 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		redirectDefinitions = append(redirectDefinitions, newWorkspaceImportRedirectEntity(redirect.Regex, redirect.Link, redirect.Match, regexObj, matchObj))
+		redirectEntities = append(redirectEntities, newWorkspaceImportRedirectEntity(redirect.Regex, redirect.Link, redirect.Match, regexObj, matchObj))
 	}
 
-	imp.registryDefinitions = registryDefinitions
-	imp.redirectDefinitions = redirectDefinitions
+	imp.registryEntities = registryEntities
+	imp.redirectEntities = redirectEntities
 	return nil
 }
 

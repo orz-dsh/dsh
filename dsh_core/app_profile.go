@@ -6,38 +6,38 @@ type appProfile struct {
 	workspaceShellEntities          workspaceShellEntitySet
 	workspaceImportRegistryEntities workspaceImportRegistryEntitySet
 	workspaceImportRedirectEntities workspaceImportRedirectEntitySet
-	projectOptionDefinitions        projectOptionDefinitions
-	projectScriptSourceDefinitions  []*projectSourceDefinition
-	projectScriptImportDefinitions  []*projectImportDefinition
-	projectConfigSourceDefinitions  []*projectSourceDefinition
-	projectConfigImportDefinitions  []*projectImportDefinition
+	projectOptionSpecifyEntities    projectOptionSpecifyEntitySet
+	projectScriptSourceEntities     projectSourceEntitySet
+	projectScriptImportEntities     projectImportEntitySet
+	projectConfigSourceEntities     projectSourceEntitySet
+	projectConfigImportEntities     projectImportEntitySet
 }
 
 func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appProfile {
 	workspaceShellEntities := workspaceShellEntitySet{}
 	workspaceImportRegistryEntities := workspaceImportRegistryEntitySet{}
 	workspaceImportRedirectEntities := workspaceImportRedirectEntitySet{}
-	projectOptionDefinitions := projectOptionDefinitions{}
-	projectScriptSourceDefinitions := []*projectSourceDefinition{}
-	projectScriptImportDefinitions := []*projectImportDefinition{}
-	projectConfigSourceDefinitions := []*projectSourceDefinition{}
-	projectConfigImportDefinitions := []*projectImportDefinition{}
+	projectOptionSpecifyEntities := projectOptionSpecifyEntitySet{}
+	projectScriptSourceEntities := projectSourceEntitySet{}
+	projectScriptImportEntities := projectImportEntitySet{}
+	projectConfigSourceEntities := projectSourceEntitySet{}
+	projectConfigImportEntities := projectImportEntitySet{}
 	for i := 0; i < len(manifests); i++ {
 		manifest := manifests[i]
 		workspaceShellEntities.merge(manifest.Workspace.Shell.entities)
-		workspaceImportRegistryEntities.merge(manifest.Workspace.Import.registryDefinitions)
-		workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, manifest.Workspace.Import.redirectDefinitions...)
-		projectOptionDefinitions = append(projectOptionDefinitions, manifest.Project.Option.definitions...)
-		projectScriptSourceDefinitions = append(projectScriptSourceDefinitions, manifest.Project.Script.sourceDefinitions...)
-		projectScriptImportDefinitions = append(projectScriptImportDefinitions, manifest.Project.Script.importDefinitions...)
-		projectConfigSourceDefinitions = append(projectConfigSourceDefinitions, manifest.Project.Config.sourceDefinitions...)
-		projectConfigImportDefinitions = append(projectConfigImportDefinitions, manifest.Project.Config.importDefinitions...)
+		workspaceImportRegistryEntities.merge(manifest.Workspace.Import.registryEntities)
+		workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, manifest.Workspace.Import.redirectEntities...)
+		projectOptionSpecifyEntities = append(projectOptionSpecifyEntities, manifest.Project.Option.entities...)
+		projectScriptSourceEntities = append(projectScriptSourceEntities, manifest.Project.Script.sourceEntities...)
+		projectScriptImportEntities = append(projectScriptImportEntities, manifest.Project.Script.importEntities...)
+		projectConfigSourceEntities = append(projectConfigSourceEntities, manifest.Project.Config.sourceEntities...)
+		projectConfigImportEntities = append(projectConfigImportEntities, manifest.Project.Config.importEntities...)
 	}
 	workspaceShellEntities.merge(workspace.manifest.Shell.entities)
 	workspaceShellEntities.mergeDefault()
-	workspaceImportRegistryEntities.merge(workspace.manifest.Import.registryDefinitions)
+	workspaceImportRegistryEntities.merge(workspace.manifest.Import.registryEntities)
 	workspaceImportRegistryEntities.mergeDefault()
-	workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, workspace.manifest.Import.redirectDefinitions...)
+	workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, workspace.manifest.Import.redirectEntities...)
 
 	profile := &appProfile{
 		workspace:                       workspace,
@@ -45,17 +45,17 @@ func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appPr
 		workspaceShellEntities:          workspaceShellEntities,
 		workspaceImportRegistryEntities: workspaceImportRegistryEntities,
 		workspaceImportRedirectEntities: workspaceImportRedirectEntities,
-		projectOptionDefinitions:        projectOptionDefinitions,
-		projectScriptSourceDefinitions:  projectScriptSourceDefinitions,
-		projectScriptImportDefinitions:  projectScriptImportDefinitions,
-		projectConfigSourceDefinitions:  projectConfigSourceDefinitions,
-		projectConfigImportDefinitions:  projectConfigImportDefinitions,
+		projectOptionSpecifyEntities:    projectOptionSpecifyEntities,
+		projectScriptSourceEntities:     projectScriptSourceEntities,
+		projectScriptImportEntities:     projectScriptImportEntities,
+		projectConfigSourceEntities:     projectConfigSourceEntities,
+		projectConfigImportEntities:     projectConfigImportEntities,
 	}
 	return profile
 }
 
-func (p *appProfile) getProjectOptionItems() (items map[string]string, err error) {
-	return p.projectOptionDefinitions.getItems(p.evaluator)
+func (p *appProfile) getProjectOptionSpecifyItems() (items map[string]string, err error) {
+	return p.projectOptionSpecifyEntities.getItems(p.evaluator)
 }
 
 func (p *appProfile) getWorkspaceShellEntity(name string) (*workspaceShellEntity, error) {

@@ -16,11 +16,11 @@ type appOption struct {
 	Results      map[string]*appOptionResult
 }
 
-func newAppOption(context *appContext, manifest *projectManifest, items map[string]string) *appOption {
+func newAppOption(context *appContext, manifest *projectManifest, specifyItems map[string]string) *appOption {
 	return &appOption{
 		context:      context,
-		GenericItems: newAppOptionGenericItems(context, items),
-		SpecifyItems: newAppOptionSpecifyItems(manifest, items),
+		GenericItems: newAppOptionGenericItems(context, specifyItems),
+		SpecifyItems: newAppOptionSpecifyItems(manifest, specifyItems),
 		Results:      map[string]*appOptionResult{},
 		Assigns:      map[string]*appOptionAssign{},
 	}

@@ -37,11 +37,11 @@ func makeAppContext(workspace *Workspace, profile *appProfile, link *projectReso
 	}
 	context.manifest = manifest
 
-	optionItems, err := profile.getProjectOptionItems()
+	optionSpecifyItems, err := profile.getProjectOptionSpecifyItems()
 	if err != nil {
 		return nil, err
 	}
-	context.Option = newAppOption(context, manifest, optionItems)
+	context.Option = newAppOption(context, manifest, optionSpecifyItems)
 
 	return context, nil
 }
