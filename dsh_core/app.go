@@ -8,7 +8,7 @@ import (
 
 type App struct {
 	context               *appContext
-	project               *project
+	project               *Project
 	scriptImportContainer *appImportContainer
 	configImportContainer *appImportContainer
 	configs               map[string]any
@@ -21,7 +21,7 @@ type AppMakeScriptsSettings struct {
 	UseHardLink     bool
 }
 
-func newApp(context *appContext, project *project) (app *App, err error) {
+func newApp(context *appContext, project *Project) (app *App, err error) {
 	app = &App{
 		context:               context,
 		project:               project,
@@ -70,7 +70,7 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 	a.context.logger.Info("make scripts start")
 	outputPath := settings.OutputPath
 	if outputPath == "" {
-		outputPath, err = a.context.workspace.makeOutputDir(a.project.Manifest.Name)
+		outputPath, err = a.context.workspace.makeOutputDir(a.project.Name)
 		if err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("make output path error"),

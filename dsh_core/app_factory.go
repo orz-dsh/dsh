@@ -61,12 +61,12 @@ func (f *AppFactory) MakeApp(link string) (*App, error) {
 		return nil, err
 	}
 
-	proj, err := context.loadMainProject()
+	project, err := context.loadMainProject()
 	if err != nil {
 		return nil, err
 	}
 
-	app, err := newApp(context, proj)
+	app, err := newApp(context, project)
 	if err != nil {
 		return nil, err
 	}

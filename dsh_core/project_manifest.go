@@ -11,23 +11,24 @@ import (
 
 var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*$")
 
-type projectManifest struct {
+type ProjectManifest struct {
 	Name         string
-	Runtime      *projectManifestRuntime
-	Option       *projectManifestOption
-	Script       *projectManifestScript
-	Config       *projectManifestConfig
+	Runtime      *ProjectManifestRuntime
+	Option       *ProjectManifestOption
+	Script       *ProjectManifestScript
+	Config       *ProjectManifestConfig
 	manifestPath string
 	manifestType manifestMetadataType
+	projectName  string
 	projectPath  string
 }
 
-func loadProjectManifest(projectPath string) (manifest *projectManifest, err error) {
-	manifest = &projectManifest{
-		Runtime: &projectManifestRuntime{},
-		Option:  &projectManifestOption{},
-		Script:  &projectManifestScript{},
-		Config:  &projectManifestConfig{},
+func loadProjectManifest(projectPath string) (manifest *ProjectManifest, err error) {
+	manifest = &ProjectManifest{
+		Runtime: &ProjectManifestRuntime{},
+		Option:  &ProjectManifestOption{},
+		Script:  &ProjectManifestScript{},
+		Config:  &ProjectManifestConfig{},
 	}
 	metadata, err := loadManifestFromDir(projectPath, []string{"project"}, manifest, true)
 	if err != nil {
@@ -45,15 +46,42 @@ func loadProjectManifest(projectPath string) (manifest *projectManifest, err err
 	return manifest, nil
 }
 
-func (m *projectManifest) DescExtraKeyValues() KVS {
+func MakeProjectManifest(name string, runtime *ProjectManifestRuntime, option *ProjectManifestOption, script *ProjectManifestScript, config *ProjectManifestConfig) (manifest *ProjectManifest, err error) {
+	if runtime == nil {
+		runtime = &ProjectManifestRuntime{}
+	}
+	if option == nil {
+		option = &ProjectManifestOption{}
+	}
+	if script == nil {
+		script = &ProjectManifestScript{}
+	}
+	if config == nil {
+		config = &ProjectManifestConfig{}
+	}
+	manifest = &ProjectManifest{
+		Name:    name,
+		Runtime: runtime,
+		Option:  option,
+		Script:  script,
+		Config:  config,
+	}
+	if err = manifest.init(); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func (m *ProjectManifest) DescExtraKeyValues() KVS {
 	return KVS{
+		kv("projectName", m.projectName),
 		kv("projectPath", m.projectPath),
 		kv("manifestPath", m.manifestPath),
 		kv("manifestType", m.manifestType),
 	}
 }
 
-func (m *projectManifest) init() (err error) {
+func (m *ProjectManifest) init() (err error) {
 	if m.Name == "" {
 		return errN("project manifest invalid",
 			reason("name empty"),
@@ -69,6 +97,7 @@ func (m *projectManifest) init() (err error) {
 			kv("value", m.Name),
 		)
 	}
+	m.projectName = m.Name
 	if err = m.Runtime.init(m); err != nil {
 		return err
 	}
@@ -88,12 +117,19 @@ func (m *projectManifest) init() (err error) {
 
 // region runtime
 
-type projectManifestRuntime struct {
+type ProjectManifestRuntime struct {
 	MinVersion dsh_utils.Version `yaml:"minVersion" toml:"minVersion" json:"minVersion"`
 	MaxVersion dsh_utils.Version `yaml:"maxVersion" toml:"maxVersion" json:"maxVersion"`
 }
 
-func (r *projectManifestRuntime) init(manifest *projectManifest) (err error) {
+func NewProjectManifestRuntime(minVersion dsh_utils.Version, maxVersion dsh_utils.Version) *ProjectManifestRuntime {
+	return &ProjectManifestRuntime{
+		MinVersion: minVersion,
+		MaxVersion: maxVersion,
+	}
+}
+
+func (r *ProjectManifestRuntime) init(manifest *ProjectManifest) (err error) {
 	if err = dsh_utils.CheckRuntimeVersion(r.MinVersion, r.MaxVersion); err != nil {
 		return errW(err, "project manifest invalid",
 			reason("runtime incompatible"),
@@ -111,29 +147,55 @@ func (r *projectManifestRuntime) init(manifest *projectManifest) (err error) {
 
 // region option
 
-type projectManifestOption struct {
-	Items           []*projectManifestOptionItem
+type ProjectManifestOption struct {
+	Items           []*ProjectManifestOptionItem
 	Verifies        []string
 	declareEntities projectOptionDeclareEntitySet
 	verifyEntities  projectOptionVerifyEntitySet
 }
 
-type projectManifestOptionItem struct {
+type ProjectManifestOptionItem struct {
 	Name     string
 	Type     projectOptionValueType
 	Choices  []string
 	Default  *string
 	Optional bool
-	Assigns  []*projectManifestOptionItemAssign
+	Assigns  []*ProjectManifestOptionItemAssign
 }
 
-type projectManifestOptionItemAssign struct {
+type ProjectManifestOptionItemAssign struct {
 	Project string
 	Option  string
 	Mapping string
 }
 
-func (o *projectManifestOption) init(manifest *projectManifest) error {
+func NewProjectManifestOption(items []*ProjectManifestOptionItem, verifies []string) *ProjectManifestOption {
+	return &ProjectManifestOption{
+		Items:    items,
+		Verifies: verifies,
+	}
+}
+
+func NewProjectManifestOptionItem(name string, valueType projectOptionValueType, choices []string, defaultValue *string, optional bool, assigns []*ProjectManifestOptionItemAssign) *ProjectManifestOptionItem {
+	return &ProjectManifestOptionItem{
+		Name:     name,
+		Type:     valueType,
+		Choices:  choices,
+		Default:  defaultValue,
+		Optional: optional,
+		Assigns:  assigns,
+	}
+}
+
+func NewProjectManifestOptionItemAssign(project string, option string, mapping string) *ProjectManifestOptionItemAssign {
+	return &ProjectManifestOptionItemAssign{
+		Project: project,
+		Option:  option,
+		Mapping: mapping,
+	}
+}
+
+func (o *ProjectManifestOption) init(manifest *ProjectManifest) error {
 	declareEntities := projectOptionDeclareEntitySet{}
 	optionNamesDict := map[string]bool{}
 	assignTargetsDict := map[string]bool{}
@@ -172,7 +234,7 @@ func (o *projectManifestOption) init(manifest *projectManifest) error {
 	return nil
 }
 
-func (i *projectManifestOptionItem) init(manifest *projectManifest, itemNamesDict, assignTargetsDict map[string]bool, itemIndex int) (entity *projectOptionDeclareEntity, err error) {
+func (i *ProjectManifestOptionItem) init(manifest *ProjectManifest, itemNamesDict, assignTargetsDict map[string]bool, itemIndex int) (entity *projectOptionDeclareEntity, err error) {
 	if i.Name == "" {
 		return nil, errN("project manifest invalid",
 			reason("name empty"),
@@ -236,7 +298,7 @@ func (i *projectManifestOptionItem) init(manifest *projectManifest, itemNamesDic
 	return entity, nil
 }
 
-func (a *projectManifestOptionItemAssign) init(manifest *projectManifest, targetsDict map[string]bool, itemIndex int, assignIndex int) (entity *projectOptionAssignEntity, err error) {
+func (a *ProjectManifestOptionItemAssign) init(manifest *ProjectManifest, targetsDict map[string]bool, itemIndex int, assignIndex int) (entity *projectOptionAssignEntity, err error) {
 	if a.Project == "" {
 		return nil, errN("project manifest invalid",
 			reason("value empty"),
@@ -288,14 +350,21 @@ func (a *projectManifestOptionItemAssign) init(manifest *projectManifest, target
 
 // region script
 
-type projectManifestScript struct {
-	Sources        []*projectManifestSource
-	Imports        []*projectManifestImport
+type ProjectManifestScript struct {
+	Sources        []*ProjectManifestSource
+	Imports        []*ProjectManifestImport
 	sourceEntities projectSourceEntitySet
 	importEntities projectImportEntitySet
 }
 
-func (s *projectManifestScript) init(manifest *projectManifest) error {
+func NewProjectManifestScript(sources []*ProjectManifestSource, imports []*ProjectManifestImport) *ProjectManifestScript {
+	return &ProjectManifestScript{
+		Sources: sources,
+		Imports: imports,
+	}
+}
+
+func (s *ProjectManifestScript) init(manifest *ProjectManifest) error {
 	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(s.Sources); i++ {
 		src := s.Sources[i]
@@ -325,14 +394,21 @@ func (s *projectManifestScript) init(manifest *projectManifest) error {
 
 // region config
 
-type projectManifestConfig struct {
-	Sources        []*projectManifestSource
-	Imports        []*projectManifestImport
+type ProjectManifestConfig struct {
+	Sources        []*ProjectManifestSource
+	Imports        []*ProjectManifestImport
 	sourceEntities projectSourceEntitySet
 	importEntities projectImportEntitySet
 }
 
-func (c *projectManifestConfig) init(manifest *projectManifest) error {
+func NewProjectManifestConfig(sources []*ProjectManifestSource, imports []*ProjectManifestImport) *ProjectManifestConfig {
+	return &ProjectManifestConfig{
+		Sources: sources,
+		Imports: imports,
+	}
+}
+
+func (c *ProjectManifestConfig) init(manifest *ProjectManifest) error {
 	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(c.Sources); i++ {
 		src := c.Sources[i]
@@ -362,13 +438,21 @@ func (c *projectManifestConfig) init(manifest *projectManifest) error {
 
 // region source
 
-type projectManifestSource struct {
+type ProjectManifestSource struct {
 	Dir   string
 	Files []string
 	Match string
 }
 
-func (s *projectManifestSource) init(manifest *projectManifest, scope string, index int) (entity *projectSourceEntity, err error) {
+func NewProjectManifestSource(dir string, files []string, match string) *ProjectManifestSource {
+	return &ProjectManifestSource{
+		Dir:   dir,
+		Files: files,
+		Match: match,
+	}
+}
+
+func (s *ProjectManifestSource) init(manifest *ProjectManifest, scope string, index int) (entity *projectSourceEntity, err error) {
 	if s.Dir == "" {
 		return nil, errN("project manifest invalid",
 			reason("value empty"),
@@ -396,12 +480,19 @@ func (s *projectManifestSource) init(manifest *projectManifest, scope string, in
 
 // region import
 
-type projectManifestImport struct {
+type ProjectManifestImport struct {
 	Link  string
 	Match string
 }
 
-func (i *projectManifestImport) init(manifest *projectManifest, scope string, index int) (entity *projectImportEntity, err error) {
+func NewProjectManifestImport(link string, match string) *ProjectManifestImport {
+	return &ProjectManifestImport{
+		Link:  link,
+		Match: match,
+	}
+}
+
+func (i *ProjectManifestImport) init(manifest *ProjectManifest, scope string, index int) (entity *projectImportEntity, err error) {
 	if i.Link == "" {
 		return nil, errN("project manifest invalid",
 			reason("value empty"),

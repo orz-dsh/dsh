@@ -2,77 +2,78 @@ package dsh_core
 
 // region project
 
-type project struct {
-	context  *appContext
-	Manifest *projectManifest
-	Option   *projectOption
-	Script   *projectScript
-	Config   *projectConfig
+type Project struct {
+	Name    string
+	Path    string
+	context *appContext
+	option  *projectOption
+	script  *projectScript
+	config  *projectConfig
 }
 
-func loadProject(context *appContext, manifest *projectManifest) (p *project, err error) {
-	context.logger.InfoDesc("load project", kv("name", manifest.Name))
+func makeProject(context *appContext, manifest *ProjectManifest) (project *Project, err error) {
+	context.logger.InfoDesc("load project", kv("name", manifest.projectName))
 	option, err := makeProjectOption(context, manifest)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("make project option error"),
-			kv("projectName", manifest.Name),
+			kv("projectName", manifest.projectName),
 			kv("projectPath", manifest.projectPath),
 		)
 	}
-	script, err := loadProjectScript(context, manifest, option)
+	script, err := makeProjectScript(context, manifest, option)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("load project script error"),
-			kv("projectName", manifest.Name),
+			kv("projectName", manifest.projectName),
 			kv("projectPath", manifest.projectPath),
 		)
 	}
-	config, err := loadProjectConfig(context, manifest, option)
+	config, err := makeProjectConfig(context, manifest, option)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("load project config error"),
-			kv("projectName", manifest.Name),
+			kv("projectName", manifest.projectName),
 			kv("projectPath", manifest.projectPath),
 		)
 	}
-	p = &project{
-		context:  context,
-		Manifest: manifest,
-		Option:   option,
-		Script:   script,
-		Config:   config,
+	project = &Project{
+		Name:    manifest.projectName,
+		Path:    manifest.projectPath,
+		context: context,
+		option:  option,
+		script:  script,
+		config:  config,
 	}
-	return p, nil
+	return project, nil
 }
 
-func (p *project) getImportContainer(scope projectImportScope) *projectImportContainer {
+func (p *Project) getImportContainer(scope projectImportScope) *projectImportContainer {
 	if scope == projectImportScopeScript {
-		return p.Script.ImportContainer
+		return p.script.ImportContainer
 	} else if scope == projectImportScopeConfig {
-		return p.Config.ImportContainer
+		return p.config.ImportContainer
 	} else {
 		impossible()
 	}
 	return nil
 }
 
-func (p *project) loadImports(scope projectImportScope) error {
+func (p *Project) loadImports(scope projectImportScope) error {
 	return p.getImportContainer(scope).loadImports()
 }
 
-func (p *project) loadConfigSources() error {
-	return p.Config.SourceContainer.loadSources()
+func (p *Project) loadConfigSources() error {
+	return p.config.SourceContainer.loadSources()
 }
 
-func (p *project) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
-	evaluator = evaluator.SetData("options", p.Option.Items)
-	targetNames, err := p.Script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
+func (p *Project) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
+	evaluator = evaluator.SetData("options", p.option.Items)
+	targetNames, err := p.script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("make sources error"),
-			kv("projectName", p.Manifest.Name),
-			kv("projectPath", p.Manifest.projectPath),
+			kv("project", p),
 		)
 	}
 	return targetNames, nil

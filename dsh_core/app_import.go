@@ -6,13 +6,13 @@ import (
 
 type appImportContainer struct {
 	context       *appContext
-	project       *project
+	project       *Project
 	scope         projectImportScope
 	Imports       []*projectImport
 	importsLoaded bool
 }
 
-func newAppImportContainer(project *project, scope projectImportScope) *appImportContainer {
+func newAppImportContainer(project *Project, scope projectImportScope) *appImportContainer {
 	return &appImportContainer{
 		context: project.context,
 		project: project,
@@ -47,7 +47,7 @@ func (c *appImportContainer) loadImports() (err error) {
 		pic1 := imp1.target.getImportContainer(pic.scope)
 		for j := 0; j < len(pic1.Imports); j++ {
 			imp2 := pic1.Imports[j]
-			if imp2.Link.Path == c.project.Manifest.projectPath {
+			if imp2.Link.Path == c.project.Path {
 				continue
 			}
 			if _, exist := importsByPath[imp2.Link.Path]; !exist {
@@ -72,36 +72,33 @@ func (c *appImportContainer) makeConfigs() (configs map[string]any, err error) {
 	if err = c.loadImports(); err != nil {
 		return nil, errW(err, "make configs error",
 			reason("load imports error"),
-			kv("projectName", c.project.Manifest.Name),
-			kv("projectPath", c.project.Manifest.projectPath),
+			kv("project", c.project),
 		)
 	}
 	for i := 0; i < len(c.Imports); i++ {
 		if err = c.Imports[i].target.loadConfigSources(); err != nil {
 			return nil, errW(err, "make configs error",
 				reason("load config sources error"),
-				kv("projectName", c.Imports[i].target.Manifest.Name),
-				kv("projectPath", c.Imports[i].target.Manifest.projectPath),
+				kv("project", c.Imports[i].target),
 			)
 		}
 	}
 	if err = c.project.loadConfigSources(); err != nil {
 		return nil, errW(err, "make configs error",
 			reason("load config sources error"),
-			kv("projectName", c.project.Manifest.Name),
-			kv("projectPath", c.project.Manifest.projectPath),
+			kv("project", c.project),
 		)
 	}
 
 	var sources []*projectConfigSource
 	for i := 0; i < len(c.Imports); i++ {
-		for j := 0; j < len(c.Imports[i].target.Config.SourceContainer.Sources); j++ {
-			source := c.Imports[i].target.Config.SourceContainer.Sources[j]
+		for j := 0; j < len(c.Imports[i].target.config.SourceContainer.Sources); j++ {
+			source := c.Imports[i].target.config.SourceContainer.Sources[j]
 			sources = append(sources, source)
 		}
 	}
-	for i := 0; i < len(c.project.Config.SourceContainer.Sources); i++ {
-		source := c.project.Config.SourceContainer.Sources[i]
+	for i := 0; i < len(c.project.config.SourceContainer.Sources); i++ {
+		source := c.project.config.SourceContainer.Sources[i]
 		sources = append(sources, source)
 	}
 
@@ -138,8 +135,7 @@ func (c *appImportContainer) makeScripts(evaluator *Evaluator, outputPath string
 	if err := c.loadImports(); err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("load imports error"),
-			kv("projectName", c.project.Manifest.Name),
-			kv("projectPath", c.project.Manifest.projectPath),
+			kv("projectName", c.project),
 		)
 	}
 	var targetNames []string

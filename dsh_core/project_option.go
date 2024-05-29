@@ -1,11 +1,13 @@
 package dsh_core
 
+// region option
+
 type projectOption struct {
 	Items     map[string]any
 	evaluator *Evaluator
 }
 
-func makeProjectOption(context *appContext, manifest *projectManifest) (*projectOption, error) {
+func makeProjectOption(context *appContext, manifest *ProjectManifest) (*projectOption, error) {
 	items := context.Option.GenericItems.copy()
 	for i := 0; i < len(manifest.Option.declareEntities); i++ {
 		declare := manifest.Option.declareEntities[i]
@@ -13,7 +15,7 @@ func makeProjectOption(context *appContext, manifest *projectManifest) (*project
 		if err != nil {
 			return nil, errW(err, "load project options error",
 				reason("find option result error"),
-				kv("projectName", manifest.Name),
+				kv("projectName", manifest.projectName),
 				kv("projectPath", manifest.projectPath),
 				kv("optionName", declare.Name),
 			)
@@ -28,7 +30,7 @@ func makeProjectOption(context *appContext, manifest *projectManifest) (*project
 		if err != nil {
 			return nil, errW(err, "load project options error",
 				reason("eval verify error"),
-				kv("projectName", manifest.Name),
+				kv("projectName", manifest.projectName),
 				kv("projectPath", manifest.projectPath),
 				kv("verify", verify),
 			)
@@ -36,7 +38,7 @@ func makeProjectOption(context *appContext, manifest *projectManifest) (*project
 		if !result {
 			return nil, errN("load project options error",
 				reason("verify options error"),
-				kv("projectName", manifest.Name),
+				kv("projectName", manifest.projectName),
 				kv("projectPath", manifest.projectPath),
 				kv("verify", verify),
 			)
@@ -47,10 +49,10 @@ func makeProjectOption(context *appContext, manifest *projectManifest) (*project
 		declare := manifest.Option.declareEntities[i]
 		for j := 0; j < len(declare.Assigns); j++ {
 			assign := declare.Assigns[j]
-			if err := context.Option.addAssign(manifest.Name, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
+			if err := context.Option.addAssign(manifest.projectName, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
 				return nil, errW(err, "load project options error",
 					reason("add option assign error"),
-					kv("projectName", manifest.Name),
+					kv("projectName", manifest.projectName),
 					kv("projectPath", manifest.projectPath),
 					kv("optionName", declare.Name),
 					kv("assignProject", assign.Project),
@@ -66,3 +68,5 @@ func makeProjectOption(context *appContext, manifest *projectManifest) (*project
 	}
 	return option, nil
 }
+
+// endregion

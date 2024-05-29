@@ -14,8 +14,8 @@ type projectScript struct {
 	ImportContainer *projectImportContainer
 }
 
-func loadProjectScript(context *appContext, manifest *projectManifest, option *projectOption) (script *projectScript, err error) {
-	sc, err := loadProjectScriptSourceContainer(context, manifest, option)
+func makeProjectScript(context *appContext, manifest *ProjectManifest, option *projectOption) (script *projectScript, err error) {
+	sc, err := makeProjectScriptSourceContainer(context, manifest, option)
 	if err != nil {
 		return nil, err
 	}
@@ -45,17 +45,17 @@ type projectScriptSource struct {
 
 type projectScriptSourceContainer struct {
 	context            *appContext
-	manifest           *projectManifest
+	ProjectName        string
 	PlainSources       []*projectScriptSource
 	TemplateSources    []*projectScriptSource
 	TemplateLibSources []*projectScriptSource
 	sourcesByName      map[string]*projectScriptSource
 }
 
-func loadProjectScriptSourceContainer(context *appContext, manifest *projectManifest, option *projectOption) (container *projectScriptSourceContainer, err error) {
+func makeProjectScriptSourceContainer(context *appContext, manifest *ProjectManifest, option *projectOption) (container *projectScriptSourceContainer, err error) {
 	container = &projectScriptSourceContainer{
 		context:       context,
-		manifest:      manifest,
+		ProjectName:   manifest.projectName,
 		sourcesByName: map[string]*projectScriptSource{},
 	}
 	entities := manifest.Script.sourceEntities
@@ -126,7 +126,7 @@ func (c *projectScriptSourceContainer) makeSources(evaluator *Evaluator, outputP
 	for i := 0; i < len(c.PlainSources); i++ {
 		startTime := time.Now()
 		source := c.PlainSources[i]
-		target := filepath.Join(c.manifest.Name, source.SourceName)
+		target := filepath.Join(c.ProjectName, source.SourceName)
 		targetPath := filepath.Join(outputPath, target)
 		c.context.logger.InfoDesc("make script sources start",
 			kv("sourceType", dsh_utils.FileTypePlain),
@@ -166,7 +166,7 @@ func (c *projectScriptSourceContainer) makeSources(evaluator *Evaluator, outputP
 	for i := 0; i < len(c.TemplateSources); i++ {
 		startTime := time.Now()
 		source := c.TemplateSources[i]
-		target := filepath.Join(c.manifest.Name, source.SourceName)
+		target := filepath.Join(c.ProjectName, source.SourceName)
 		targetPath := filepath.Join(outputPath, target)
 		c.context.logger.InfoDesc("make script sources start",
 			kv("sourceType", dsh_utils.FileTypeTemplate),

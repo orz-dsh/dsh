@@ -14,8 +14,8 @@ type projectConfig struct {
 	ImportContainer *projectImportContainer
 }
 
-func loadProjectConfig(context *appContext, manifest *projectManifest, option *projectOption) (config *projectConfig, err error) {
-	sc, err := loadProjectConfigSourceContainer(context, manifest, option)
+func makeProjectConfig(context *appContext, manifest *ProjectManifest, option *projectOption) (config *projectConfig, err error) {
+	sc, err := makeProjectConfigSourceContainer(context, manifest, option)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +38,10 @@ type projectConfigSource struct {
 	SourcePath string
 	SourceName string
 	SourceType projectConfigSourceType
-	content    *projectConfigSourceContent
+	content    *projectConfigContent
 }
 
-type projectConfigSourceContent struct {
+type projectConfigContent struct {
 	Order   int64
 	Merges  map[string]string
 	Configs map[string]any
@@ -179,7 +179,7 @@ type projectConfigSourceContainer struct {
 	sourcesByName map[string]*projectConfigSource
 }
 
-func loadProjectConfigSourceContainer(context *appContext, manifest *projectManifest, option *projectOption) (container *projectConfigSourceContainer, err error) {
+func makeProjectConfigSourceContainer(context *appContext, manifest *ProjectManifest, option *projectOption) (container *projectConfigSourceContainer, err error) {
 	container = &projectConfigSourceContainer{
 		context:       context,
 		sourcesByName: map[string]*projectConfigSource{},
@@ -252,7 +252,7 @@ func (c *projectConfigSourceContainer) loadSources() (err error) {
 	for i := 0; i < len(c.Sources); i++ {
 		source := c.Sources[i]
 		if source.content == nil {
-			content := &projectConfigSourceContent{}
+			content := &projectConfigContent{}
 			switch source.SourceType {
 			case projectConfigSourceTypeYaml:
 				if err = dsh_utils.ReadYamlFile(source.SourcePath, content); err != nil {

@@ -16,7 +16,7 @@ type appOption struct {
 	Results      map[string]*appOptionResult
 }
 
-func newAppOption(context *appContext, manifest *projectManifest, specifyItems map[string]string) *appOption {
+func newAppOption(context *appContext, manifest *ProjectManifest, specifyItems map[string]string) *appOption {
 	return &appOption{
 		context:      context,
 		GenericItems: newAppOptionGenericItems(context, specifyItems),
@@ -98,21 +98,21 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	return nil, nil, nil
 }
 
-func (o *appOption) findResult(manifest *projectManifest, declare *projectOptionDeclareEntity) (result *appOptionResult, err error) {
+func (o *appOption) findResult(manifest *ProjectManifest, declare *projectOptionDeclareEntity) (result *appOptionResult, err error) {
 	found := false
 	var rawValue string
 	var parsedValue any = nil
 	var source appOptionResultSource = appOptionResultSourceUnset
 	var assign *appOptionAssign = nil
 
-	if specifyItems, exist := o.SpecifyItems[manifest.Name]; exist {
+	if specifyItems, exist := o.SpecifyItems[manifest.projectName]; exist {
 		if value, exist := specifyItems[declare.Name]; exist {
 			rawValue = value
 			parsedValue, err = declare.parseValue(rawValue)
 			if err != nil {
 				return nil, errW(err, "find option result error",
 					reason("parse specify value error"),
-					kv("projectName", manifest.Name),
+					kv("projectName", manifest.projectName),
 					kv("projectPath", manifest.projectPath),
 					kv("optionName", declare.Name),
 					kv("optionValue", rawValue),
@@ -125,11 +125,11 @@ func (o *appOption) findResult(manifest *projectManifest, declare *projectOption
 
 	if !found {
 		var assignValue *string
-		assign, assignValue, err = o.findAssignValue(manifest.Name, declare.Name)
+		assign, assignValue, err = o.findAssignValue(manifest.projectName, declare.Name)
 		if err != nil {
 			return nil, errW(err, "find option result error",
 				reason("get assign value error"),
-				kv("projectName", manifest.Name),
+				kv("projectName", manifest.projectName),
 				kv("projectPath", manifest.projectPath),
 				kv("optionName", declare.Name),
 			)
@@ -141,7 +141,7 @@ func (o *appOption) findResult(manifest *projectManifest, declare *projectOption
 				if err != nil {
 					return nil, errW(err, "find option result error",
 						reason("parse assign value error"),
-						kv("projectName", manifest.Name),
+						kv("projectName", manifest.projectName),
 						kv("projectPath", manifest.projectPath),
 						kv("optionName", declare.Name),
 						kv("optionValue", rawValue),
@@ -165,7 +165,7 @@ func (o *appOption) findResult(manifest *projectManifest, declare *projectOption
 	if parsedValue == nil && !declare.Optional {
 		return nil, errN("find option result error",
 			reason("option value empty"),
-			kv("projectName", manifest.Name),
+			kv("projectName", manifest.projectName),
 			kv("projectPath", manifest.projectPath),
 			kv("optionName", declare.Name),
 			kv("source", source),
@@ -180,10 +180,10 @@ func (o *appOption) findResult(manifest *projectManifest, declare *projectOption
 		Assign:      assign,
 	}
 
-	if err = o.addResult(manifest.Name, declare.Name, result); err != nil {
+	if err = o.addResult(manifest.projectName, declare.Name, result); err != nil {
 		return nil, errW(err, "find option result error",
 			reason("add option result error"),
-			kv("projectName", manifest.Name),
+			kv("projectName", manifest.projectName),
 			kv("projectPath", manifest.projectPath),
 			kv("optionName", declare.Name),
 		)
@@ -269,7 +269,7 @@ func (s appOptionGenericItems) getShell() string {
 
 type appOptionSpecifyItems map[string]map[string]string
 
-func newAppOptionSpecifyItems(manifest *projectManifest, items map[string]string) appOptionSpecifyItems {
+func newAppOptionSpecifyItems(manifest *ProjectManifest, items map[string]string) appOptionSpecifyItems {
 	specifyItems := map[string]string{}
 	for k, v := range items {
 		if strings.HasPrefix(k, "_") {
@@ -284,7 +284,7 @@ func newAppOptionSpecifyItems(manifest *projectManifest, items map[string]string
 		specifyItems[k] = v
 	}
 	return map[string]map[string]string{
-		manifest.Name: specifyItems,
+		manifest.projectName: specifyItems,
 	}
 }
 

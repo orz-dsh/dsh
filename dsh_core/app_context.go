@@ -11,12 +11,12 @@ type appContext struct {
 	logger                 *Logger
 	evaluator              *Evaluator
 	workspace              *Workspace
-	manifest               *projectManifest
+	manifest               *ProjectManifest
 	profile                *appProfile
 	Option                 *appOption
-	projectsByName         map[string]*project
-	projectManifestsByPath map[string]*projectManifest
-	projectManifestsByName map[string]*projectManifest
+	projectsByName         map[string]*Project
+	projectManifestsByPath map[string]*ProjectManifest
+	projectManifestsByName map[string]*ProjectManifest
 }
 
 func makeAppContext(workspace *Workspace, profile *appProfile, link *projectResolvedLink) (*appContext, error) {
@@ -26,9 +26,9 @@ func makeAppContext(workspace *Workspace, profile *appProfile, link *projectReso
 		workspace:              workspace,
 		evaluator:              profile.evaluator,
 		profile:                profile,
-		projectsByName:         map[string]*project{},
-		projectManifestsByPath: map[string]*projectManifest{},
-		projectManifestsByName: map[string]*projectManifest{},
+		projectsByName:         map[string]*Project{},
+		projectManifestsByPath: map[string]*ProjectManifest{},
+		projectManifestsByName: map[string]*ProjectManifest{},
 	}
 
 	manifest, err := context.loadProjectManifest(link)
@@ -46,26 +46,26 @@ func makeAppContext(workspace *Workspace, profile *appProfile, link *projectReso
 	return context, nil
 }
 
-func (c *appContext) loadProject(manifest *projectManifest) (p *project, err error) {
-	if p, exist := c.projectsByName[manifest.Name]; exist {
-		return p, nil
+func (c *appContext) loadProject(manifest *ProjectManifest) (project *Project, err error) {
+	if existProject, exist := c.projectsByName[manifest.projectName]; exist {
+		return existProject, nil
 	}
-	if p, err = loadProject(c, manifest); err != nil {
+	if project, err = makeProject(c, manifest); err != nil {
 		return nil, err
 	}
-	c.projectsByName[manifest.Name] = p
-	return p, nil
+	c.projectsByName[manifest.projectName] = project
+	return project, nil
 }
 
-func (c *appContext) loadMainProject() (p *project, err error) {
+func (c *appContext) loadMainProject() (p *Project, err error) {
 	return c.loadProject(c.manifest)
 }
 
-func (c *appContext) isMainProject(manifest *projectManifest) bool {
-	return c.manifest.Name == manifest.Name
+func (c *appContext) isMainProject(manifest *ProjectManifest) bool {
+	return c.manifest.projectName == manifest.projectName
 }
 
-func (c *appContext) loadProjectManifest(link *projectResolvedLink) (manifest *projectManifest, err error) {
+func (c *appContext) loadProjectManifest(link *projectResolvedLink) (manifest *ProjectManifest, err error) {
 	if link.Git != nil {
 		return c.loadGitProjectManifest(link.Path, link.Git.Url, link.Git.parsedUrl, link.Git.Ref, link.Git.parsedRef)
 	} else {
@@ -73,7 +73,7 @@ func (c *appContext) loadProjectManifest(link *projectResolvedLink) (manifest *p
 	}
 }
 
-func (c *appContext) loadDirProjectManifest(path string) (manifest *projectManifest, err error) {
+func (c *appContext) loadDirProjectManifest(path string) (manifest *ProjectManifest, err error) {
 	if !dsh_utils.IsDirExists(path) {
 		return nil, errN("load project manifest error",
 			reason("project dir not exists"),
@@ -95,22 +95,22 @@ func (c *appContext) loadDirProjectManifest(path string) (manifest *projectManif
 	if manifest, err = loadProjectManifest(path); err != nil {
 		return nil, err
 	}
-	if existManifest, exist := c.projectManifestsByName[manifest.Name]; exist {
+	if existManifest, exist := c.projectManifestsByName[manifest.projectName]; exist {
 		if existManifest.projectPath != manifest.projectPath {
 			return nil, errN("load project manifest error",
 				reason("project name duplicated"),
-				kv("projectName", manifest.Name),
+				kv("projectName", manifest.projectName),
 				kv("projectPath1", manifest.projectPath),
 				kv("projectPath2", existManifest.projectPath),
 			)
 		}
 	}
 	c.projectManifestsByPath[manifest.projectPath] = manifest
-	c.projectManifestsByName[manifest.Name] = manifest
+	c.projectManifestsByName[manifest.projectName] = manifest
 	return manifest, nil
 }
 
-func (c *appContext) loadGitProjectManifest(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *ProjectLinkGitRef) (manifest *projectManifest, err error) {
+func (c *appContext) loadGitProjectManifest(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *ProjectLinkGitRef) (manifest *ProjectManifest, err error) {
 	if parsedUrl == nil {
 		if parsedUrl, err = url.Parse(rawUrl); err != nil {
 			return nil, errW(err, "load project manifest error",

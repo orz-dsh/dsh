@@ -63,7 +63,6 @@ func MakeAppProfileManifest(workspace *AppProfileManifestWorkspace, project *App
 		Workspace: workspace,
 		Project:   project,
 	}
-
 	if err := manifest.init(); err != nil {
 		return nil, err
 	}
