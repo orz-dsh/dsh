@@ -56,7 +56,7 @@ func (f *AppFactory) MakeApp(link string) (*App, error) {
 		return nil, err
 	}
 
-	option, err := profile.makeAppOption(manifest.Name)
+	option, err := profile.makeAppOption(manifest)
 	if err != nil {
 		return nil, err
 	}

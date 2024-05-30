@@ -66,12 +66,16 @@ func newAppProfile(workspace *Workspace, manifests []*ProfileManifest) *appProfi
 	return profile
 }
 
-func (p *appProfile) makeAppOption(projectName string) (*appOption, error) {
-	specifyItems, err := p.projectOptionSpecifyEntities.getItems(p.evaluator)
+func (p *appProfile) makeAppOption(manifest *ProjectManifest) (*appOption, error) {
+	evaluator := p.evaluator.SetData("project", map[string]any{
+		"name": manifest.projectName,
+		"path": manifest.projectPath,
+	})
+	specifyItems, err := p.projectOptionSpecifyEntities.getItems(evaluator)
 	if err != nil {
 		return nil, err
 	}
-	option := newAppOption(p.workspace.systemInfo, p.evaluator, projectName, specifyItems)
+	option := newAppOption(p.workspace.systemInfo, p.evaluator, manifest.projectName, specifyItems)
 	return option, nil
 }
 
