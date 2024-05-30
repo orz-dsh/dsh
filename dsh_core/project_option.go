@@ -8,10 +8,10 @@ type projectOption struct {
 }
 
 func makeProjectOption(context *appContext, manifest *ProjectManifest) (*projectOption, error) {
-	items := context.Option.GenericItems.copy()
+	items := context.option.GenericItems.copy()
 	for i := 0; i < len(manifest.Option.declareEntities); i++ {
 		declare := manifest.Option.declareEntities[i]
-		result, err := context.Option.findResult(manifest, declare)
+		result, err := context.option.findResult(manifest, declare)
 		if err != nil {
 			return nil, errW(err, "load project options error",
 				reason("find option result error"),
@@ -49,7 +49,7 @@ func makeProjectOption(context *appContext, manifest *ProjectManifest) (*project
 		declare := manifest.Option.declareEntities[i]
 		for j := 0; j < len(declare.Assigns); j++ {
 			assign := declare.Assigns[j]
-			if err := context.Option.addAssign(manifest.projectName, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
+			if err := context.option.addAssign(manifest.projectName, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
 				return nil, errW(err, "load project options error",
 					reason("add option assign error"),
 					kv("projectName", manifest.projectName),

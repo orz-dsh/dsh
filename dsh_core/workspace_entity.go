@@ -264,7 +264,7 @@ func (s workspaceImportRegistryEntitySet) mergeDefault() {
 	s.merge(workspaceImportRegistryEntitySetDefault)
 }
 
-func (s workspaceImportRegistryEntitySet) getLink(name string, evaluator *Evaluator) (*ProjectLink, error) {
+func (s workspaceImportRegistryEntitySet) getLink(name string, evaluator *Evaluator) (*projectLink, error) {
 	if entities, exist := s[name]; exist {
 		for i := 0; i < len(entities); i++ {
 			entity := entities[i]
@@ -283,7 +283,7 @@ func (s workspaceImportRegistryEntitySet) getLink(name string, evaluator *Evalua
 						kv("entity", entity),
 					)
 				}
-				link, err := ParseProjectLink(rawLink)
+				link, err := parseProjectLink(rawLink)
 				if err != nil {
 					return nil, errW(err, "get workspace import registry link error",
 						reason("parse link error"),
@@ -298,7 +298,7 @@ func (s workspaceImportRegistryEntitySet) getLink(name string, evaluator *Evalua
 	return nil, nil
 }
 
-func (s workspaceImportRedirectEntitySet) getLink(originals []string, evaluator *Evaluator) (*ProjectLink, string, error) {
+func (s workspaceImportRedirectEntitySet) getLink(originals []string, evaluator *Evaluator) (*projectLink, string, error) {
 	for i := 0; i < len(originals); i++ {
 		original := originals[i]
 		for j := 0; j < len(s); j++ {
@@ -325,7 +325,7 @@ func (s workspaceImportRedirectEntitySet) getLink(originals []string, evaluator 
 					kv("entity", entity),
 				)
 			}
-			link, err := ParseProjectLink(rawLink)
+			link, err := parseProjectLink(rawLink)
 			if err != nil {
 				return nil, "", errW(err, "get workspace import redirect link error",
 					reason("parse link error"),

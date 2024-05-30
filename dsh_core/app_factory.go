@@ -51,15 +51,17 @@ func (f *AppFactory) MakeApp(link string) (*App, error) {
 
 	profile := newAppProfile(f.workspace, f.manifests)
 
-	resolvedLink, err := profile.resolveProjectRawLink(link)
+	manifest, err := profile.getProjectManifestByRawLink(link)
 	if err != nil {
 		return nil, err
 	}
 
-	context, err := makeAppContext(f.workspace, profile, resolvedLink)
+	option, err := profile.makeAppOption(manifest.Name)
 	if err != nil {
 		return nil, err
 	}
+
+	context := newAppContext(f.workspace, profile, manifest, option)
 
 	project, err := context.loadMainProject()
 	if err != nil {

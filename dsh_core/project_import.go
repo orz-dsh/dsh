@@ -5,7 +5,7 @@ package dsh_core
 type projectImport struct {
 	context *appContext
 	Entity  *projectImportEntity
-	Link    *projectResolvedLink
+	Link    *projectLinkTarget
 	project *Project
 }
 
@@ -16,7 +16,7 @@ const (
 	projectImportScopeConfig projectImportScope = "config"
 )
 
-func newProjectImport(context *appContext, entity *projectImportEntity, link *projectResolvedLink) *projectImport {
+func newProjectImport(context *appContext, entity *projectImportEntity, link *projectLinkTarget) *projectImport {
 	return &projectImport{
 		context: context,
 		Entity:  entity,
@@ -26,7 +26,7 @@ func newProjectImport(context *appContext, entity *projectImportEntity, link *pr
 
 func (i *projectImport) loadProject() error {
 	if i.project == nil {
-		m, err := i.context.loadProjectManifest(i.Link)
+		m, err := i.context.profile.getProjectManifestByLinkTarget(i.Link)
 		if err != nil {
 			return errW(err, "load import target error",
 				kv("reason", "load project manifest error"),
@@ -98,7 +98,7 @@ func makeProjectImportContainer(context *appContext, manifest *ProjectManifest, 
 }
 
 func (c *projectImportContainer) addImport(entity *projectImportEntity) (err error) {
-	resolved, err := c.context.profile.resolveProjectLink(entity.link)
+	resolved, err := c.context.profile.getProjectLinkTarget(entity.link)
 	if err != nil {
 		return errW(err, "add import error",
 			reason("resolve project link error"),

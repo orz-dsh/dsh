@@ -71,7 +71,7 @@ func (a *AppArtifact) ExecuteInThisProcess(targetGlob string) (err error) {
 }
 
 func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactExecutor, err error) {
-	shellName := a.app.context.Option.GenericItems.getShell()
+	shellName := a.app.context.option.GenericItems.getShell()
 	entity, err := a.context.profile.getWorkspaceShellEntity(shellName)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",

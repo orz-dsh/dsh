@@ -3,14 +3,14 @@ package dsh_core
 import "testing"
 
 func TestParseProjectLinkRegistry(t *testing.T) {
-	link, err := ParseProjectLink("registry:")
+	link, err := parseProjectLink("registry:")
 	if err != nil {
 		t.Log(err)
 	} else {
 		impossible()
 	}
 
-	link, err = ParseProjectLink("registry:foo/bar#ref=tag/v1.0.0")
+	link, err = parseProjectLink("registry:foo/bar#ref=tag/v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -18,7 +18,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("registry:foo/bar/1/2/3/4/#ref=tag/v1.0.0")
+	link, err = parseProjectLink("registry:foo/bar/1/2/3/4/#ref=tag/v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -27,7 +27,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("registry:foo/bar")
+	link, err = parseProjectLink("registry:foo/bar")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -35,7 +35,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("registry:foo/bar/1/2/3/4/")
+	link, err = parseProjectLink("registry:foo/bar/1/2/3/4/")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -44,7 +44,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("registry:foo#ref=master")
+	link, err = parseProjectLink("registry:foo#ref=master")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -52,7 +52,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("registry:foo/#ref=master")
+	link, err = parseProjectLink("registry:foo/#ref=master")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -61,7 +61,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("registry:foo")
+	link, err = parseProjectLink("registry:foo")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -69,7 +69,7 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("registry:foo/")
+	link, err = parseProjectLink("registry:foo/")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -80,14 +80,14 @@ func TestParseProjectLinkRegistry(t *testing.T) {
 }
 
 func TestParseProjectLinkRegistryAbbr(t *testing.T) {
-	link, err := ParseProjectLink("@")
+	link, err := parseProjectLink("@")
 	if err != nil {
 		t.Log(err)
 	} else {
 		impossible()
 	}
 
-	link, err = ParseProjectLink("@foo/bar#ref=tag/v1.0.0")
+	link, err = parseProjectLink("@foo/bar#ref=tag/v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -95,7 +95,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("@foo/bar/1/2/3/4/#ref=tag/v1.0.0")
+	link, err = parseProjectLink("@foo/bar/1/2/3/4/#ref=tag/v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -104,7 +104,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("@foo/bar")
+	link, err = parseProjectLink("@foo/bar")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -112,7 +112,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("@foo/bar/1/2/3/4/")
+	link, err = parseProjectLink("@foo/bar/1/2/3/4/")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -121,7 +121,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("@foo#ref=master")
+	link, err = parseProjectLink("@foo#ref=master")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -129,7 +129,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("@foo/#ref=master")
+	link, err = parseProjectLink("@foo/#ref=master")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -138,7 +138,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("@foo")
+	link, err = parseProjectLink("@foo")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -146,7 +146,7 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("@foo/")
+	link, err = parseProjectLink("@foo/")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -157,14 +157,14 @@ func TestParseProjectLinkRegistryAbbr(t *testing.T) {
 }
 
 func TestParseProjectLinkDir(t *testing.T) {
-	link, err := ParseProjectLink("dir:")
+	link, err := parseProjectLink("dir:")
 	if err != nil {
 		t.Log(err)
 	} else {
 		impossible()
 	}
 
-	link, err = ParseProjectLink("dir:/foo/bar")
+	link, err = parseProjectLink("dir:/foo/bar")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -172,7 +172,7 @@ func TestParseProjectLinkDir(t *testing.T) {
 			kv("link", link),
 		))
 	}
-	link, err = ParseProjectLink("dir:/foo/bar/../../1/2/3/4/")
+	link, err = parseProjectLink("dir:/foo/bar/../../1/2/3/4/")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -183,21 +183,21 @@ func TestParseProjectLinkDir(t *testing.T) {
 }
 
 func TestParseProjectLinkGit(t *testing.T) {
-	link, err := ParseProjectLink("git:")
+	link, err := parseProjectLink("git:")
 	if err != nil {
 		t.Log("link git error", err)
 	} else {
 		impossible()
 	}
 
-	link, err = ParseProjectLink("git:https://github.com/group/project.git#ref=tag/")
+	link, err = parseProjectLink("git:https://github.com/group/project.git#ref=tag/")
 	if err != nil {
 		t.Log("link git ref error", err)
 	} else {
 		impossible()
 	}
 
-	link, err = ParseProjectLink("git:https://github.com/group/project.git#ref=tag/v1.0.0")
+	link, err = parseProjectLink("git:https://github.com/group/project.git#ref=tag/v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -206,7 +206,7 @@ func TestParseProjectLinkGit(t *testing.T) {
 		))
 	}
 
-	link, err = ParseProjectLink("git:https://github.com/group/project.git")
+	link, err = parseProjectLink("git:https://github.com/group/project.git")
 	if err != nil {
 		t.Fatal(err)
 	} else {

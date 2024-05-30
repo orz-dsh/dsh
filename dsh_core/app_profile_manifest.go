@@ -553,7 +553,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
 		)
 	}
-	linkObj, err := ParseProjectLink(i.Link)
+	linkObj, err := parseProjectLink(i.Link)
 	if err != nil {
 		return nil, errW(err, "project manifest invalid",
 			reason("value invalid"),

@@ -200,13 +200,13 @@ func newProjectSourceEntity(dir string, files []string, match string, matchObj *
 type projectImportEntity struct {
 	Link  string
 	Match string
-	link  *ProjectLink
+	link  *projectLink
 	match *vm.Program
 }
 
 type projectImportEntitySet []*projectImportEntity
 
-func newProjectImportEntity(link string, match string, linkObj *ProjectLink, matchObj *vm.Program) *projectImportEntity {
+func newProjectImportEntity(link string, match string, linkObj *projectLink, matchObj *vm.Program) *projectImportEntity {
 	return &projectImportEntity{
 		Link:  link,
 		Match: match,

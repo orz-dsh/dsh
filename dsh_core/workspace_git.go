@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (w *Workspace) getGitProjectPath(parsedUrl *url.URL, parsedRef *ProjectLinkGitRef) string {
+func (w *Workspace) getGitProjectPath(parsedUrl *url.URL, parsedRef *projectLinkGitRef) string {
 	path1 := strings.ReplaceAll(parsedUrl.Host, ":", "@")
 	postfix := strings.ReplaceAll(parsedRef.Normalized, "/", "-")
 	path2 := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(parsedUrl.Path, "/"), ".git"), "/", "@") + "@" + postfix
@@ -18,7 +18,7 @@ func (w *Workspace) getGitProjectPath(parsedUrl *url.URL, parsedRef *ProjectLink
 	return path
 }
 
-func (w *Workspace) downloadGitProject(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *ProjectLinkGitRef) (err error) {
+func (w *Workspace) downloadGitProject(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *projectLinkGitRef) (err error) {
 	if err = os.MkdirAll(path, os.ModePerm); err != nil {
 		return errW(err, "download git project error",
 			reason("make dir error"),
