@@ -5,40 +5,47 @@ type appContext struct {
 	logger         *Logger
 	workspace      *Workspace
 	evaluator      *Evaluator
-	manifest       *ProjectManifest
 	profile        *appProfile
 	option         *appOption
-	projectsByName map[string]*Project
+	projectsByName map[string]*appProject
 }
 
-func newAppContext(workspace *Workspace, profile *appProfile, manifest *ProjectManifest, option *appOption) *appContext {
+func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfile, option *appOption) *appContext {
 	return &appContext{
 		systemInfo:     workspace.systemInfo,
 		logger:         workspace.logger,
 		workspace:      workspace,
-		evaluator:      profile.evaluator,
-		manifest:       manifest,
+		evaluator:      evaluator,
 		profile:        profile,
 		option:         option,
-		projectsByName: map[string]*Project{},
+		projectsByName: map[string]*appProject{},
 	}
 }
 
-func (c *appContext) loadProject(manifest *ProjectManifest) (project *Project, err error) {
-	if existProject, exist := c.projectsByName[manifest.projectName]; exist {
+func (c *appContext) loadProject(projectEntity *projectEntity) (project *appProject, err error) {
+	if existProject, exist := c.projectsByName[projectEntity.Name]; exist {
 		return existProject, nil
 	}
-	if project, err = makeProject(c, manifest); err != nil {
+	if project, err = makeAppProject(c, projectEntity); err != nil {
 		return nil, err
 	}
-	c.projectsByName[manifest.projectName] = project
+	c.projectsByName[projectEntity.Name] = project
 	return project, nil
 }
 
-func (c *appContext) loadMainProject() (p *Project, err error) {
-	return c.loadProject(c.manifest)
-}
-
-func (c *appContext) isMainProject(manifest *ProjectManifest) bool {
-	return c.manifest.projectName == manifest.projectName
+func (c *appContext) loadProjectByTarget(target *projectLinkTarget) (project *appProject, err error) {
+	entity, err := c.profile.getProjectEntityByLinkTarget(target)
+	if err != nil {
+		return nil, errW(err, "load project error",
+			kv("reason", "load project entity error"),
+			kv("target", target),
+		)
+	}
+	project, err = c.loadProject(entity)
+	if err != nil {
+		return nil, errW(err, "load project error",
+			kv("target", target),
+		)
+	}
+	return project, nil
 }

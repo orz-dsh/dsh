@@ -3,7 +3,6 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"fmt"
-	"github.com/expr-lang/expr/vm"
 	"regexp"
 	"time"
 )
@@ -99,9 +98,9 @@ func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error)
 			)
 		}
 
-		var matchExpr *vm.Program
+		var matchObj *EvalExpr
 		if item.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(item.Match)
+			matchObj, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
 				return errW(err, "workspace manifest invalid",
 					reason("value invalid"),
@@ -111,7 +110,7 @@ func (p *workspaceManifestProfile) init(manifest *workspaceManifest) (err error)
 				)
 			}
 		}
-		entities = append(entities, newWorkspaceProfileEntity(item.File, item.Optional, item.Match, matchExpr))
+		entities = append(entities, newWorkspaceProfileEntity(item.File, item.Optional, item.Match, matchObj))
 	}
 
 	p.entities = entities
@@ -223,9 +222,9 @@ func (s *workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
 				)
 			}
 		}
-		var matchExpr *vm.Program
+		var matchObj *EvalExpr
 		if item.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(item.Match)
+			matchObj, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
 				return errW(err, "app profile manifest invalid",
 					reason("value invalid"),
@@ -235,7 +234,7 @@ func (s *workspaceManifestShell) init(manifest *workspaceManifest) (err error) {
 				)
 			}
 		}
-		entities[item.Name] = append(entities[item.Name], newWorkspaceShellEntity(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
+		entities[item.Name] = append(entities[item.Name], newWorkspaceShellEntity(item.Name, item.Path, item.Exts, item.Args, item.Match, matchObj))
 	}
 
 	s.entities = entities
@@ -286,9 +285,9 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 		}
 		// TODO: check link template
 
-		var matchExpr *vm.Program
+		var matchObj *EvalExpr
 		if registry.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
+			matchObj, err = dsh_utils.CompileExpr(registry.Match)
 			if err != nil {
 				return errW(err, "workspace manifest invalid",
 					reason("value invalid"),
@@ -298,7 +297,7 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 				)
 			}
 		}
-		registryEntities[registry.Name] = append(registryEntities[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
+		registryEntities[registry.Name] = append(registryEntities[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchObj))
 	}
 
 	redirectEntities := workspaceImportRedirectEntitySet{}
@@ -330,7 +329,7 @@ func (imp *workspaceManifestImport) init(manifest *workspaceManifest) (err error
 		}
 		// TODO: check link template
 
-		var matchObj *vm.Program
+		var matchObj *EvalExpr
 		if redirect.Match != "" {
 			matchObj, err = dsh_utils.CompileExpr(redirect.Match)
 			if err != nil {

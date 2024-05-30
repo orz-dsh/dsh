@@ -2,7 +2,6 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"github.com/expr-lang/expr/vm"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -14,12 +13,12 @@ type workspaceProfileEntity struct {
 	File     string
 	Optional bool
 	Match    string
-	match    *vm.Program
+	match    *EvalExpr
 }
 
 type workspaceProfileEntitySet []*workspaceProfileEntity
 
-func newWorkspaceProfileEntity(file string, optional bool, match string, matchObj *vm.Program) *workspaceProfileEntity {
+func newWorkspaceProfileEntity(file string, optional bool, match string, matchObj *EvalExpr) *workspaceProfileEntity {
 	return &workspaceProfileEntity{
 		File:     file,
 		Optional: optional,
@@ -78,7 +77,7 @@ type workspaceShellEntity struct {
 	Exts  []string
 	Args  workspaceShellEntityArgs
 	Match string
-	match *vm.Program
+	match *EvalExpr
 }
 
 type workspaceShellEntityArgs []string
@@ -107,7 +106,7 @@ var workspaceShellEntitySetDefault = workspaceShellEntitySet{
 	}},
 }
 
-func newWorkspaceShellEntity(name string, path string, exts []string, args []string, match string, matchObj *vm.Program) *workspaceShellEntity {
+func newWorkspaceShellEntity(name string, path string, exts []string, args []string, match string, matchObj *EvalExpr) *workspaceShellEntity {
 	return &workspaceShellEntity{
 		Name:  name,
 		Path:  path,
@@ -209,7 +208,7 @@ type workspaceImportRegistryEntity struct {
 	Name  string
 	Link  string
 	Match string
-	match *vm.Program
+	match *EvalExpr
 }
 
 type workspaceImportRegistryEntitySet map[string][]*workspaceImportRegistryEntity
@@ -219,7 +218,7 @@ type workspaceImportRedirectEntity struct {
 	Link  string
 	Match string
 	regex *regexp.Regexp
-	match *vm.Program
+	match *EvalExpr
 }
 
 type workspaceImportRedirectEntitySet []*workspaceImportRedirectEntity
@@ -235,7 +234,7 @@ var workspaceImportRegistryEntitySetDefault = workspaceImportRegistryEntitySet{
 	}},
 }
 
-func newWorkspaceImportRegistryEntity(name string, link string, match string, matchObj *vm.Program) *workspaceImportRegistryEntity {
+func newWorkspaceImportRegistryEntity(name string, link string, match string, matchObj *EvalExpr) *workspaceImportRegistryEntity {
 	return &workspaceImportRegistryEntity{
 		Name:  name,
 		Link:  link,
@@ -244,7 +243,7 @@ func newWorkspaceImportRegistryEntity(name string, link string, match string, ma
 	}
 }
 
-func newWorkspaceImportRedirectEntity(regexStr string, link string, match string, regexObj *regexp.Regexp, matchObj *vm.Program) *workspaceImportRedirectEntity {
+func newWorkspaceImportRedirectEntity(regexStr string, link string, match string, regexObj *regexp.Regexp, matchObj *EvalExpr) *workspaceImportRedirectEntity {
 	return &workspaceImportRedirectEntity{
 		Regex: regexStr,
 		Link:  link,

@@ -14,12 +14,12 @@ type projectScript struct {
 	ImportContainer *projectImportContainer
 }
 
-func makeProjectScript(context *appContext, manifest *ProjectManifest, option *projectOption) (script *projectScript, err error) {
-	sc, err := makeProjectScriptSourceContainer(context, manifest, option)
+func makeProjectScript(context *appContext, entity *projectEntity, option *projectOption) (script *projectScript, err error) {
+	sc, err := makeProjectScriptSourceContainer(context, entity, option)
 	if err != nil {
 		return nil, err
 	}
-	ic, err := makeProjectImportContainer(context, manifest, option, projectImportScopeScript)
+	ic, err := makeProjectImportContainer(context, entity, option, projectImportScopeScript)
 	if err != nil {
 		return nil, err
 	}
@@ -52,26 +52,23 @@ type projectScriptSourceContainer struct {
 	sourcesByName      map[string]*projectScriptSource
 }
 
-func makeProjectScriptSourceContainer(context *appContext, manifest *ProjectManifest, option *projectOption) (container *projectScriptSourceContainer, err error) {
+func makeProjectScriptSourceContainer(context *appContext, entity *projectEntity, option *projectOption) (container *projectScriptSourceContainer, err error) {
 	container = &projectScriptSourceContainer{
 		context:       context,
-		ProjectName:   manifest.projectName,
+		ProjectName:   entity.Name,
 		sourcesByName: map[string]*projectScriptSource{},
 	}
-	entities := manifest.Script.sourceEntities
-	if context.isMainProject(manifest) {
-		entities = append(entities, context.profile.projectScriptSourceEntities...)
-	}
-	for i := 0; i < len(entities); i++ {
-		entity := entities[i]
-		matched, err := option.evaluator.EvalBoolExpr(entity.match)
+	sources := entity.ScriptSources
+	for i := 0; i < len(sources); i++ {
+		source := sources[i]
+		matched, err := option.evaluator.EvalBoolExpr(source.match)
 		if err != nil {
 			return nil, err
 		}
 		if !matched {
 			continue
 		}
-		if err = container.scanSources(filepath.Join(manifest.projectPath, entity.Dir), entity.Files); err != nil {
+		if err = container.scanSources(filepath.Join(entity.Path, source.Dir), source.Files); err != nil {
 			return nil, err
 		}
 	}

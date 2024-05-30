@@ -2,11 +2,43 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"github.com/expr-lang/expr/vm"
+	"regexp"
 	"slices"
 )
 
-// region option declare
+// region project
+
+type projectEntity struct {
+	Name           string
+	Path           string
+	OptionDeclares projectOptionDeclareEntitySet
+	OptionVerifies projectOptionVerifyEntitySet
+	ScriptSources  projectSourceEntitySet
+	ScriptImports  projectImportEntitySet
+	ConfigSources  projectSourceEntitySet
+	ConfigImports  projectImportEntitySet
+}
+
+type projectEntitySet []*projectEntity
+
+var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*$")
+
+func newProjectEntity(name string, path string, optionDeclares projectOptionDeclareEntitySet, optionVerifies projectOptionVerifyEntitySet, scriptSources projectSourceEntitySet, scriptImports projectImportEntitySet, configSources projectSourceEntitySet, configImports projectImportEntitySet) *projectEntity {
+	return &projectEntity{
+		Name:           name,
+		Path:           path,
+		OptionDeclares: optionDeclares,
+		OptionVerifies: optionVerifies,
+		ScriptSources:  scriptSources,
+		ScriptImports:  scriptImports,
+		ConfigSources:  configSources,
+		ConfigImports:  configImports,
+	}
+}
+
+// endregion
+
+// region option
 
 type projectOptionDeclareEntity struct {
 	Name               string
@@ -24,14 +56,14 @@ type projectOptionAssignEntity struct {
 	Project string
 	Option  string
 	Mapping string
-	mapping *vm.Program
+	mapping *EvalExpr
 }
 
 type projectOptionAssignEntitySet []*projectOptionAssignEntity
 
 type projectOptionVerifyEntity struct {
 	Expr string
-	expr *vm.Program
+	expr *EvalExpr
 }
 
 type projectOptionVerifyEntitySet []*projectOptionVerifyEntity
@@ -45,6 +77,8 @@ const (
 	projectOptionValueTypeDecimal projectOptionValueType = "decimal"
 )
 
+var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*$")
+
 func newProjectOptionDeclareEntity(name string, valueType projectOptionValueType, choices []string, optional bool) *projectOptionDeclareEntity {
 	return &projectOptionDeclareEntity{
 		Name:      name,
@@ -54,7 +88,7 @@ func newProjectOptionDeclareEntity(name string, valueType projectOptionValueType
 	}
 }
 
-func newProjectOptionAssignEntity(project string, option string, mapping string, mappingObj *vm.Program) *projectOptionAssignEntity {
+func newProjectOptionAssignEntity(project string, option string, mapping string, mappingObj *EvalExpr) *projectOptionAssignEntity {
 	return &projectOptionAssignEntity{
 		Project: project,
 		Option:  option,
@@ -63,7 +97,7 @@ func newProjectOptionAssignEntity(project string, option string, mapping string,
 	}
 }
 
-func newProjectOptionVerifyEntity(expr string, exprObj *vm.Program) *projectOptionVerifyEntity {
+func newProjectOptionVerifyEntity(expr string, exprObj *EvalExpr) *projectOptionVerifyEntity {
 	return &projectOptionVerifyEntity{
 		Expr: expr,
 		expr: exprObj,
@@ -130,61 +164,18 @@ func (e *projectOptionDeclareEntity) parseValue(rawValue string) (any, error) {
 
 // endregion
 
-// region option specify
-
-type projectOptionSpecifyEntity struct {
-	Name  string
-	Value string
-	Match string
-	match *vm.Program
-}
-
-type projectOptionSpecifyEntitySet []*projectOptionSpecifyEntity
-
-func newProjectOptionSpecifyEntity(name string, value string, match string, matchObj *vm.Program) *projectOptionSpecifyEntity {
-	return &projectOptionSpecifyEntity{
-		Name:  name,
-		Value: value,
-		Match: match,
-		match: matchObj,
-	}
-}
-
-func (s projectOptionSpecifyEntitySet) getItems(evaluator *Evaluator) (map[string]string, error) {
-	items := map[string]string{}
-	for i := 0; i < len(s); i++ {
-		entity := s[i]
-		if _, exist := items[entity.Name]; exist {
-			continue
-		}
-		matched, err := evaluator.EvalBoolExpr(entity.match)
-		if err != nil {
-			return nil, errW(err, "get project option specify items error",
-				reason("eval expr error"),
-				kv("entity", entity),
-			)
-		}
-		if matched {
-			items[entity.Name] = entity.Value
-		}
-	}
-	return items, nil
-}
-
-// endregion
-
 // region source
 
 type projectSourceEntity struct {
 	Dir   string
 	Files []string
 	Match string
-	match *vm.Program
+	match *EvalExpr
 }
 
 type projectSourceEntitySet []*projectSourceEntity
 
-func newProjectSourceEntity(dir string, files []string, match string, matchObj *vm.Program) *projectSourceEntity {
+func newProjectSourceEntity(dir string, files []string, match string, matchObj *EvalExpr) *projectSourceEntity {
 	return &projectSourceEntity{
 		Dir:   dir,
 		Files: files,
@@ -201,12 +192,12 @@ type projectImportEntity struct {
 	Link  string
 	Match string
 	link  *projectLink
-	match *vm.Program
+	match *EvalExpr
 }
 
 type projectImportEntitySet []*projectImportEntity
 
-func newProjectImportEntity(link string, match string, linkObj *projectLink, matchObj *vm.Program) *projectImportEntity {
+func newProjectImportEntity(link string, match string, linkObj *projectLink, matchObj *EvalExpr) *projectImportEntity {
 	return &projectImportEntity{
 		Link:  link,
 		Match: match,

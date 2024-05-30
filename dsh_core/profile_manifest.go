@@ -3,7 +3,6 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"fmt"
-	"github.com/expr-lang/expr/vm"
 	"path/filepath"
 	"regexp"
 )
@@ -11,6 +10,7 @@ import (
 // region manifest
 
 type ProfileManifest struct {
+	Option       *ProfileManifestOption
 	Workspace    *ProfileManifestWorkspace
 	Project      *ProfileManifestProject
 	manifestPath string
@@ -19,8 +19,9 @@ type ProfileManifest struct {
 
 func loadProfileManifest(path string) (*ProfileManifest, error) {
 	manifest := &ProfileManifest{
+		Option:    NewProfileManifestOption(nil),
 		Workspace: NewProfileManifestWorkspace(nil, nil),
-		Project:   NewProfileManifestProject(nil, nil, nil),
+		Project:   NewProfileManifestProject(nil),
 	}
 
 	if path != "" {
@@ -52,14 +53,18 @@ func loadProfileManifest(path string) (*ProfileManifest, error) {
 	return manifest, nil
 }
 
-func MakeProfileManifest(workspace *ProfileManifestWorkspace, project *ProfileManifestProject) (*ProfileManifest, error) {
+func MakeProfileManifest(option *ProfileManifestOption, workspace *ProfileManifestWorkspace, project *ProfileManifestProject) (*ProfileManifest, error) {
+	if option == nil {
+		option = NewProfileManifestOption(nil)
+	}
 	if workspace == nil {
 		workspace = NewProfileManifestWorkspace(nil, nil)
 	}
 	if project == nil {
-		project = NewProfileManifestProject(nil, nil, nil)
+		project = NewProfileManifestProject(nil)
 	}
 	manifest := &ProfileManifest{
+		Option:    option,
 		Workspace: workspace,
 		Project:   project,
 	}
@@ -77,6 +82,9 @@ func (m *ProfileManifest) DescExtraKeyValues() KVS {
 }
 
 func (m *ProfileManifest) init() (err error) {
+	if err = m.Option.init(m); err != nil {
+		return err
+	}
 	if err = m.Workspace.init(m); err != nil {
 		return err
 	}
@@ -84,6 +92,64 @@ func (m *ProfileManifest) init() (err error) {
 		return err
 	}
 
+	return nil
+}
+
+// endregion
+
+// region option
+
+type ProfileManifestOption struct {
+	Items    []*ProfileManifestOptionItem
+	entities profileOptionSpecifyEntitySet
+}
+
+type ProfileManifestOptionItem struct {
+	Name  string
+	Value string
+	Match string
+}
+
+func NewProfileManifestOption(items map[string]string) *ProfileManifestOption {
+	var optionItems []*ProfileManifestOptionItem
+	for k, v := range items {
+		optionItems = append(optionItems, &ProfileManifestOptionItem{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return &ProfileManifestOption{
+		Items: optionItems,
+	}
+}
+
+func (o *ProfileManifestOption) init(manifest *ProfileManifest) (err error) {
+	entities := profileOptionSpecifyEntitySet{}
+	for i := 0; i < len(o.Items); i++ {
+		item := o.Items[i]
+		if item.Name == "" {
+			return errN("profile manifest invalid",
+				reason("value empty"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("option.items[%d].name", i)),
+			)
+		}
+		var matchObj *EvalExpr
+		if item.Match != "" {
+			matchObj, err = dsh_utils.CompileExpr(item.Match)
+			if err != nil {
+				return errW(err, "profile manifest invalid",
+					reason("value invalid"),
+					kv("path", manifest.manifestPath),
+					kv("field", fmt.Sprintf("option.items[%d].match", i)),
+					kv("value", item.Match),
+				)
+			}
+		}
+		entities = append(entities, newProfileOptionSpecifyEntity(item.Name, item.Value, item.Match, matchObj))
+	}
+
+	o.entities = entities
 	return nil
 }
 
@@ -173,9 +239,9 @@ func (s *ProfileManifestWorkspaceShell) init(manifest *ProfileManifest) (err err
 				)
 			}
 		}
-		var matchExpr *vm.Program
+		var matchObj *EvalExpr
 		if item.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(item.Match)
+			matchObj, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
 				return errW(err, "profile manifest invalid",
 					reason("value invalid"),
@@ -185,7 +251,7 @@ func (s *ProfileManifestWorkspaceShell) init(manifest *ProfileManifest) (err err
 				)
 			}
 		}
-		entities[item.Name] = append(entities[item.Name], newWorkspaceShellEntity(item.Name, item.Path, item.Exts, item.Args, item.Match, matchExpr))
+		entities[item.Name] = append(entities[item.Name], newWorkspaceShellEntity(item.Name, item.Path, item.Exts, item.Args, item.Match, matchObj))
 	}
 
 	s.entities = entities
@@ -236,9 +302,9 @@ func (imp *ProfileManifestWorkspaceImport) init(manifest *ProfileManifest) (err 
 		}
 		// TODO: check link template
 
-		var matchExpr *vm.Program
+		var matchObj *EvalExpr
 		if registry.Match != "" {
-			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
+			matchObj, err = dsh_utils.CompileExpr(registry.Match)
 			if err != nil {
 				return errW(err, "profile manifest invalid",
 					reason("value invalid"),
@@ -248,7 +314,7 @@ func (imp *ProfileManifestWorkspaceImport) init(manifest *ProfileManifest) (err 
 				)
 			}
 		}
-		registryEntities[registry.Name] = append(registryEntities[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchExpr))
+		registryEntities[registry.Name] = append(registryEntities[registry.Name], newWorkspaceImportRegistryEntity(registry.Name, registry.Link, registry.Match, matchObj))
 	}
 
 	redirectEntities := workspaceImportRedirectEntitySet{}
@@ -280,7 +346,7 @@ func (imp *ProfileManifestWorkspaceImport) init(manifest *ProfileManifest) (err 
 		}
 		// TODO: check link template
 
-		var matchObj *vm.Program
+		var matchObj *EvalExpr
 		if redirect.Match != "" {
 			matchObj, err = dsh_utils.CompileExpr(redirect.Match)
 			if err != nil {
@@ -305,97 +371,107 @@ func (imp *ProfileManifestWorkspaceImport) init(manifest *ProfileManifest) (err 
 // region project
 
 type ProfileManifestProject struct {
-	Option *ProfileManifestProjectOption
+	Items    []*ProfileManifestProjectItem
+	entities profileProjectEntitySet
+}
+
+type ProfileManifestProjectItem struct {
+	Name   string
+	Path   string
+	Match  string
 	Script *ProfileManifestProjectScript
 	Config *ProfileManifestProjectConfig
 }
 
-func NewProfileManifestProject(option *ProfileManifestProjectOption, script *ProfileManifestProjectScript, config *ProfileManifestProjectConfig) *ProfileManifestProject {
-	if option == nil {
-		option = &ProfileManifestProjectOption{}
+func NewProfileManifestProject(items []*ProfileManifestProjectItem) *ProfileManifestProject {
+	return &ProfileManifestProject{
+		Items: items,
 	}
+}
+
+func NewProfileManifestProjectItem(script *ProfileManifestProjectScript, config *ProfileManifestProjectConfig) *ProfileManifestProjectItem {
 	if script == nil {
 		script = &ProfileManifestProjectScript{}
 	}
 	if config == nil {
 		config = &ProfileManifestProjectConfig{}
 	}
-	return &ProfileManifestProject{
-		Option: option,
+	return &ProfileManifestProjectItem{
 		Script: script,
 		Config: config,
 	}
 }
 
-func (p *ProfileManifestProject) init(manifest *ProfileManifest) (err error) {
-	if err = p.Option.init(manifest); err != nil {
-		return err
+func (p *ProfileManifestProject) init(manifest *ProfileManifest) error {
+	entities := profileProjectEntitySet{}
+	for i := 0; i < len(p.Items); i++ {
+		if entity, err := p.Items[i].init(manifest, i); err != nil {
+			return err
+		} else {
+			entities = append(entities, entity)
+		}
 	}
-	if err = p.Script.init(manifest); err != nil {
-		return err
-	}
-	if err = p.Config.init(manifest); err != nil {
-		return err
-	}
+
+	p.entities = entities
 	return nil
 }
 
-// endregion
-
-// region project option
-
-type ProfileManifestProjectOption struct {
-	Items    []*ProfileManifestProjectOptionItem
-	entities projectOptionSpecifyEntitySet
-}
-
-type ProfileManifestProjectOptionItem struct {
-	Name  string
-	Value string
-	Match string
-}
-
-func NewProfileManifestProjectOption(items map[string]string) *ProfileManifestProjectOption {
-	var optionItems []*ProfileManifestProjectOptionItem
-	for k, v := range items {
-		optionItems = append(optionItems, &ProfileManifestProjectOptionItem{
-			Name:  k,
-			Value: v,
-		})
+func (i *ProfileManifestProjectItem) init(manifest *ProfileManifest, itemIndex int) (entity *profileProjectEntity, err error) {
+	if i.Name == "" {
+		return nil, errN("profile manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("project.items[%d].name", itemIndex)),
+		)
 	}
-	return &ProfileManifestProjectOption{
-		Items: optionItems,
+	if checked := projectNameCheckRegex.MatchString(i.Name); !checked {
+		return nil, errN("profile manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("project.items[%d].name", itemIndex)),
+			kv("value", i.Name),
+		)
 	}
-}
 
-func (o *ProfileManifestProjectOption) init(manifest *ProfileManifest) (err error) {
-	entities := projectOptionSpecifyEntitySet{}
-	for i := 0; i < len(o.Items); i++ {
-		item := o.Items[i]
-		if item.Name == "" {
-			return errN("profile manifest invalid",
-				reason("value empty"),
+	if i.Path == "" {
+		return nil, errN("profile manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("project.items[%d].path", itemIndex)),
+		)
+	}
+
+	var scriptSources projectSourceEntitySet
+	var scriptImports projectImportEntitySet
+	if i.Script != nil {
+		if scriptSources, scriptImports, err = i.Script.init(manifest, itemIndex); err != nil {
+			return nil, err
+		}
+	}
+
+	var configSources projectSourceEntitySet
+	var configImports projectImportEntitySet
+	if i.Config != nil {
+		if configSources, configImports, err = i.Config.init(manifest, itemIndex); err != nil {
+			return nil, err
+		}
+	}
+
+	var matchObj *EvalExpr
+	if i.Match != "" {
+		matchObj, err = dsh_utils.CompileExpr(i.Match)
+		if err != nil {
+			return nil, errW(err, "profile manifest invalid",
+				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.option.items[%d].name", i)),
+				kv("field", fmt.Sprintf("project.items[%d].match", itemIndex)),
+				kv("value", i.Match),
 			)
 		}
-		var matchObj *vm.Program
-		if item.Match != "" {
-			matchObj, err = dsh_utils.CompileExpr(item.Match)
-			if err != nil {
-				return errW(err, "profile manifest invalid",
-					reason("value invalid"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("project.option.items[%d].match", i)),
-					kv("value", item.Match),
-				)
-			}
-		}
-		entities = append(entities, newProjectOptionSpecifyEntity(item.Name, item.Value, item.Match, matchObj))
 	}
 
-	o.entities = entities
-	return nil
+	entity = newProfileProjectEntity(i.Name, i.Path, i.Match, scriptSources, scriptImports, configSources, configImports, matchObj)
+	return entity, nil
 }
 
 // endregion
@@ -403,10 +479,8 @@ func (o *ProfileManifestProjectOption) init(manifest *ProfileManifest) (err erro
 // region project script
 
 type ProfileManifestProjectScript struct {
-	Sources        []*ProfileManifestProjectSource
-	Imports        []*ProfileManifestProjectImport
-	sourceEntities projectSourceEntitySet
-	importEntities []*projectImportEntity
+	Sources []*ProfileManifestProjectSource
+	Imports []*ProfileManifestProjectImport
 }
 
 func NewProfileManifestProjectScript(sources []*ProfileManifestProjectSource, imports []*ProfileManifestProjectImport) *ProfileManifestProjectScript {
@@ -416,30 +490,28 @@ func NewProfileManifestProjectScript(sources []*ProfileManifestProjectSource, im
 	}
 }
 
-func (s *ProfileManifestProjectScript) init(manifest *ProfileManifest) (err error) {
-	sourceEntities := projectSourceEntitySet{}
-	for i := 0; i < len(s.Sources); i++ {
-		src := s.Sources[i]
-		if entity, err := src.init(manifest, "script", i); err != nil {
-			return err
+func (s *ProfileManifestProjectScript) init(manifest *ProfileManifest, itemIndex int) (projectSourceEntitySet, projectImportEntitySet, error) {
+	sources := projectSourceEntitySet{}
+	for sourceIndex := 0; sourceIndex < len(s.Sources); sourceIndex++ {
+		src := s.Sources[sourceIndex]
+		if entity, err := src.init(manifest, "script", itemIndex, sourceIndex); err != nil {
+			return nil, nil, err
 		} else {
-			sourceEntities = append(sourceEntities, entity)
+			sources = append(sources, entity)
 		}
 	}
 
-	importEntities := projectImportEntitySet{}
-	for i := 0; i < len(s.Imports); i++ {
-		imp := s.Imports[i]
-		if entity, err := imp.init(manifest, "script", i); err != nil {
-			return err
+	imports := projectImportEntitySet{}
+	for importIndex := 0; importIndex < len(s.Imports); importIndex++ {
+		imp := s.Imports[importIndex]
+		if entity, err := imp.init(manifest, "script", itemIndex, importIndex); err != nil {
+			return nil, nil, err
 		} else {
-			importEntities = append(importEntities, entity)
+			imports = append(imports, entity)
 		}
 	}
 
-	s.sourceEntities = sourceEntities
-	s.importEntities = importEntities
-	return nil
+	return sources, imports, nil
 }
 
 // endregion
@@ -447,10 +519,8 @@ func (s *ProfileManifestProjectScript) init(manifest *ProfileManifest) (err erro
 // region project config
 
 type ProfileManifestProjectConfig struct {
-	Sources        []*ProfileManifestProjectSource
-	Imports        []*ProfileManifestProjectImport
-	sourceEntities []*projectSourceEntity
-	importEntities []*projectImportEntity
+	Sources []*ProfileManifestProjectSource
+	Imports []*ProfileManifestProjectImport
 }
 
 func NewProfileManifestProjectConfig(sources []*ProfileManifestProjectSource, imports []*ProfileManifestProjectImport) *ProfileManifestProjectConfig {
@@ -460,30 +530,28 @@ func NewProfileManifestProjectConfig(sources []*ProfileManifestProjectSource, im
 	}
 }
 
-func (c *ProfileManifestProjectConfig) init(manifest *ProfileManifest) (err error) {
-	sourceEntities := projectSourceEntitySet{}
-	for i := 0; i < len(c.Sources); i++ {
-		src := c.Sources[i]
-		if entity, err := src.init(manifest, "config", i); err != nil {
-			return err
+func (c *ProfileManifestProjectConfig) init(manifest *ProfileManifest, itemIndex int) (projectSourceEntitySet, projectImportEntitySet, error) {
+	sources := projectSourceEntitySet{}
+	for sourceIndex := 0; sourceIndex < len(c.Sources); sourceIndex++ {
+		src := c.Sources[sourceIndex]
+		if entity, err := src.init(manifest, "config", itemIndex, sourceIndex); err != nil {
+			return nil, nil, err
 		} else {
-			sourceEntities = append(sourceEntities, entity)
+			sources = append(sources, entity)
 		}
 	}
 
-	var importEntities []*projectImportEntity
-	for i := 0; i < len(c.Imports); i++ {
-		imp := c.Imports[i]
-		if entity, err := imp.init(manifest, "config", i); err != nil {
-			return err
+	imports := projectImportEntitySet{}
+	for importIndex := 0; importIndex < len(c.Imports); importIndex++ {
+		imp := c.Imports[importIndex]
+		if entity, err := imp.init(manifest, "config", itemIndex, importIndex); err != nil {
+			return nil, nil, err
 		} else {
-			importEntities = append(importEntities, entity)
+			imports = append(imports, entity)
 		}
 	}
 
-	c.sourceEntities = sourceEntities
-	c.importEntities = importEntities
-	return nil
+	return sources, imports, nil
 }
 
 // endregion
@@ -504,23 +572,23 @@ func NewProfileManifestProjectSource(dir string, files []string, match string) *
 	}
 }
 
-func (s *ProfileManifestProjectSource) init(manifest *ProfileManifest, scope string, index int) (entity *projectSourceEntity, err error) {
+func (s *ProfileManifestProjectSource) init(manifest *ProfileManifest, scope string, itemIndex, sourceIndex int) (entity *projectSourceEntity, err error) {
 	if s.Dir == "" {
 		return nil, errN("profile manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("project.%s.sources[%d].dir", scope, index)),
+			kv("field", fmt.Sprintf("project.items[%d].%s.sources[%d].dir", itemIndex, scope, sourceIndex)),
 		)
 	}
 
-	var matchObj *vm.Program
+	var matchObj *EvalExpr
 	if s.Match != "" {
 		matchObj, err = dsh_utils.CompileExpr(s.Match)
 		if err != nil {
 			return nil, errW(err, "profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.sources[%d].match", scope, index)),
+				kv("field", fmt.Sprintf("project.items[%d].%s.sources[%d].match", itemIndex, scope, sourceIndex)),
 				kv("value", s.Match),
 			)
 		}
@@ -545,12 +613,12 @@ func NewProfileManifestProjectImport(link string, match string) *ProfileManifest
 	}
 }
 
-func (i *ProfileManifestProjectImport) init(manifest *ProfileManifest, scope string, index int) (entity *projectImportEntity, err error) {
+func (i *ProfileManifestProjectImport) init(manifest *ProfileManifest, scope string, itemIndex, importIndex int) (entity *projectImportEntity, err error) {
 	if i.Link == "" {
 		return nil, errN("profile manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
+			kv("field", fmt.Sprintf("project.items[%d].%s.imports[%d].link", itemIndex, scope, importIndex)),
 		)
 	}
 	linkObj, err := parseProjectLink(i.Link)
@@ -558,19 +626,19 @@ func (i *ProfileManifestProjectImport) init(manifest *ProfileManifest, scope str
 		return nil, errW(err, "profile manifest invalid",
 			reason("value invalid"),
 			kv("path", manifest.manifestPath),
-			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
+			kv("field", fmt.Sprintf("project.items[%d].%s.imports[%d].link", itemIndex, scope, importIndex)),
 			kv("value", i.Link),
 		)
 	}
 
-	var matchObj *vm.Program
+	var matchObj *EvalExpr
 	if i.Match != "" {
 		matchObj, err = dsh_utils.CompileExpr(i.Match)
 		if err != nil {
 			return nil, errW(err, "profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("project.%s.imports[%d].match", scope, index)),
+				kv("field", fmt.Sprintf("project.items[%d].%s.imports[%d].match", itemIndex, scope, importIndex)),
 				kv("value", i.Match),
 			)
 		}

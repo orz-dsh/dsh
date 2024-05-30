@@ -38,7 +38,7 @@ func (f *AppFactory) AddProfile(position int, file string) error {
 }
 
 func (f *AppFactory) AddProjectOptionItems(position int, items map[string]string) error {
-	manifest, err := MakeProfileManifest(nil, NewProfileManifestProject(NewProfileManifestProjectOption(items), nil, nil))
+	manifest, err := MakeProfileManifest(NewProfileManifestOption(items), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -51,24 +51,29 @@ func (f *AppFactory) MakeApp(link string) (*App, error) {
 
 	profile := newAppProfile(f.workspace, f.manifests)
 
-	manifest, err := profile.getProjectManifestByRawLink(link)
+	entity, err := profile.getProjectEntityByRawLink(link)
 	if err != nil {
 		return nil, err
 	}
 
-	option, err := profile.makeAppOption(manifest)
+	evaluator := f.workspace.evaluator.SetData("main_project", map[string]any{
+		"name": entity.Name,
+		"path": entity.Path,
+	})
+
+	option, err := profile.getAppOption(entity, evaluator)
 	if err != nil {
 		return nil, err
 	}
 
-	context := newAppContext(f.workspace, profile, manifest, option)
-
-	project, err := context.loadMainProject()
+	extraProjectEntities, err := profile.getExtraProjectEntities(evaluator)
 	if err != nil {
 		return nil, err
 	}
 
-	app, err := newApp(context, project)
+	context := newAppContext(f.workspace, evaluator, profile, option)
+
+	app, err := makeApp(context, entity, extraProjectEntities)
 	if err != nil {
 		return nil, err
 	}

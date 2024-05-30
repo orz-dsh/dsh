@@ -1,3 +1,7 @@
+options:
+  - name: xxxx
+    value: xxxx
+    match: xxxx
 workspace:
   shell:
     items:
@@ -9,11 +13,9 @@ workspace:
           - -File
           - "{{.target.path}}"
 project:
-  option:
-    items:
-      - name: xxxx
-        value: xxxx
-        match: xxxx
-  script:
-    imports:
-      - link: "@orz-dsh/shell-lib"
+  items:
+    - name: extra_project
+      path: .test2/app1
+      script:
+        sources:
+          - dir: "script"

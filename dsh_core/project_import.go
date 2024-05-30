@@ -5,8 +5,8 @@ package dsh_core
 type projectImport struct {
 	context *appContext
 	Entity  *projectImportEntity
-	Link    *projectLinkTarget
-	project *Project
+	Target  *projectLinkTarget
+	project *appProject
 }
 
 type projectImportScope string
@@ -16,31 +16,21 @@ const (
 	projectImportScopeConfig projectImportScope = "config"
 )
 
-func newProjectImport(context *appContext, entity *projectImportEntity, link *projectLinkTarget) *projectImport {
+func newProjectImport(context *appContext, entity *projectImportEntity, target *projectLinkTarget) *projectImport {
 	return &projectImport{
 		context: context,
 		Entity:  entity,
-		Link:    link,
+		Target:  target,
 	}
 }
 
 func (i *projectImport) loadProject() error {
 	if i.project == nil {
-		m, err := i.context.profile.getProjectManifestByLinkTarget(i.Link)
-		if err != nil {
-			return errW(err, "load import target error",
-				kv("reason", "load project manifest error"),
-				kv("link", i.Link),
-			)
+		if project, err := i.context.loadProjectByTarget(i.Target); err != nil {
+			return err
+		} else {
+			i.project = project
 		}
-		project, err := i.context.loadProject(m)
-		if err != nil {
-			return errW(err, "load import target error",
-				kv("reason", "load project error"),
-				kv("link", i.Link),
-			)
-		}
-		i.project = project
 	}
 	return nil
 }
@@ -59,30 +49,24 @@ type projectImportContainer struct {
 	importsLoaded bool
 }
 
-func makeProjectImportContainer(context *appContext, manifest *ProjectManifest, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
-	var entities []*projectImportEntity
+func makeProjectImportContainer(context *appContext, entity *projectEntity, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
+	var imports []*projectImportEntity
 	if scope == projectImportScopeScript {
-		entities = manifest.Script.importEntities
-		if context.isMainProject(manifest) {
-			entities = append(entities, context.profile.projectScriptImportEntities...)
-		}
+		imports = entity.ScriptImports
 	} else if scope == projectImportScopeConfig {
-		entities = manifest.Config.importEntities
-		if context.isMainProject(manifest) {
-			entities = append(entities, context.profile.projectConfigImportEntities...)
-		}
+		imports = entity.ConfigImports
 	} else {
 		impossible()
 	}
 	container = &projectImportContainer{
 		context:       context,
 		scope:         scope,
-		ProjectName:   manifest.projectName,
-		ProjectPath:   manifest.projectPath,
+		ProjectName:   entity.Name,
+		ProjectPath:   entity.Path,
 		importsByPath: map[string]*projectImport{},
 	}
-	for i := 0; i < len(entities); i++ {
-		entity := entities[i]
+	for i := 0; i < len(imports); i++ {
+		entity := imports[i]
 		matched, err := option.evaluator.EvalBoolExpr(entity.match)
 		if err != nil {
 			return nil, err
@@ -98,7 +82,7 @@ func makeProjectImportContainer(context *appContext, manifest *ProjectManifest, 
 }
 
 func (c *projectImportContainer) addImport(entity *projectImportEntity) (err error) {
-	resolved, err := c.context.profile.getProjectLinkTarget(entity.link)
+	target, err := c.context.profile.getProjectLinkTarget(entity.link)
 	if err != nil {
 		return errW(err, "add import error",
 			reason("resolve project link error"),
@@ -106,13 +90,13 @@ func (c *projectImportContainer) addImport(entity *projectImportEntity) (err err
 			kv("entity", entity),
 		)
 	}
-	if resolved.Path == c.ProjectPath {
+	if target.Path == c.ProjectPath {
 		return nil
 	}
-	imp := newProjectImport(c.context, entity, resolved)
-	if _, exist := c.importsByPath[resolved.Path]; !exist {
+	imp := newProjectImport(c.context, entity, target)
+	if _, exist := c.importsByPath[target.Path]; !exist {
 		c.Imports = append(c.Imports, imp)
-		c.importsByPath[resolved.Path] = imp
+		c.importsByPath[target.Path] = imp
 	}
 	return nil
 }

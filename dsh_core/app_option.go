@@ -1,7 +1,6 @@
 package dsh_core
 
 import (
-	"github.com/expr-lang/expr/vm"
 	"maps"
 	"strings"
 )
@@ -26,7 +25,7 @@ func newAppOption(systemInfo *SystemInfo, evaluator *Evaluator, projectName stri
 	}
 }
 
-func (o *appOption) addAssign(sourceProject string, sourceOption string, assignProject string, assignOption string, assignMapping *vm.Program) error {
+func (o *appOption) addAssign(sourceProject string, sourceOption string, assignProject string, assignOption string, assignMapping *EvalExpr) error {
 	source := sourceProject + "." + sourceOption
 	target := assignProject + "." + assignOption
 	assign := &appOptionAssign{
@@ -290,7 +289,7 @@ func newAppOptionSpecifyItems(projectName string, items map[string]string) appOp
 type appOptionAssign struct {
 	Source      string
 	FinalSource string
-	mapping     *vm.Program
+	mapping     *EvalExpr
 }
 
 func (a *appOptionAssign) DescExtraKeyValues() KVS {

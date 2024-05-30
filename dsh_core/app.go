@@ -7,12 +7,13 @@ import (
 )
 
 type App struct {
-	context               *appContext
-	project               *Project
-	scriptImportContainer *appImportContainer
-	configImportContainer *appImportContainer
-	configs               map[string]any
-	configsMade           bool
+	context                *appContext
+	mainProject            *appProject
+	extraProjects          []*appProject
+	scriptProjectContainer *appProjectContainer
+	configProjectContainer *appProjectContainer
+	configs                map[string]any
+	configsMade            bool
 }
 
 type AppMakeScriptsSettings struct {
@@ -21,12 +22,27 @@ type AppMakeScriptsSettings struct {
 	UseHardLink     bool
 }
 
-func newApp(context *appContext, project *Project) (app *App, err error) {
-	app = &App{
-		context:               context,
-		project:               project,
-		scriptImportContainer: newAppImportContainer(project, projectImportScopeScript),
-		configImportContainer: newAppImportContainer(project, projectImportScopeConfig),
+func makeApp(context *appContext, mainProjectEntity *projectEntity, extraProjectEntities []*projectEntity) (*App, error) {
+	mainProject, err := context.loadProject(mainProjectEntity)
+	if err != nil {
+		return nil, err
+	}
+
+	var extraProjects []*appProject
+	for i := 0; i < len(extraProjectEntities); i++ {
+		extraProject, err := makeAppProject(context, extraProjectEntities[i])
+		if err != nil {
+			return nil, err
+		}
+		extraProjects = append(extraProjects, extraProject)
+	}
+
+	app := &App{
+		context:                context,
+		mainProject:            mainProject,
+		extraProjects:          extraProjects,
+		scriptProjectContainer: newAppProjectContainer(mainProject, extraProjects, projectImportScopeScript),
+		configProjectContainer: newAppProjectContainer(mainProject, extraProjects, projectImportScopeConfig),
 	}
 	return app, nil
 }
@@ -34,9 +50,10 @@ func newApp(context *appContext, project *Project) (app *App, err error) {
 func (a *App) DescExtraKeyValues() KVS {
 	return KVS{
 		kv("context", a.context),
-		kv("project", a.project),
-		kv("scriptImportContainer", a.scriptImportContainer),
-		kv("configImportContainer", a.configImportContainer),
+		kv("mainProject", a.mainProject),
+		kv("extraProjects", a.extraProjects),
+		kv("scriptProjectContainer", a.scriptProjectContainer),
+		kv("configProjectContainer", a.configProjectContainer),
 	}
 }
 
@@ -48,7 +65,7 @@ func (a *App) MakeConfigs() (map[string]any, error) {
 	startTime := time.Now()
 	a.context.logger.Info("make configs start")
 
-	configs, err := a.configImportContainer.makeConfigs()
+	configs, err := a.configProjectContainer.makeConfigs()
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +87,7 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 	a.context.logger.Info("make scripts start")
 	outputPath := settings.OutputPath
 	if outputPath == "" {
-		outputPath, err = a.context.workspace.makeOutputDir(a.project.Name)
+		outputPath, err = a.context.workspace.makeOutputDir(a.mainProject.Name)
 		if err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("make output path error"),
@@ -96,7 +113,7 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 	}
 
 	evaluator := a.context.evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
-	targetNames, err := a.scriptImportContainer.makeScripts(evaluator, outputPath, settings.UseHardLink)
+	targetNames, err := a.scriptProjectContainer.makeScripts(evaluator, outputPath, settings.UseHardLink)
 	if err != nil {
 		return nil, err
 	}

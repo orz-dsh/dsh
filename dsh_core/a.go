@@ -2,6 +2,8 @@ package dsh_core
 
 import "dsh/dsh_utils"
 
+type EvalExpr = dsh_utils.EvalExpr
+
 type Evaluator = dsh_utils.Evaluator
 
 type SystemInfo = dsh_utils.SystemInfo

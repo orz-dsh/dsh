@@ -13,7 +13,9 @@ import (
 	"text/template"
 )
 
-func CompileExpr(content string) (*vm.Program, error) {
+type EvalExpr = vm.Program
+
+func CompileExpr(content string) (*EvalExpr, error) {
 	program, err := expr.Compile(content)
 	if err != nil {
 		return nil, errW(err, "compile expr error", kv("content", content))
@@ -21,7 +23,7 @@ func CompileExpr(content string) (*vm.Program, error) {
 	return program, nil
 }
 
-func EvalBoolExpr(program *vm.Program, data map[string]any) (bool, error) {
+func EvalBoolExpr(program *EvalExpr, data map[string]any) (bool, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
 		return false, errW(err, "eval bool expr error",
@@ -57,7 +59,7 @@ func EvalBoolExpr(program *vm.Program, data map[string]any) (bool, error) {
 	return false, nil
 }
 
-func EvalStringExpr(program *vm.Program, data map[string]any) (*string, error) {
+func EvalStringExpr(program *EvalExpr, data map[string]any) (*string, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
 		return nil, errW(err, "eval string expr error",
@@ -333,14 +335,14 @@ func (e *Evaluator) DescExtraKeyValues() KVS {
 	}
 }
 
-func (e *Evaluator) EvalBoolExpr(expr *vm.Program) (bool, error) {
+func (e *Evaluator) EvalBoolExpr(expr *EvalExpr) (bool, error) {
 	if expr == nil {
 		return true, nil
 	}
 	return EvalBoolExpr(expr, e.ToMap(true))
 }
 
-func (e *Evaluator) EvalStringExpr(expr *vm.Program) (*string, error) {
+func (e *Evaluator) EvalStringExpr(expr *EvalExpr) (*string, error) {
 	if expr == nil {
 		return nil, nil
 	}

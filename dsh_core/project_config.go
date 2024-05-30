@@ -14,12 +14,12 @@ type projectConfig struct {
 	ImportContainer *projectImportContainer
 }
 
-func makeProjectConfig(context *appContext, manifest *ProjectManifest, option *projectOption) (config *projectConfig, err error) {
-	sc, err := makeProjectConfigSourceContainer(context, manifest, option)
+func makeProjectConfig(context *appContext, entity *projectEntity, option *projectOption) (config *projectConfig, err error) {
+	sc, err := makeProjectConfigSourceContainer(context, entity, option)
 	if err != nil {
 		return nil, err
 	}
-	ic, err := makeProjectImportContainer(context, manifest, option, projectImportScopeConfig)
+	ic, err := makeProjectImportContainer(context, entity, option, projectImportScopeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -179,25 +179,22 @@ type projectConfigSourceContainer struct {
 	sourcePathsDict map[string]bool
 }
 
-func makeProjectConfigSourceContainer(context *appContext, manifest *ProjectManifest, option *projectOption) (container *projectConfigSourceContainer, err error) {
+func makeProjectConfigSourceContainer(context *appContext, entity *projectEntity, option *projectOption) (container *projectConfigSourceContainer, err error) {
 	container = &projectConfigSourceContainer{
 		context:         context,
 		sourcePathsDict: map[string]bool{},
 	}
-	entities := manifest.Config.sourceEntities
-	if context.isMainProject(manifest) {
-		entities = append(entities, context.profile.projectConfigSourceEntities...)
-	}
-	for i := 0; i < len(entities); i++ {
-		entity := entities[i]
-		matched, err := option.evaluator.EvalBoolExpr(entity.match)
+	sources := entity.ConfigSources
+	for i := 0; i < len(sources); i++ {
+		source := sources[i]
+		matched, err := option.evaluator.EvalBoolExpr(source.match)
 		if err != nil {
 			return nil, err
 		}
 		if !matched {
 			continue
 		}
-		if err = container.scanSources(filepath.Join(manifest.projectPath, entity.Dir), entity.Files); err != nil {
+		if err = container.scanSources(filepath.Join(entity.Path, source.Dir), source.Files); err != nil {
 			return nil, err
 		}
 	}
