@@ -22,7 +22,7 @@ type appProfile struct {
 	projectManifestsByName          map[string]*ProjectManifest
 }
 
-func newAppProfile(workspace *Workspace, manifests []*AppProfileManifest) *appProfile {
+func newAppProfile(workspace *Workspace, manifests []*ProfileManifest) *appProfile {
 	workspaceShellEntities := workspaceShellEntitySet{}
 	workspaceImportRegistryEntities := workspaceImportRegistryEntitySet{}
 	workspaceImportRedirectEntities := workspaceImportRedirectEntitySet{}

@@ -6,13 +6,13 @@ import (
 
 type AppFactory struct {
 	workspace *Workspace
-	manifests []*AppProfileManifest
+	manifests []*ProfileManifest
 }
 
 func newAppFactory(workspace *Workspace) *AppFactory {
 	factory := &AppFactory{
 		workspace: workspace,
-		manifests: []*AppProfileManifest{},
+		manifests: []*ProfileManifest{},
 	}
 	for i := 0; i < len(workspace.profileManifests); i++ {
 		factory.AddManifest(-1, workspace.profileManifests[i])
@@ -20,7 +20,7 @@ func newAppFactory(workspace *Workspace) *AppFactory {
 	return factory
 }
 
-func (f *AppFactory) AddManifest(position int, manifest *AppProfileManifest) {
+func (f *AppFactory) AddManifest(position int, manifest *ProfileManifest) {
 	if position < 0 {
 		f.manifests = append(f.manifests, manifest)
 	} else {
@@ -29,7 +29,7 @@ func (f *AppFactory) AddManifest(position int, manifest *AppProfileManifest) {
 }
 
 func (f *AppFactory) AddProfile(position int, file string) error {
-	manifest, err := loadAppProfileManifest(file)
+	manifest, err := loadProfileManifest(file)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (f *AppFactory) AddProfile(position int, file string) error {
 }
 
 func (f *AppFactory) AddProjectOptionItems(position int, items map[string]string) error {
-	manifest, err := MakeAppProfileManifest(nil, NewAppProfileManifestProject(NewAppProfileManifestProjectOption(items), nil, nil))
+	manifest, err := MakeProfileManifest(nil, NewProfileManifestProject(NewProfileManifestProjectOption(items), nil, nil))
 	if err != nil {
 		return err
 	}

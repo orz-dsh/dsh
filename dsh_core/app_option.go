@@ -98,22 +98,21 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	return nil, nil, nil
 }
 
-func (o *appOption) findResult(manifest *ProjectManifest, declare *projectOptionDeclareEntity) (result *appOptionResult, err error) {
+func (o *appOption) findResult(projectName string, declare *projectOptionDeclareEntity) (result *appOptionResult, err error) {
 	found := false
 	var rawValue string
 	var parsedValue any = nil
 	var source appOptionResultSource = appOptionResultSourceUnset
 	var assign *appOptionAssign = nil
 
-	if specifyItems, exist := o.SpecifyItems[manifest.projectName]; exist {
+	if specifyItems, exist := o.SpecifyItems[projectName]; exist {
 		if value, exist := specifyItems[declare.Name]; exist {
 			rawValue = value
 			parsedValue, err = declare.parseValue(rawValue)
 			if err != nil {
 				return nil, errW(err, "find option result error",
 					reason("parse specify value error"),
-					kv("projectName", manifest.projectName),
-					kv("projectPath", manifest.projectPath),
+					kv("projectName", projectName),
 					kv("optionName", declare.Name),
 					kv("optionValue", rawValue),
 				)
@@ -125,12 +124,11 @@ func (o *appOption) findResult(manifest *ProjectManifest, declare *projectOption
 
 	if !found {
 		var assignValue *string
-		assign, assignValue, err = o.findAssignValue(manifest.projectName, declare.Name)
+		assign, assignValue, err = o.findAssignValue(projectName, declare.Name)
 		if err != nil {
 			return nil, errW(err, "find option result error",
 				reason("get assign value error"),
-				kv("projectName", manifest.projectName),
-				kv("projectPath", manifest.projectPath),
+				kv("projectName", projectName),
 				kv("optionName", declare.Name),
 			)
 		}
@@ -141,8 +139,7 @@ func (o *appOption) findResult(manifest *ProjectManifest, declare *projectOption
 				if err != nil {
 					return nil, errW(err, "find option result error",
 						reason("parse assign value error"),
-						kv("projectName", manifest.projectName),
-						kv("projectPath", manifest.projectPath),
+						kv("projectName", projectName),
 						kv("optionName", declare.Name),
 						kv("optionValue", rawValue),
 					)
@@ -165,8 +162,7 @@ func (o *appOption) findResult(manifest *ProjectManifest, declare *projectOption
 	if parsedValue == nil && !declare.Optional {
 		return nil, errN("find option result error",
 			reason("option value empty"),
-			kv("projectName", manifest.projectName),
-			kv("projectPath", manifest.projectPath),
+			kv("projectName", projectName),
 			kv("optionName", declare.Name),
 			kv("source", source),
 			kv("assign", assign),
@@ -180,11 +176,10 @@ func (o *appOption) findResult(manifest *ProjectManifest, declare *projectOption
 		Assign:      assign,
 	}
 
-	if err = o.addResult(manifest.projectName, declare.Name, result); err != nil {
+	if err = o.addResult(projectName, declare.Name, result); err != nil {
 		return nil, errW(err, "find option result error",
 			reason("add option result error"),
-			kv("projectName", manifest.projectName),
-			kv("projectPath", manifest.projectPath),
+			kv("projectName", projectName),
 			kv("optionName", declare.Name),
 		)
 	}

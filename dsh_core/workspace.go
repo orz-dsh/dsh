@@ -12,7 +12,7 @@ type Workspace struct {
 	path             string
 	manifest         *workspaceManifest
 	evaluator        *Evaluator
-	profileManifests []*AppProfileManifest
+	profileManifests []*ProfileManifest
 }
 
 type WorkspaceCleanSettings struct {
@@ -70,9 +70,9 @@ func OpenWorkspace(path string, logger *Logger) (workspace *Workspace, err error
 	if err != nil {
 		return nil, err
 	}
-	var profileManifests []*AppProfileManifest
+	var profileManifests []*ProfileManifest
 	for i := 0; i < len(profiles); i++ {
-		profileManifest, err := loadAppProfileManifest(profiles[i])
+		profileManifest, err := loadProfileManifest(profiles[i])
 		if err != nil {
 			return nil, err
 		}

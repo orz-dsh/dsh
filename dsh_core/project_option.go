@@ -11,7 +11,7 @@ func makeProjectOption(context *appContext, manifest *ProjectManifest) (*project
 	items := context.option.GenericItems.copy()
 	for i := 0; i < len(manifest.Option.declareEntities); i++ {
 		declare := manifest.Option.declareEntities[i]
-		result, err := context.option.findResult(manifest, declare)
+		result, err := context.option.findResult(manifest.projectName, declare)
 		if err != nil {
 			return nil, errW(err, "load project options error",
 				reason("find option result error"),

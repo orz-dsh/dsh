@@ -10,23 +10,23 @@ import (
 
 // region manifest
 
-type AppProfileManifest struct {
-	Workspace    *AppProfileManifestWorkspace
-	Project      *AppProfileManifestProject
+type ProfileManifest struct {
+	Workspace    *ProfileManifestWorkspace
+	Project      *ProfileManifestProject
 	manifestPath string
 	manifestType manifestMetadataType
 }
 
-func loadAppProfileManifest(path string) (*AppProfileManifest, error) {
-	manifest := &AppProfileManifest{
-		Workspace: NewAppProfileManifestWorkspace(nil, nil),
-		Project:   NewAppProfileManifestProject(nil, nil, nil),
+func loadProfileManifest(path string) (*ProfileManifest, error) {
+	manifest := &ProfileManifest{
+		Workspace: NewProfileManifestWorkspace(nil, nil),
+		Project:   NewProfileManifestProject(nil, nil, nil),
 	}
 
 	if path != "" {
 		absPath, err := filepath.Abs(path)
 		if err != nil {
-			return nil, errW(err, "load app profile manifest error",
+			return nil, errW(err, "load profile manifest error",
 				reason("get abs-path error"),
 				kv("path", path),
 			)
@@ -37,7 +37,7 @@ func loadAppProfileManifest(path string) (*AppProfileManifest, error) {
 	if path != "" {
 		metadata, err := loadManifestFromFile(path, "", manifest)
 		if err != nil {
-			return nil, errW(err, "load app profile manifest error",
+			return nil, errW(err, "load profile manifest error",
 				reason("load manifest from file error"),
 				kv("path", path),
 			)
@@ -52,14 +52,14 @@ func loadAppProfileManifest(path string) (*AppProfileManifest, error) {
 	return manifest, nil
 }
 
-func MakeAppProfileManifest(workspace *AppProfileManifestWorkspace, project *AppProfileManifestProject) (*AppProfileManifest, error) {
+func MakeProfileManifest(workspace *ProfileManifestWorkspace, project *ProfileManifestProject) (*ProfileManifest, error) {
 	if workspace == nil {
-		workspace = NewAppProfileManifestWorkspace(nil, nil)
+		workspace = NewProfileManifestWorkspace(nil, nil)
 	}
 	if project == nil {
-		project = NewAppProfileManifestProject(nil, nil, nil)
+		project = NewProfileManifestProject(nil, nil, nil)
 	}
-	manifest := &AppProfileManifest{
+	manifest := &ProfileManifest{
 		Workspace: workspace,
 		Project:   project,
 	}
@@ -69,14 +69,14 @@ func MakeAppProfileManifest(workspace *AppProfileManifestWorkspace, project *App
 	return manifest, nil
 }
 
-func (m *AppProfileManifest) DescExtraKeyValues() KVS {
+func (m *ProfileManifest) DescExtraKeyValues() KVS {
 	return KVS{
 		kv("manifestPath", m.manifestPath),
 		kv("manifestType", m.manifestType),
 	}
 }
 
-func (m *AppProfileManifest) init() (err error) {
+func (m *ProfileManifest) init() (err error) {
 	if err = m.Workspace.init(m); err != nil {
 		return err
 	}
@@ -91,25 +91,25 @@ func (m *AppProfileManifest) init() (err error) {
 
 // region workspace
 
-type AppProfileManifestWorkspace struct {
-	Shell  *AppProfileManifestWorkspaceShell
-	Import *AppProfileManifestWorkspaceImport
+type ProfileManifestWorkspace struct {
+	Shell  *ProfileManifestWorkspaceShell
+	Import *ProfileManifestWorkspaceImport
 }
 
-func NewAppProfileManifestWorkspace(shell *AppProfileManifestWorkspaceShell, imp *AppProfileManifestWorkspaceImport) *AppProfileManifestWorkspace {
+func NewProfileManifestWorkspace(shell *ProfileManifestWorkspaceShell, imp *ProfileManifestWorkspaceImport) *ProfileManifestWorkspace {
 	if shell == nil {
-		shell = &AppProfileManifestWorkspaceShell{}
+		shell = &ProfileManifestWorkspaceShell{}
 	}
 	if imp == nil {
-		imp = &AppProfileManifestWorkspaceImport{}
+		imp = &ProfileManifestWorkspaceImport{}
 	}
-	return &AppProfileManifestWorkspace{
+	return &ProfileManifestWorkspace{
 		Shell:  shell,
 		Import: imp,
 	}
 }
 
-func (w *AppProfileManifestWorkspace) init(manifest *AppProfileManifest) (err error) {
+func (w *ProfileManifestWorkspace) init(manifest *ProfileManifest) (err error) {
 	if err = w.Shell.init(manifest); err != nil {
 		return err
 	}
@@ -123,12 +123,12 @@ func (w *AppProfileManifestWorkspace) init(manifest *AppProfileManifest) (err er
 
 // region workspace shell
 
-type AppProfileManifestWorkspaceShell struct {
-	Items    []*AppProfileManifestWorkspaceShellItem
+type ProfileManifestWorkspaceShell struct {
+	Items    []*ProfileManifestWorkspaceShellItem
 	entities workspaceShellEntitySet
 }
 
-type AppProfileManifestWorkspaceShellItem struct {
+type ProfileManifestWorkspaceShellItem struct {
 	Name  string
 	Path  string
 	Exts  []string
@@ -136,19 +136,19 @@ type AppProfileManifestWorkspaceShellItem struct {
 	Match string
 }
 
-func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (err error) {
+func (s *ProfileManifestWorkspaceShell) init(manifest *ProfileManifest) (err error) {
 	entities := workspaceShellEntitySet{}
 	for i := 0; i < len(s.Items); i++ {
 		item := s.Items[i]
 		if item.Name == "" {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.shell.items[%d].name", i)),
 			)
 		}
 		if item.Path != "" && !dsh_utils.IsFileExists(item.Path) {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.shell.items[%d].path", i)),
@@ -157,7 +157,7 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 		}
 		for j := 0; j < len(item.Exts); j++ {
 			if item.Exts[j] == "" {
-				return errN("app profile manifest invalid",
+				return errN("profile manifest invalid",
 					reason("value empty"),
 					kv("path", manifest.manifestPath),
 					kv("field", fmt.Sprintf("workspace.shell.items[%d].exts[%d]", i, j)),
@@ -166,7 +166,7 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 		}
 		for j := 0; j < len(item.Args); j++ {
 			if item.Args[j] == "" {
-				return errN("app profile manifest invalid",
+				return errN("profile manifest invalid",
 					reason("value empty"),
 					kv("path", manifest.manifestPath),
 					kv("field", fmt.Sprintf("workspace.shell.items[%d].args[%d]", i, j)),
@@ -177,7 +177,7 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 		if item.Match != "" {
 			matchExpr, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
-				return errW(err, "app profile manifest invalid",
+				return errW(err, "profile manifest invalid",
 					reason("value invalid"),
 					kv("path", manifest.manifestPath),
 					kv("field", fmt.Sprintf("workspace.shell.items[%d].match", i)),
@@ -196,31 +196,31 @@ func (s *AppProfileManifestWorkspaceShell) init(manifest *AppProfileManifest) (e
 
 // region workspace import
 
-type AppProfileManifestWorkspaceImport struct {
-	Registries       []*AppProfileManifestImportRegistry
-	Redirects        []*AppProfileManifestImportRedirect
+type ProfileManifestWorkspaceImport struct {
+	Registries       []*ProfileManifestImportRegistry
+	Redirects        []*ProfileManifestImportRedirect
 	registryEntities workspaceImportRegistryEntitySet
 	redirectEntities workspaceImportRedirectEntitySet
 }
 
-type AppProfileManifestImportRegistry struct {
+type ProfileManifestImportRegistry struct {
 	Name  string
 	Link  string
 	Match string
 }
 
-type AppProfileManifestImportRedirect struct {
+type ProfileManifestImportRedirect struct {
 	Regex string
 	Link  string
 	Match string
 }
 
-func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest) (err error) {
+func (imp *ProfileManifestWorkspaceImport) init(manifest *ProfileManifest) (err error) {
 	registryEntities := workspaceImportRegistryEntitySet{}
 	for i := 0; i < len(imp.Registries); i++ {
 		registry := imp.Registries[i]
 		if registry.Name == "" {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.import.registries[%d].name", i)),
@@ -228,7 +228,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		}
 
 		if registry.Link == "" {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.import.registries[%d].link", i)),
@@ -240,7 +240,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		if registry.Match != "" {
 			matchExpr, err = dsh_utils.CompileExpr(registry.Match)
 			if err != nil {
-				return errW(err, "app profile manifest invalid",
+				return errW(err, "profile manifest invalid",
 					reason("value invalid"),
 					kv("path", manifest.manifestPath),
 					kv("field", fmt.Sprintf("workspace.import.registries[%d].match", i)),
@@ -255,7 +255,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 	for i := 0; i < len(imp.Redirects); i++ {
 		redirect := imp.Redirects[i]
 		if redirect.Regex == "" {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.import.redirects[%d].regex", i)),
@@ -263,7 +263,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		}
 		regexObj, err := regexp.Compile(redirect.Regex)
 		if err != nil {
-			return errW(err, "app profile manifest invalid",
+			return errW(err, "profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.import.redirects[%d].regex", i)),
@@ -272,7 +272,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		}
 
 		if redirect.Link == "" {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("workspace.import.redirects[%d].link", i)),
@@ -284,7 +284,7 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 		if redirect.Match != "" {
 			matchObj, err = dsh_utils.CompileExpr(redirect.Match)
 			if err != nil {
-				return errW(err, "app profile manifest invalid",
+				return errW(err, "profile manifest invalid",
 					reason("value invalid"),
 					kv("path", manifest.manifestPath),
 					kv("field", fmt.Sprintf("workspace.import.redirects[%d].match", i)),
@@ -304,30 +304,30 @@ func (imp *AppProfileManifestWorkspaceImport) init(manifest *AppProfileManifest)
 
 // region project
 
-type AppProfileManifestProject struct {
-	Option *AppProfileManifestProjectOption
-	Script *AppProfileManifestProjectScript
-	Config *AppProfileManifestProjectConfig
+type ProfileManifestProject struct {
+	Option *ProfileManifestProjectOption
+	Script *ProfileManifestProjectScript
+	Config *ProfileManifestProjectConfig
 }
 
-func NewAppProfileManifestProject(option *AppProfileManifestProjectOption, script *AppProfileManifestProjectScript, config *AppProfileManifestProjectConfig) *AppProfileManifestProject {
+func NewProfileManifestProject(option *ProfileManifestProjectOption, script *ProfileManifestProjectScript, config *ProfileManifestProjectConfig) *ProfileManifestProject {
 	if option == nil {
-		option = &AppProfileManifestProjectOption{}
+		option = &ProfileManifestProjectOption{}
 	}
 	if script == nil {
-		script = &AppProfileManifestProjectScript{}
+		script = &ProfileManifestProjectScript{}
 	}
 	if config == nil {
-		config = &AppProfileManifestProjectConfig{}
+		config = &ProfileManifestProjectConfig{}
 	}
-	return &AppProfileManifestProject{
+	return &ProfileManifestProject{
 		Option: option,
 		Script: script,
 		Config: config,
 	}
 }
 
-func (p *AppProfileManifestProject) init(manifest *AppProfileManifest) (err error) {
+func (p *ProfileManifestProject) init(manifest *ProfileManifest) (err error) {
 	if err = p.Option.init(manifest); err != nil {
 		return err
 	}
@@ -344,36 +344,36 @@ func (p *AppProfileManifestProject) init(manifest *AppProfileManifest) (err erro
 
 // region project option
 
-type AppProfileManifestProjectOption struct {
-	Items    []*AppProfileManifestProjectOptionItem
+type ProfileManifestProjectOption struct {
+	Items    []*ProfileManifestProjectOptionItem
 	entities projectOptionSpecifyEntitySet
 }
 
-type AppProfileManifestProjectOptionItem struct {
+type ProfileManifestProjectOptionItem struct {
 	Name  string
 	Value string
 	Match string
 }
 
-func NewAppProfileManifestProjectOption(items map[string]string) *AppProfileManifestProjectOption {
-	var optionItems []*AppProfileManifestProjectOptionItem
+func NewProfileManifestProjectOption(items map[string]string) *ProfileManifestProjectOption {
+	var optionItems []*ProfileManifestProjectOptionItem
 	for k, v := range items {
-		optionItems = append(optionItems, &AppProfileManifestProjectOptionItem{
+		optionItems = append(optionItems, &ProfileManifestProjectOptionItem{
 			Name:  k,
 			Value: v,
 		})
 	}
-	return &AppProfileManifestProjectOption{
+	return &ProfileManifestProjectOption{
 		Items: optionItems,
 	}
 }
 
-func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (err error) {
+func (o *ProfileManifestProjectOption) init(manifest *ProfileManifest) (err error) {
 	entities := projectOptionSpecifyEntitySet{}
 	for i := 0; i < len(o.Items); i++ {
 		item := o.Items[i]
 		if item.Name == "" {
-			return errN("app profile manifest invalid",
+			return errN("profile manifest invalid",
 				reason("value empty"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("project.option.items[%d].name", i)),
@@ -383,7 +383,7 @@ func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (er
 		if item.Match != "" {
 			matchObj, err = dsh_utils.CompileExpr(item.Match)
 			if err != nil {
-				return errW(err, "app profile manifest invalid",
+				return errW(err, "profile manifest invalid",
 					reason("value invalid"),
 					kv("path", manifest.manifestPath),
 					kv("field", fmt.Sprintf("project.option.items[%d].match", i)),
@@ -402,21 +402,21 @@ func (o *AppProfileManifestProjectOption) init(manifest *AppProfileManifest) (er
 
 // region project script
 
-type AppProfileManifestProjectScript struct {
-	Sources        []*AppProfileManifestProjectSource
-	Imports        []*AppProfileManifestProjectImport
+type ProfileManifestProjectScript struct {
+	Sources        []*ProfileManifestProjectSource
+	Imports        []*ProfileManifestProjectImport
 	sourceEntities projectSourceEntitySet
 	importEntities []*projectImportEntity
 }
 
-func NewAppProfileManifestProjectScript(sources []*AppProfileManifestProjectSource, imports []*AppProfileManifestProjectImport) *AppProfileManifestProjectScript {
-	return &AppProfileManifestProjectScript{
+func NewProfileManifestProjectScript(sources []*ProfileManifestProjectSource, imports []*ProfileManifestProjectImport) *ProfileManifestProjectScript {
+	return &ProfileManifestProjectScript{
 		Sources: sources,
 		Imports: imports,
 	}
 }
 
-func (s *AppProfileManifestProjectScript) init(manifest *AppProfileManifest) (err error) {
+func (s *ProfileManifestProjectScript) init(manifest *ProfileManifest) (err error) {
 	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(s.Sources); i++ {
 		src := s.Sources[i]
@@ -446,21 +446,21 @@ func (s *AppProfileManifestProjectScript) init(manifest *AppProfileManifest) (er
 
 // region project config
 
-type AppProfileManifestProjectConfig struct {
-	Sources        []*AppProfileManifestProjectSource
-	Imports        []*AppProfileManifestProjectImport
+type ProfileManifestProjectConfig struct {
+	Sources        []*ProfileManifestProjectSource
+	Imports        []*ProfileManifestProjectImport
 	sourceEntities []*projectSourceEntity
 	importEntities []*projectImportEntity
 }
 
-func NewAppProfileManifestProjectConfig(sources []*AppProfileManifestProjectSource, imports []*AppProfileManifestProjectImport) *AppProfileManifestProjectConfig {
-	return &AppProfileManifestProjectConfig{
+func NewProfileManifestProjectConfig(sources []*ProfileManifestProjectSource, imports []*ProfileManifestProjectImport) *ProfileManifestProjectConfig {
+	return &ProfileManifestProjectConfig{
 		Sources: sources,
 		Imports: imports,
 	}
 }
 
-func (c *AppProfileManifestProjectConfig) init(manifest *AppProfileManifest) (err error) {
+func (c *ProfileManifestProjectConfig) init(manifest *ProfileManifest) (err error) {
 	sourceEntities := projectSourceEntitySet{}
 	for i := 0; i < len(c.Sources); i++ {
 		src := c.Sources[i]
@@ -490,23 +490,23 @@ func (c *AppProfileManifestProjectConfig) init(manifest *AppProfileManifest) (er
 
 // region project source
 
-type AppProfileManifestProjectSource struct {
+type ProfileManifestProjectSource struct {
 	Dir   string
 	Files []string
 	Match string
 }
 
-func NewAppProfileManifestProjectSource(dir string, files []string, match string) *AppProfileManifestProjectSource {
-	return &AppProfileManifestProjectSource{
+func NewProfileManifestProjectSource(dir string, files []string, match string) *ProfileManifestProjectSource {
+	return &ProfileManifestProjectSource{
 		Dir:   dir,
 		Files: files,
 		Match: match,
 	}
 }
 
-func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, scope string, index int) (entity *projectSourceEntity, err error) {
+func (s *ProfileManifestProjectSource) init(manifest *ProfileManifest, scope string, index int) (entity *projectSourceEntity, err error) {
 	if s.Dir == "" {
-		return nil, errN("project manifest invalid",
+		return nil, errN("profile manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("project.%s.sources[%d].dir", scope, index)),
@@ -517,7 +517,7 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 	if s.Match != "" {
 		matchObj, err = dsh_utils.CompileExpr(s.Match)
 		if err != nil {
-			return nil, errW(err, "project manifest invalid",
+			return nil, errW(err, "profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("project.%s.sources[%d].match", scope, index)),
@@ -533,21 +533,21 @@ func (s *AppProfileManifestProjectSource) init(manifest *AppProfileManifest, sco
 
 // region project import
 
-type AppProfileManifestProjectImport struct {
+type ProfileManifestProjectImport struct {
 	Link  string
 	Match string
 }
 
-func NewAppProfileManifestProjectImport(link string, match string) *AppProfileManifestProjectImport {
-	return &AppProfileManifestProjectImport{
+func NewProfileManifestProjectImport(link string, match string) *ProfileManifestProjectImport {
+	return &ProfileManifestProjectImport{
 		Link:  link,
 		Match: match,
 	}
 }
 
-func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, scope string, index int) (entity *projectImportEntity, err error) {
+func (i *ProfileManifestProjectImport) init(manifest *ProfileManifest, scope string, index int) (entity *projectImportEntity, err error) {
 	if i.Link == "" {
-		return nil, errN("project manifest invalid",
+		return nil, errN("profile manifest invalid",
 			reason("value empty"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
@@ -555,7 +555,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 	}
 	linkObj, err := parseProjectLink(i.Link)
 	if err != nil {
-		return nil, errW(err, "project manifest invalid",
+		return nil, errW(err, "profile manifest invalid",
 			reason("value invalid"),
 			kv("path", manifest.manifestPath),
 			kv("field", fmt.Sprintf("project.%s.imports[%d].link", scope, index)),
@@ -567,7 +567,7 @@ func (i *AppProfileManifestProjectImport) init(manifest *AppProfileManifest, sco
 	if i.Match != "" {
 		matchObj, err = dsh_utils.CompileExpr(i.Match)
 		if err != nil {
-			return nil, errW(err, "project manifest invalid",
+			return nil, errW(err, "profile manifest invalid",
 				reason("value invalid"),
 				kv("path", manifest.manifestPath),
 				kv("field", fmt.Sprintf("project.%s.imports[%d].match", scope, index)),
