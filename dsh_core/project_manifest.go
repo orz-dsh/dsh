@@ -24,7 +24,7 @@ func loadProjectManifest(projectPath string) (manifest *projectManifest, err err
 		Script:  &projectManifestScript{},
 		Config:  &projectManifestConfig{},
 	}
-	metadata, err := dsh_utils.DeserializeByDir(projectPath, []string{"project"}, manifest, true)
+	metadata, err := dsh_utils.DeserializeFromDir(projectPath, []string{"project"}, manifest, true)
 	if err != nil {
 		return nil, errW(err, "load project manifest error",
 			reason("load manifest from dir error"),

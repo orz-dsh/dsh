@@ -13,7 +13,7 @@ const (
 	SerializationFormatJson SerializationFormat = "json"
 )
 
-var deserializeFindFileTypes = []FileType{
+var serializationSupportedFileTypes = []FileType{
 	FileTypeYaml,
 	FileTypeToml,
 	FileTypeJson,
@@ -33,7 +33,7 @@ func GetSerializationFormat(fileType FileType) SerializationFormat {
 	return ""
 }
 
-func DeserializeByDir(dir string, fileNames []string, manifestEntity any, required bool) (metadata *SerializationMetadata, err error) {
+func DeserializeFromDir(dir string, fileNames []string, manifestEntity any, required bool) (metadata *SerializationMetadata, err error) {
 	var findFileNames []string
 	for i := 0; i < len(fileNames); i++ {
 		fileName := fileNames[i]
@@ -43,7 +43,7 @@ func DeserializeByDir(dir string, fileNames []string, manifestEntity any, requir
 		findFileNames = append(findFileNames, fileName+".json")
 	}
 
-	filePath, fileType := FindFile(dir, findFileNames, deserializeFindFileTypes)
+	filePath, fileType := FindFile(dir, findFileNames, serializationSupportedFileTypes)
 	if filePath == "" {
 		if required {
 			return nil, errN("deserialize error",
@@ -56,10 +56,10 @@ func DeserializeByDir(dir string, fileNames []string, manifestEntity any, requir
 		}
 	}
 
-	return DeserializeByFile(filePath, GetSerializationFormat(fileType), manifestEntity)
+	return DeserializeFromFile(filePath, GetSerializationFormat(fileType), manifestEntity)
 }
 
-func DeserializeByFile(path string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {
+func DeserializeFromFile(path string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {
 	if format == "" {
 		if !IsFileExists(path) {
 			return nil, errN("deserialize error",
@@ -67,7 +67,7 @@ func DeserializeByFile(path string, format SerializationFormat, model any) (meta
 				kv("path", path),
 			)
 		}
-		fileType := GetFileType(path, deserializeFindFileTypes)
+		fileType := GetFileType(path, serializationSupportedFileTypes)
 		if fileType == "" {
 			return nil, errN("deserialize error",
 				reason("file type not supported"),

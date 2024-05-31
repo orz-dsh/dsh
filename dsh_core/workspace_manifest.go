@@ -27,7 +27,7 @@ func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, e
 		Shell:  &workspaceManifestShell{},
 		Import: &workspaceManifestImport{},
 	}
-	metadata, err := dsh_utils.DeserializeByDir(workspacePath, []string{"workspace"}, manifest, false)
+	metadata, err := dsh_utils.DeserializeFromDir(workspacePath, []string{"workspace"}, manifest, false)
 	if err != nil {
 		return nil, errW(err, "load workspace manifest error",
 			reason("load manifest from dir error"),

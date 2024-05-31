@@ -35,7 +35,7 @@ func loadProfileManifest(path string) (*ProfileManifest, error) {
 	}
 
 	if path != "" {
-		metadata, err := dsh_utils.DeserializeByFile(path, "", manifest)
+		metadata, err := dsh_utils.DeserializeFromFile(path, "", manifest)
 		if err != nil {
 			return nil, errW(err, "load profile manifest error",
 				reason("load manifest from file error"),

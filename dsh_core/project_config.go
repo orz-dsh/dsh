@@ -225,7 +225,7 @@ func (c *projectConfigSourceContainer) loadSources() (err error) {
 		source := c.Sources[i]
 		if source.content == nil {
 			content := &projectConfigContent{}
-			if _, err = dsh_utils.DeserializeByFile(source.SourcePath, source.SourceFormat, content); err != nil {
+			if _, err = dsh_utils.DeserializeFromFile(source.SourcePath, source.SourceFormat, content); err != nil {
 				return errW(err, "load config sources error",
 					reason("deserialize error"),
 					kv("sourcePath", source.SourcePath),
