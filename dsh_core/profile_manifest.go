@@ -14,7 +14,6 @@ type ProfileManifest struct {
 	Workspace    *ProfileManifestWorkspace
 	Project      *ProfileManifestProject
 	manifestPath string
-	manifestType manifestMetadataType
 }
 
 func loadProfileManifest(path string) (*ProfileManifest, error) {
@@ -36,15 +35,14 @@ func loadProfileManifest(path string) (*ProfileManifest, error) {
 	}
 
 	if path != "" {
-		metadata, err := loadManifestFromFile(path, "", manifest)
+		metadata, err := dsh_utils.DeserializeByFile(path, "", manifest)
 		if err != nil {
 			return nil, errW(err, "load profile manifest error",
 				reason("load manifest from file error"),
 				kv("path", path),
 			)
 		}
-		manifest.manifestPath = metadata.ManifestPath
-		manifest.manifestType = metadata.ManifestType
+		manifest.manifestPath = metadata.Path
 	}
 
 	if err := manifest.init(); err != nil {
@@ -77,7 +75,6 @@ func MakeProfileManifest(option *ProfileManifestOption, workspace *ProfileManife
 func (m *ProfileManifest) DescExtraKeyValues() KVS {
 	return KVS{
 		kv("manifestPath", m.manifestPath),
-		kv("manifestType", m.manifestType),
 	}
 }
 

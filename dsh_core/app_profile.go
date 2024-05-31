@@ -14,8 +14,8 @@ type appProfile struct {
 	workspaceShellEntities          workspaceShellEntitySet
 	workspaceImportRegistryEntities workspaceImportRegistryEntitySet
 	workspaceImportRedirectEntities workspaceImportRedirectEntitySet
-	projectManifestsByPath          map[string]*projectManifest
-	projectManifestsByName          map[string]*projectManifest
+	projectEntitiesByPath           map[string]*projectEntity
+	projectEntitiesByName           map[string]*projectEntity
 }
 
 func newAppProfile(workspace *Workspace, manifests []*ProfileManifest) *appProfile {
@@ -46,8 +46,8 @@ func newAppProfile(workspace *Workspace, manifests []*ProfileManifest) *appProfi
 		workspaceShellEntities:          workspaceShellEntities,
 		workspaceImportRegistryEntities: workspaceImportRegistryEntities,
 		workspaceImportRedirectEntities: workspaceImportRedirectEntities,
-		projectManifestsByPath:          map[string]*projectManifest{},
-		projectManifestsByName:          map[string]*projectManifest{},
+		projectEntitiesByPath:           map[string]*projectEntity{},
+		projectEntitiesByName:           map[string]*projectEntity{},
 	}
 	return profile
 }
@@ -172,8 +172,8 @@ func (p *appProfile) getProjectEntityByDir(path string) (*projectEntity, error) 
 		)
 	}
 	path = absPath
-	if manifest, exist := p.projectManifestsByPath[path]; exist {
-		return manifest.entity, nil
+	if entity, exist := p.projectEntitiesByPath[path]; exist {
+		return entity, nil
 	}
 
 	p.logger.DebugDesc("load project manifest", kv("path", path))
@@ -181,19 +181,20 @@ func (p *appProfile) getProjectEntityByDir(path string) (*projectEntity, error) 
 	if manifest, err = loadProjectManifest(path); err != nil {
 		return nil, err
 	}
-	if existManifest, exist := p.projectManifestsByName[manifest.projectName]; exist {
-		if existManifest.projectPath != manifest.projectPath {
-			return nil, errN("load project manifest error",
+	entity := manifest.entity
+	if existEntity, exist := p.projectEntitiesByName[entity.Name]; exist {
+		if existEntity.Path != entity.Path {
+			return nil, errN("get project entity error",
 				reason("project name duplicated"),
-				kv("projectName", manifest.projectName),
-				kv("projectPath1", manifest.projectPath),
-				kv("projectPath2", existManifest.projectPath),
+				kv("projectName", entity.Name),
+				kv("projectPath1", entity.Path),
+				kv("projectPath2", existEntity.Path),
 			)
 		}
 	}
-	p.projectManifestsByPath[manifest.projectPath] = manifest
-	p.projectManifestsByName[manifest.projectName] = manifest
-	return manifest.entity, nil
+	p.projectEntitiesByPath[entity.Path] = entity
+	p.projectEntitiesByName[entity.Name] = entity
+	return entity, nil
 }
 
 func (p *appProfile) getProjectEntityByGit(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *projectLinkGitRef) (entity *projectEntity, err error) {

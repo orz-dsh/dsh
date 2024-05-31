@@ -14,9 +14,6 @@ type projectManifest struct {
 	Script       *projectManifestScript
 	Config       *projectManifestConfig
 	manifestPath string
-	manifestType manifestMetadataType
-	projectName  string
-	projectPath  string
 	entity       *projectEntity
 }
 
@@ -27,17 +24,15 @@ func loadProjectManifest(projectPath string) (manifest *projectManifest, err err
 		Script:  &projectManifestScript{},
 		Config:  &projectManifestConfig{},
 	}
-	metadata, err := loadManifestFromDir(projectPath, []string{"project"}, manifest, true)
+	metadata, err := dsh_utils.DeserializeByDir(projectPath, []string{"project"}, manifest, true)
 	if err != nil {
 		return nil, errW(err, "load project manifest error",
 			reason("load manifest from dir error"),
 			kv("projectPath", projectPath),
 		)
 	}
-	manifest.manifestPath = metadata.ManifestPath
-	manifest.manifestType = metadata.ManifestType
-	manifest.projectPath = projectPath
-	if err = manifest.init(); err != nil {
+	manifest.manifestPath = metadata.Path
+	if err = manifest.init(projectPath); err != nil {
 		return nil, err
 	}
 	return manifest, nil
@@ -45,14 +40,11 @@ func loadProjectManifest(projectPath string) (manifest *projectManifest, err err
 
 func (m *projectManifest) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("projectName", m.projectName),
-		kv("projectPath", m.projectPath),
 		kv("manifestPath", m.manifestPath),
-		kv("manifestType", m.manifestType),
 	}
 }
 
-func (m *projectManifest) init() (err error) {
+func (m *projectManifest) init(projectPath string) (err error) {
 	if m.entity != nil {
 		return nil
 	}
@@ -72,7 +64,6 @@ func (m *projectManifest) init() (err error) {
 			kv("value", m.Name),
 		)
 	}
-	m.projectName = m.Name
 	if err = m.Runtime.init(m); err != nil {
 		return err
 	}
@@ -95,7 +86,7 @@ func (m *projectManifest) init() (err error) {
 		return err
 	}
 
-	m.entity = newProjectEntity(m.projectName, m.projectPath, optionDeclares, optionVerifies, scriptSources, scriptImports, configSources, configImports)
+	m.entity = newProjectEntity(m.Name, projectPath, optionDeclares, optionVerifies, scriptSources, scriptImports, configSources, configImports)
 	return nil
 }
 

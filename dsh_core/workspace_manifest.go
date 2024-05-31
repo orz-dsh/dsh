@@ -15,7 +15,6 @@ type workspaceManifest struct {
 	Shell         *workspaceManifestShell
 	Import        *workspaceManifestImport
 	manifestPath  string
-	manifestType  manifestMetadataType
 	workspacePath string
 }
 
@@ -28,7 +27,7 @@ func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, e
 		Shell:  &workspaceManifestShell{},
 		Import: &workspaceManifestImport{},
 	}
-	metadata, err := loadManifestFromDir(workspacePath, []string{"workspace"}, manifest, false)
+	metadata, err := dsh_utils.DeserializeByDir(workspacePath, []string{"workspace"}, manifest, false)
 	if err != nil {
 		return nil, errW(err, "load workspace manifest error",
 			reason("load manifest from dir error"),
@@ -36,8 +35,7 @@ func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, e
 		)
 	}
 	if metadata != nil {
-		manifest.manifestPath = metadata.ManifestPath
-		manifest.manifestType = metadata.ManifestType
+		manifest.manifestPath = metadata.Path
 	}
 	manifest.workspacePath = workspacePath
 	if err = manifest.init(); err != nil {
@@ -49,7 +47,6 @@ func loadWorkspaceManifest(workspacePath string) (manifest *workspaceManifest, e
 func (m *workspaceManifest) DescExtraKeyValues() KVS {
 	return KVS{
 		kv("manifestPath", m.manifestPath),
-		kv("manifestType", m.manifestType),
 		kv("workspacePath", m.workspacePath),
 	}
 }
