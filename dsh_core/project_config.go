@@ -35,10 +35,9 @@ func makeProjectConfig(context *appContext, entity *projectEntity, option *proje
 // region source
 
 type projectConfigSource struct {
-	SourcePath string
-	SourceName string
-	SourceType projectConfigSourceType
-	content    *projectConfigContent
+	SourcePath   string
+	SourceFormat projectConfigSourceFormat
+	content      *projectConfigContent
 }
 
 type projectConfigContent struct {
@@ -47,13 +46,7 @@ type projectConfigContent struct {
 	Configs map[string]any
 }
 
-type projectConfigSourceType string
-
-const (
-	projectConfigSourceTypeYaml projectConfigSourceType = "yaml"
-	projectConfigSourceTypeToml projectConfigSourceType = "toml"
-	projectConfigSourceTypeJson projectConfigSourceType = "json"
-)
+type projectConfigSourceFormat = dsh_utils.SerializationFormat
 
 const (
 	projectConfigMergeKeyRoot     = "$root"
@@ -213,21 +206,10 @@ func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFile
 	for i := 0; i < len(filePaths); i++ {
 		filePath := filePaths[i]
 		fileType := fileTypes[i]
-		var sourceType projectConfigSourceType
-		switch fileType {
-		case dsh_utils.FileTypeYaml:
-			sourceType = projectConfigSourceTypeYaml
-		case dsh_utils.FileTypeToml:
-			sourceType = projectConfigSourceTypeToml
-		case dsh_utils.FileTypeJson:
-			sourceType = projectConfigSourceTypeJson
-		default:
-			impossible()
-		}
+		sourceFormat := dsh_utils.GetSerializationFormat(fileType)
 		source := &projectConfigSource{
-			SourcePath: filepath.Join(sourceDir, filePath),
-			SourceName: filePath,
-			SourceType: sourceType,
+			SourcePath:   filepath.Join(sourceDir, filePath),
+			SourceFormat: sourceFormat,
 		}
 		if c.sourcePathsDict[source.SourcePath] {
 			continue
@@ -243,30 +225,12 @@ func (c *projectConfigSourceContainer) loadSources() (err error) {
 		source := c.Sources[i]
 		if source.content == nil {
 			content := &projectConfigContent{}
-			switch source.SourceType {
-			case projectConfigSourceTypeYaml:
-				if err = dsh_utils.ReadYamlFile(source.SourcePath, content); err != nil {
-					return errW(err, "load config sources error",
-						reason("read yaml file error"),
-						kv("sourcePath", source.SourcePath),
-					)
-				}
-			case projectConfigSourceTypeToml:
-				if err = dsh_utils.ReadTomlFile(source.SourcePath, content); err != nil {
-					return errW(err, "load config sources error",
-						reason("read toml file error"),
-						kv("sourcePath", source.SourcePath),
-					)
-				}
-			case projectConfigSourceTypeJson:
-				if err = dsh_utils.ReadJsonFile(source.SourcePath, content); err != nil {
-					return errW(err, "load config sources error",
-						reason("read json file error"),
-						kv("sourcePath", source.SourcePath),
-					)
-				}
-			default:
-				impossible()
+			if _, err = dsh_utils.DeserializeByFile(source.SourcePath, source.SourceFormat, content); err != nil {
+				return errW(err, "load config sources error",
+					reason("deserialize error"),
+					kv("sourcePath", source.SourcePath),
+					kv("sourceFormat", source.SourceFormat),
+				)
 			}
 			for k, v := range content.Merges {
 				switch v {
