@@ -80,7 +80,7 @@ func newProfileProjectEntity(name string, path string, match string, scriptSourc
 
 func (s profileProjectEntitySet) getProjectEntities(evaluator *Evaluator) (projectEntitySet, error) {
 	result := projectEntitySet{}
-	for i := 0; i < len(s); i++ {
+	for i := len(s) - 1; i >= 0; i-- {
 		entity := s[i]
 		matched, err := evaluator.EvalBoolExpr(entity.match)
 		if err != nil {
