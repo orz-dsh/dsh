@@ -195,7 +195,7 @@ func makeProjectConfigSourceContainer(context *appContext, entity *projectEntity
 }
 
 func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
-	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
+	files, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypeYaml,
 		dsh_utils.FileTypeToml,
 		dsh_utils.FileTypeJson,
@@ -203,13 +203,11 @@ func (c *projectConfigSourceContainer) scanSources(sourceDir string, includeFile
 	if err != nil {
 		return err
 	}
-	for i := 0; i < len(filePaths); i++ {
-		filePath := filePaths[i]
-		fileType := fileTypes[i]
-		sourceFormat := dsh_utils.GetSerializationFormat(fileType)
+	for i := 0; i < len(files); i++ {
+		file := files[i]
 		source := &projectConfigSource{
-			SourcePath:   filepath.Join(sourceDir, filePath),
-			SourceFormat: sourceFormat,
+			SourcePath:   file.Path,
+			SourceFormat: dsh_utils.GetSerializationFormat(file.Type),
 		}
 		if c.sourcePathsDict[source.SourcePath] {
 			continue

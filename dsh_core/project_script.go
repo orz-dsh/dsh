@@ -76,7 +76,7 @@ func makeProjectScriptSourceContainer(context *appContext, entity *projectEntity
 }
 
 func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
-	filePaths, fileTypes, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
+	files, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypePlain,
 		dsh_utils.FileTypeTemplate,
 		dsh_utils.FileTypeTemplateLib,
@@ -84,14 +84,13 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 	if err != nil {
 		return err
 	}
-	for j := 0; j < len(filePaths); j++ {
-		filePath := filePaths[j]
-		fileType := fileTypes[j]
+	for j := 0; j < len(files); j++ {
+		file := files[j]
 		source := &projectScriptSource{
-			SourcePath: filepath.Join(sourceDir, filePaths[j]),
-			SourceName: filePath,
+			SourcePath: file.Path,
+			SourceName: file.RelPath,
 		}
-		if fileType == dsh_utils.FileTypeTemplate {
+		if file.Type == dsh_utils.FileTypeTemplate {
 			source.SourceName = source.SourceName[:len(source.SourceName)-len(".dtpl")]
 		}
 		if existSource, exist := c.sourcesByName[source.SourceName]; exist {
@@ -104,7 +103,7 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 				kv("existSource", existSource),
 			)
 		}
-		switch fileType {
+		switch file.Type {
 		case dsh_utils.FileTypePlain:
 			c.PlainSources = append(c.PlainSources, source)
 		case dsh_utils.FileTypeTemplate:

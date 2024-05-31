@@ -43,8 +43,8 @@ func DeserializeFromDir(dir string, fileNames []string, manifestEntity any, requ
 		findFileNames = append(findFileNames, fileName+".json")
 	}
 
-	filePath, fileType := FindFile(dir, findFileNames, serializationSupportedFileTypes)
-	if filePath == "" {
+	file := FindFile(dir, findFileNames, serializationSupportedFileTypes)
+	if file == nil {
 		if required {
 			return nil, errN("deserialize error",
 				reason("file not found"),
@@ -56,7 +56,7 @@ func DeserializeFromDir(dir string, fileNames []string, manifestEntity any, requ
 		}
 	}
 
-	return DeserializeFromFile(filePath, GetSerializationFormat(fileType), manifestEntity)
+	return DeserializeFromFile(file.Path, GetSerializationFormat(file.Type), manifestEntity)
 }
 
 func DeserializeFromFile(path string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {

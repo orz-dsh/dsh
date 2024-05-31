@@ -21,60 +21,60 @@ const (
 	FileTypePlain       FileType = "plain"
 )
 
-func IsFileExists(path string) bool {
-	info, err := os.Stat(path)
+func IsFileExists(file string) bool {
+	info, err := os.Stat(file)
 	if err != nil {
 		return false
 	}
 	return !info.IsDir()
 }
 
-func IsDirExists(path string) bool {
-	info, err := os.Stat(path)
+func IsDirExists(dir string) bool {
+	info, err := os.Stat(dir)
 	if err != nil {
 		return false
 	}
 	return info.IsDir()
 }
 
-func RemakeDir(path string) (err error) {
-	if err = os.RemoveAll(path); err != nil {
+func RemakeDir(dir string) (err error) {
+	if err = os.RemoveAll(dir); err != nil {
 		return errW(err, "remake dir error",
 			reason("remove dir error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
-	if err = os.MkdirAll(path, os.ModePerm); err != nil {
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 		return errW(err, "remake dir error",
 			reason("make dir error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
 	return nil
 }
 
-func ClearDir(path string) (err error) {
-	children, err := os.ReadDir(path)
+func ClearDir(dir string) (err error) {
+	children, err := os.ReadDir(dir)
 	if err != nil {
 		return errW(err, "clear dir error",
 			reason("read dir error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
 	for i := 0; i < len(children); i++ {
-		childPath := filepath.Join(path, children[i].Name())
+		child := filepath.Join(dir, children[i].Name())
 		if children[i].IsDir() {
-			if err = os.RemoveAll(childPath); err != nil {
+			if err = os.RemoveAll(child); err != nil {
 				return errW(err, "clear dir error",
-					reason("remove dir error"),
-					kv("path", childPath),
+					reason("remove child dir error"),
+					kv("child", child),
 				)
 			}
 		} else {
-			if err = os.Remove(childPath); err != nil {
+			if err = os.Remove(child); err != nil {
 				return errW(err, "clear dir error",
-					reason("remove file error"),
-					kv("path", childPath),
+					reason("remove child file error"),
+					kv("child", child),
 				)
 			}
 		}
@@ -82,43 +82,45 @@ func ClearDir(path string) (err error) {
 	return nil
 }
 
-func LinkFile(sourcePath string, targetPath string) (err error) {
-	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+func LinkFile(sourceFile string, targetFile string) (err error) {
+	targetDir := filepath.Dir(targetFile)
+	if err = os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return errW(err, "link file error",
-			reason("make dir error"),
-			kv("path", targetPath),
+			reason("make target dir error"),
+			kv("targetDir", targetDir),
 		)
 	}
-	return os.Link(sourcePath, targetPath)
+	return os.Link(sourceFile, targetFile)
 }
 
-func CopyFile(sourcePath string, targetPath string) (err error) {
-	if err = os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+func CopyFile(sourceFile string, targetFile string) (err error) {
+	targetDir := filepath.Dir(targetFile)
+	if err = os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return errW(err, "copy file error",
-			reason("make dir error"),
-			kv("path", targetPath),
+			reason("make target dir error"),
+			kv("targetDir", targetDir),
 		)
 	}
 
-	targetFile, err := os.Create(targetPath)
+	targetWriter, err := os.Create(targetFile)
 	if err != nil {
 		return errW(err, "copy file error",
-			reason("create target file error"),
-			kv("path", targetPath),
+			reason("create target writer error"),
+			kv("targetFile", targetFile),
 		)
 	}
-	defer targetFile.Close()
+	defer targetWriter.Close()
 
-	sourceFile, err := os.Open(sourcePath)
+	sourceReader, err := os.Open(sourceFile)
 	if err != nil {
 		return errW(err, "copy file error",
-			reason("open source file error"),
-			kv("path", sourcePath),
+			reason("open source reader error"),
+			kv("sourceFile", sourceFile),
 		)
 	}
-	defer sourceFile.Close()
+	defer sourceReader.Close()
 
-	_, err = io.Copy(targetFile, sourceFile)
+	_, err = io.Copy(targetWriter, sourceReader)
 	if err != nil {
 		return errW(err, "copy file error",
 			reason("io copy error"),
@@ -129,117 +131,117 @@ func CopyFile(sourcePath string, targetPath string) (err error) {
 	return nil
 }
 
-func LinkOrCopyFile(sourcePath string, targetPath string) (err error) {
-	err = LinkFile(sourcePath, targetPath)
+func LinkOrCopyFile(sourceFile string, targetFile string) (err error) {
+	err = LinkFile(sourceFile, targetFile)
 	if err != nil {
-		err = CopyFile(sourcePath, targetPath)
+		err = CopyFile(sourceFile, targetFile)
 		if err != nil {
 			return errW(err, "link or copy file error",
 				reason("copy file error"),
-				kv("sourcePath", sourcePath),
-				kv("targetPath", targetPath),
+				kv("sourceFile", sourceFile),
+				kv("targetFile", targetFile),
 			)
 		}
 	}
 	return nil
 }
 
-func ReadYamlFile(path string, model any) error {
-	data, err := os.ReadFile(path)
+func ReadYamlFile(file string, model any) error {
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return errW(err, "read yaml file error",
 			reason("read file error"),
-			kv("path", path),
+			kv("file", file),
 		)
 	}
 	err = yaml.Unmarshal(data, model)
 	if err != nil {
 		return errW(err, "read yaml file error",
 			reason("yaml unmarshal error"),
-			kv("path", path),
+			kv("file", file),
 		)
 	}
 	return nil
 }
 
-func ReadTomlFile(path string, model any) error {
-	data, err := os.ReadFile(path)
+func ReadTomlFile(file string, model any) error {
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return errW(err, "read toml file error",
 			reason("read file error"),
-			kv("path", path),
+			kv("file", file),
 		)
 	}
 	err = toml.Unmarshal(data, model)
 	if err != nil {
 		return errW(err, "read toml file error",
 			reason("toml unmarshal error"),
-			kv("path", path),
+			kv("file", file),
 		)
 	}
 	return nil
 }
 
-func ReadJsonFile(path string, model any) error {
-	data, err := os.ReadFile(path)
+func ReadJsonFile(file string, model any) error {
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return errW(err, "read json file error",
 			reason("read file error"),
-			kv("path", path),
+			kv("file", file),
 		)
 	}
 	err = json.Unmarshal(data, model)
 	if err != nil {
 		return errW(err, "read json file error",
 			reason("json unmarshal error"),
-			kv("path", path),
+			kv("file", file),
 		)
 	}
 	return nil
 }
 
-func IsYamlFile(path string) bool {
-	return strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")
+func IsYamlFile(file string) bool {
+	return strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml")
 }
 
-func IsTomlFile(path string) bool {
-	return strings.HasSuffix(path, ".toml")
+func IsTomlFile(file string) bool {
+	return strings.HasSuffix(file, ".toml")
 }
 
-func IsJsonFile(path string) bool {
-	return strings.HasSuffix(path, ".json")
+func IsJsonFile(file string) bool {
+	return strings.HasSuffix(file, ".json")
 }
 
-func IsTemplateFile(path string) bool {
-	return strings.HasSuffix(path, ".dtpl")
+func IsTemplateFile(file string) bool {
+	return strings.HasSuffix(file, ".dtpl")
 }
 
-func IsTemplateLibFile(path string) bool {
-	return strings.HasSuffix(path, ".dtpl.lib")
+func IsTemplateLibFile(file string) bool {
+	return strings.HasSuffix(file, ".dtpl.lib")
 }
 
-func GetFileType(path string, fileTypes []FileType) FileType {
+func GetFileType(file string, types []FileType) FileType {
 	includePlain := false
-	for i := 0; i < len(fileTypes); i++ {
-		switch fileTypes[i] {
+	for i := 0; i < len(types); i++ {
+		switch types[i] {
 		case FileTypeYaml:
-			if IsYamlFile(path) {
+			if IsYamlFile(file) {
 				return FileTypeYaml
 			}
 		case FileTypeToml:
-			if IsTomlFile(path) {
+			if IsTomlFile(file) {
 				return FileTypeToml
 			}
 		case FileTypeJson:
-			if IsJsonFile(path) {
+			if IsJsonFile(file) {
 				return FileTypeJson
 			}
 		case FileTypeTemplate:
-			if IsTemplateFile(path) {
+			if IsTemplateFile(file) {
 				return FileTypeTemplate
 			}
 		case FileTypeTemplateLib:
-			if IsTemplateLibFile(path) {
+			if IsTemplateLibFile(file) {
 				return FileTypeTemplateLib
 			}
 		case FileTypePlain:
@@ -252,28 +254,37 @@ func GetFileType(path string, fileTypes []FileType) FileType {
 	return ""
 }
 
-func RemoveFileExt(path string) string {
-	ext := filepath.Ext(path)
+func RemoveFileExt(file string) string {
+	ext := filepath.Ext(file)
 	if ext == "" {
-		return path
+		return file
 	}
-	return path[:len(path)-len(ext)]
+	return file[:len(file)-len(ext)]
 }
 
-func FindFile(dir string, fileNames []string, fileTypes []FileType) (string, FileType) {
+type File struct {
+	Path    string
+	RelPath string
+	Type    FileType
+}
+
+func FindFile(dir string, fileNames []string, fileTypes []FileType) *File {
 	for i := 0; i < len(fileNames); i++ {
 		filePath := filepath.Join(dir, fileNames[i])
 		if IsFileExists(filePath) {
-			return filePath, GetFileType(filePath, fileTypes)
+			return &File{Path: filePath, RelPath: fileNames[i], Type: GetFileType(filePath, fileTypes)}
 		}
 	}
-	return "", ""
+	return nil
 }
 
-func ScanFiles(dir string, includeFiles []string, includeFileTypes []FileType) (filePaths []string, fileTypes []FileType, err error) {
-	var includeFilePathsDict = map[string]bool{}
-	for i := 0; i < len(includeFiles); i++ {
-		includeFilePathsDict[filepath.Join(dir, includeFiles[i])] = true
+func ScanFiles(dir string, fileNames []string, fileTypes []FileType) (files []*File, err error) {
+	var filePathsFilter map[string]bool
+	if len(fileNames) > 0 {
+		filePathsFilter = map[string]bool{}
+		for i := 0; i < len(fileNames); i++ {
+			filePathsFilter[filepath.Join(dir, fileNames[i])] = true
+		}
 	}
 	err = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
@@ -284,8 +295,8 @@ func ScanFiles(dir string, includeFiles []string, includeFileTypes []FileType) (
 			)
 		}
 		if !entry.IsDir() {
-			if len(includeFilePathsDict) > 0 {
-				if _, exist := includeFilePathsDict[path]; !exist {
+			if filePathsFilter != nil {
+				if _, exist := filePathsFilter[path]; !exist {
 					return nil
 				}
 			}
@@ -297,32 +308,31 @@ func ScanFiles(dir string, includeFiles []string, includeFileTypes []FileType) (
 					kv("path", path),
 				)
 			}
-			fileType := GetFileType(relPath, includeFileTypes)
+			fileType := GetFileType(relPath, fileTypes)
 			if fileType != "" {
-				filePaths = append(filePaths, relPath)
-				fileTypes = append(fileTypes, fileType)
+				files = append(files, &File{Path: path, RelPath: relPath, Type: fileType})
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return filePaths, fileTypes, nil
+	return files, nil
 }
 
-func ListChildDirs(path string) (names []string, err error) {
-	entries, err := os.ReadDir(path)
+func ListChildDirs(dir string) (names []string, err error) {
+	children, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errW(err, "list child dirs error",
 			reason("read dir error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
-	for i := 0; i < len(entries); i++ {
-		entry := entries[i]
-		if entry.IsDir() {
-			names = append(names, entry.Name())
+	for i := 0; i < len(children); i++ {
+		child := children[i]
+		if child.IsDir() {
+			names = append(names, child.Name())
 		}
 	}
 	return names, nil
