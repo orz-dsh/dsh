@@ -10,12 +10,11 @@ import (
 	"time"
 )
 
-func (w *Workspace) getGitProjectPath(parsedUrl *url.URL, parsedRef *projectLinkGitRef) string {
+func (w *Workspace) getGitProjectDir(parsedUrl *url.URL, parsedRef *projectLinkGitRef) string {
 	path1 := strings.ReplaceAll(parsedUrl.Host, ":", "@")
-	postfix := strings.ReplaceAll(parsedRef.Normalized, "/", "-")
+	postfix := string(parsedRef.Type) + "-" + parsedRef.Name
 	path2 := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(parsedUrl.Path, "/"), ".git"), "/", "@") + "@" + postfix
-	path := filepath.Join(w.path, "project", path1, path2)
-	return path
+	return filepath.Join(w.dir, "project", path1, path2)
 }
 
 func (w *Workspace) downloadGitProject(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *projectLinkGitRef) (err error) {

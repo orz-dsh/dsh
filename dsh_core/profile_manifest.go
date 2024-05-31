@@ -105,34 +105,50 @@ func NewProfileManifestOption(items map[string]string) *ProfileManifestOption {
 	}
 }
 
-func (o *ProfileManifestOption) init(manifest *ProfileManifest) (err error) {
+func (o *ProfileManifestOption) init(manifest *ProfileManifest) error {
 	entities := profileOptionSpecifyEntitySet{}
 	for i := 0; i < len(o.Items); i++ {
-		item := o.Items[i]
-		if item.Name == "" {
-			return errN("profile manifest invalid",
-				reason("value empty"),
-				kv("path", manifest.manifestPath),
-				kv("field", fmt.Sprintf("option.items[%d].name", i)),
-			)
+		if entity, err := o.Items[i].init(manifest, i); err != nil {
+			return err
+		} else {
+			entities = append(entities, entity)
 		}
-		var matchObj *EvalExpr
-		if item.Match != "" {
-			matchObj, err = dsh_utils.CompileExpr(item.Match)
-			if err != nil {
-				return errW(err, "profile manifest invalid",
-					reason("value invalid"),
-					kv("path", manifest.manifestPath),
-					kv("field", fmt.Sprintf("option.items[%d].match", i)),
-					kv("value", item.Match),
-				)
-			}
-		}
-		entities = append(entities, newProfileOptionSpecifyEntity(item.Name, item.Value, item.Match, matchObj))
 	}
 
 	o.entities = entities
 	return nil
+}
+
+func (i *ProfileManifestOptionItem) init(manifest *ProfileManifest, itemIndex int) (entity *profileOptionSpecifyEntity, err error) {
+	if i.Name == "" {
+		return nil, errN("profile manifest invalid",
+			reason("value empty"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].name", itemIndex)),
+		)
+	}
+	if checked := profileOptionNameCheckRegex.MatchString(i.Name); !checked {
+		return nil, errN("profile manifest invalid",
+			reason("value invalid"),
+			kv("path", manifest.manifestPath),
+			kv("field", fmt.Sprintf("option.items[%d].name", itemIndex)),
+			kv("value", i.Name),
+		)
+	}
+
+	var matchObj *EvalExpr
+	if i.Match != "" {
+		matchObj, err = dsh_utils.CompileExpr(i.Match)
+		if err != nil {
+			return nil, errW(err, "profile manifest invalid",
+				reason("value invalid"),
+				kv("path", manifest.manifestPath),
+				kv("field", fmt.Sprintf("option.items[%d].match", itemIndex)),
+				kv("value", i.Match),
+			)
+		}
+	}
+	return newProfileOptionSpecifyEntity(i.Name, i.Value, i.Match, matchObj), nil
 }
 
 // endregion

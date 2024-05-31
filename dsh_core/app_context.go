@@ -1,7 +1,6 @@
 package dsh_core
 
 type appContext struct {
-	systemInfo     *SystemInfo
 	logger         *Logger
 	workspace      *Workspace
 	evaluator      *Evaluator
@@ -12,7 +11,6 @@ type appContext struct {
 
 func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfile, option *appOption) *appContext {
 	return &appContext{
-		systemInfo:     workspace.systemInfo,
 		logger:         workspace.logger,
 		workspace:      workspace,
 		evaluator:      evaluator,

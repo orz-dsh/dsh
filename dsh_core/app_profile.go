@@ -57,7 +57,7 @@ func (p *appProfile) getAppOption(entity *projectEntity, evaluator *Evaluator) (
 	if err != nil {
 		return nil, err
 	}
-	option := newAppOption(p.workspace.systemInfo, evaluator, entity.Name, specifyItems)
+	option := newAppOption(p.workspace.global.systemInfo, evaluator, entity.Name, specifyItems)
 	return option, nil
 }
 
@@ -107,7 +107,7 @@ func (p *appProfile) getProjectLinkTarget(link *projectLink) (target *projectLin
 	if finalLink.Dir != nil {
 		path = finalLink.Dir.Path
 	} else if finalLink.Git != nil {
-		path = p.workspace.getGitProjectPath(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
+		path = p.workspace.getGitProjectDir(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
 	} else {
 		impossible()
 	}
@@ -124,7 +124,7 @@ func (p *appProfile) getProjectLinkTarget(link *projectLink) (target *projectLin
 		if finalLink.Dir != nil {
 			path = finalLink.Dir.Path
 		} else if finalLink.Git != nil {
-			path = p.workspace.getGitProjectPath(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
+			path = p.workspace.getGitProjectDir(finalLink.Git.parsedUrl, finalLink.Git.parsedRef)
 		} else {
 			impossible()
 		}
@@ -217,7 +217,7 @@ func (p *appProfile) getProjectEntityByGit(path string, rawUrl string, parsedUrl
 		}
 	}
 	if path == "" {
-		path = p.workspace.getGitProjectPath(parsedUrl, parsedRef)
+		path = p.workspace.getGitProjectDir(parsedUrl, parsedRef)
 	}
 	if err = p.workspace.downloadGitProject(path, rawUrl, parsedUrl, rawRef, parsedRef); err != nil {
 		return nil, errW(err, "load project manifest error",

@@ -4,13 +4,12 @@ import (
 	"dsh/dsh_utils"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type Workspace struct {
-	systemInfo       *SystemInfo
+	global           *Global
 	logger           *Logger
-	path             string
+	dir              string
 	manifest         *workspaceManifest
 	evaluator        *Evaluator
 	profileManifests []*ProfileManifest
@@ -20,50 +19,44 @@ type WorkspaceCleanSettings struct {
 	ExcludeOutputPath string
 }
 
-func OpenWorkspace(logger *Logger, path string, variables map[string]string) (workspace *Workspace, err error) {
-	systemInfo, err := dsh_utils.GetSystemInfo()
-	if err != nil {
-		return nil, errW(err, "open workspace error",
-			reason("get system info error"),
-			kv("path", path),
-		)
+func MakeWorkspace(global *Global, dir string) (workspace *Workspace, err error) {
+	if dir == "" {
+		dir = getWorkspaceDirDefault(global.systemInfo.HomeDir)
 	}
-	if path == "" {
-		path = getWorkspacePathDefault(systemInfo)
-	}
-	absPath, err := filepath.Abs(path)
+
+	absPath, err := filepath.Abs(dir)
 	if err != nil {
-		return nil, errW(err, "open workspace error",
+		return nil, errW(err, "make workspace error",
 			reason("get abs-path error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
-	path = absPath
-	logger.InfoDesc("open workspace", kv("path", path))
-	err = os.MkdirAll(path, os.ModePerm)
+	dir = absPath
+
+	global.logger.InfoDesc("make workspace", kv("dir", dir))
+	err = os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		return nil, errW(err, "open workspace error",
+		return nil, errW(err, "make workspace error",
 			reason("make dir error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
-	manifest, err := loadWorkspaceManifest(path)
+	manifest, err := loadWorkspaceManifest(dir)
 	if err != nil {
-		return nil, errW(err, "open workspace error",
+		return nil, errW(err, "make workspace error",
 			reason("load manifest error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
 
-	globalVariables := getWorkspaceGlobalVariables(variables)
-	evaluator := dsh_utils.NewEvaluator().SetData("global", globalVariables).SetData("local", map[string]any{
-		"os":                   systemInfo.Os,
-		"arch":                 systemInfo.Arch,
-		"hostname":             systemInfo.Hostname,
-		"username":             systemInfo.Username,
-		"home_dir":             systemInfo.HomeDir,
-		"working_dir":          systemInfo.WorkingDir,
-		"workspace_dir":        path,
+	evaluator := dsh_utils.NewEvaluator().SetData("global", global.variables).SetData("local", map[string]any{
+		"os":                   global.systemInfo.Os,
+		"arch":                 global.systemInfo.Arch,
+		"hostname":             global.systemInfo.Hostname,
+		"username":             global.systemInfo.Username,
+		"home_dir":             global.systemInfo.HomeDir,
+		"working_dir":          global.systemInfo.WorkingDir,
+		"workspace_dir":        dir,
 		"runtime_version":      dsh_utils.GetRuntimeVersion(),
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
 	})
@@ -82,9 +75,9 @@ func OpenWorkspace(logger *Logger, path string, variables map[string]string) (wo
 	}
 
 	workspace = &Workspace{
-		systemInfo:       systemInfo,
-		logger:           logger,
-		path:             path,
+		global:           global,
+		logger:           global.logger,
+		dir:              dir,
 		manifest:         manifest,
 		evaluator:        evaluator,
 		profileManifests: profileManifests,
@@ -92,45 +85,30 @@ func OpenWorkspace(logger *Logger, path string, variables map[string]string) (wo
 	return workspace, nil
 }
 
-func getWorkspacePathDefault(systemInfo *SystemInfo) string {
+func getWorkspaceDirDefault(homeDir string) string {
 	if path, exist := os.LookupEnv("DSH_WORKSPACE"); exist {
 		return path
 	}
-	if systemInfo.HomeDir != "" {
-		return filepath.Join(systemInfo.HomeDir, "dsh")
+	if homeDir != "" {
+		return filepath.Join(homeDir, "dsh")
 	}
 	return filepath.Join(os.TempDir(), "dsh")
 }
 
-func getWorkspaceGlobalVariables(variables map[string]string) map[string]any {
-	result := map[string]any{}
-	for _, e := range os.Environ() {
-		equalIndex := strings.Index(e, "=")
-		key := e[:equalIndex]
-		if name, found := strings.CutPrefix(key, "DSH_GLOBAL_"); found {
-			name = strings.ReplaceAll(strings.ToLower(name), "-", "_")
-			result[name] = e[equalIndex+1:]
-		}
-	}
-	for k, v := range variables {
-		result[k] = v
-	}
-	return result
-}
-
 func (w *Workspace) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("path", w.path),
+		kv("global", w.global),
+		kv("dir", w.dir),
 		kv("manifest", w.manifest),
 	}
 }
 
-func (w *Workspace) GetPath() string {
-	return w.path
+func (w *Workspace) GetDir() string {
+	return w.dir
 }
 
-func (w *Workspace) NewAppFactory() *AppFactory {
-	return newAppFactory(w)
+func (w *Workspace) NewAppMaker() *AppMaker {
+	return newAppMaker(w)
 }
 
 func (w *Workspace) Clean(settings WorkspaceCleanSettings) error {

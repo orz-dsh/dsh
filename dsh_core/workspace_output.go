@@ -57,7 +57,7 @@ func (w *Workspace) makeOutputDir(projectName string) (string, error) {
 				kv("projectName", projectName),
 			)
 		}
-		path := filepath.Join(w.path, "output", name)
+		path := filepath.Join(w.dir, "output", name)
 		if !dsh_utils.IsDirExists(path) {
 			if err = os.MkdirAll(path, os.ModePerm); err != nil {
 				return "", errW(err, "make output dir error",
@@ -72,12 +72,12 @@ func (w *Workspace) makeOutputDir(projectName string) (string, error) {
 	return "", errN("make output path error",
 		reason("retry too many times"),
 		kv("projectName", projectName),
-		kv("workspacePath", w.path),
+		kv("workspacePath", w.dir),
 	)
 }
 
 func (w *Workspace) cleanOutputDir(excludeOutputPath string) error {
-	outputPath := filepath.Join(w.path, "output")
+	outputPath := filepath.Join(w.dir, "output")
 	if !dsh_utils.IsDirExists(outputPath) {
 		return nil
 	}

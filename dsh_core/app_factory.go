@@ -5,13 +5,13 @@ import (
 	"slices"
 )
 
-type AppFactory struct {
+type AppMaker struct {
 	workspace *Workspace
 	manifests []*ProfileManifest
 }
 
-func newAppFactory(workspace *Workspace) *AppFactory {
-	factory := &AppFactory{
+func newAppMaker(workspace *Workspace) *AppMaker {
+	factory := &AppMaker{
 		workspace: workspace,
 		manifests: []*ProfileManifest{},
 	}
@@ -21,7 +21,7 @@ func newAppFactory(workspace *Workspace) *AppFactory {
 	return factory
 }
 
-func (f *AppFactory) AddManifest(position int, manifest *ProfileManifest) {
+func (f *AppMaker) AddManifest(position int, manifest *ProfileManifest) {
 	if position < 0 {
 		f.manifests = append(f.manifests, manifest)
 	} else {
@@ -29,7 +29,7 @@ func (f *AppFactory) AddManifest(position int, manifest *ProfileManifest) {
 	}
 }
 
-func (f *AppFactory) AddProfile(position int, file string) error {
+func (f *AppMaker) AddProfile(position int, file string) error {
 	absPath, err := filepath.Abs(file)
 	if err != nil {
 		return errW(err, "add profile error",
@@ -45,7 +45,7 @@ func (f *AppFactory) AddProfile(position int, file string) error {
 	return nil
 }
 
-func (f *AppFactory) AddProjectOptionItems(position int, items map[string]string) error {
+func (f *AppMaker) AddOptionSpecifyItems(position int, items map[string]string) error {
 	manifest, err := MakeProfileManifest(NewProfileManifestOption(items), nil, nil)
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (f *AppFactory) AddProjectOptionItems(position int, items map[string]string
 	return nil
 }
 
-func (f *AppFactory) MakeApp(link string) (*App, error) {
+func (f *AppMaker) Make(link string) (*App, error) {
 	f.workspace.logger.InfoDesc("load app", kv("link", link))
 
 	profile := newAppProfile(f.workspace, f.manifests)

@@ -18,21 +18,25 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	workspace, err := dsh_core.OpenWorkspace(logger, "./.test_workspace", map[string]string{
+	global, err := dsh_core.MakeGlobal(logger, map[string]string{
 		"var2": "global variable 2 in map",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	factory := workspace.NewAppFactory()
-	err = factory.AddProjectOptionItems(0, map[string]string{
+	workspace, err := dsh_core.MakeWorkspace(global, "./.test_workspace")
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	maker := workspace.NewAppMaker()
+	err = maker.AddOptionSpecifyItems(0, map[string]string{
 		"_os":  "linux",
 		"test": "a",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := factory.MakeApp("dir:./.test1/app1")
+	app, err := maker.Make("dir:./.test1/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -54,18 +58,22 @@ func TestProject1(t *testing.T) {
 
 func TestProject2(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace(logger, "./.test_workspace", nil)
+	global, err := dsh_core.MakeGlobal(logger, nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	factory := workspace.NewAppFactory()
-	err = factory.AddProjectOptionItems(0, map[string]string{
+	workspace, err := dsh_core.MakeWorkspace(global, "./.test_workspace")
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	maker := workspace.NewAppMaker()
+	err = maker.AddOptionSpecifyItems(0, map[string]string{
 		"option1": "value1",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = factory.MakeApp("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
+	_, err = maker.Make("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -73,20 +81,24 @@ func TestProject2(t *testing.T) {
 
 func TestProject3(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace(logger, "./.test_workspace", nil)
+	global, err := dsh_core.MakeGlobal(logger, nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	factory := workspace.NewAppFactory()
+	workspace, err := dsh_core.MakeWorkspace(global, "./.test_workspace")
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	maker := workspace.NewAppMaker()
 	options := map[string]string{}
 	if runtime.GOOS == "windows" {
 		options["_shell"] = "powershell"
 	}
-	err = factory.AddProjectOptionItems(0, options)
+	err = maker.AddOptionSpecifyItems(0, options)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := factory.MakeApp("dir:./.test2/app1")
+	app, err := maker.Make("dir:./.test2/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

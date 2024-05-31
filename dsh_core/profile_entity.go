@@ -1,6 +1,9 @@
 package dsh_core
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"regexp"
+)
 
 // region option
 
@@ -12,6 +15,8 @@ type profileOptionSpecifyEntity struct {
 }
 
 type profileOptionSpecifyEntitySet []*profileOptionSpecifyEntity
+
+var profileOptionNameCheckRegex = regexp.MustCompile("^_?[a-z][a-z0-9_]*$")
 
 func newProfileOptionSpecifyEntity(name string, value string, match string, matchObj *EvalExpr) *profileOptionSpecifyEntity {
 	return &profileOptionSpecifyEntity{

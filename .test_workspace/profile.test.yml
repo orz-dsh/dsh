@@ -1,7 +1,8 @@
-options:
-  - name: xxxx
-    value: xxxx
-    match: xxxx
+option:
+  items:
+    - name: xxxx
+      value: xxxx
+      match: xxxx
 workspace:
   shell:
     items:
