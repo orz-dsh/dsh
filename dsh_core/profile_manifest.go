@@ -3,7 +3,6 @@ package dsh_core
 import (
 	"dsh/dsh_utils"
 	"fmt"
-	"path/filepath"
 	"regexp"
 )
 
@@ -16,36 +15,22 @@ type ProfileManifest struct {
 	manifestPath string
 }
 
-func loadProfileManifest(path string) (*ProfileManifest, error) {
-	manifest := &ProfileManifest{
+func loadProfileManifest(path string) (manifest *ProfileManifest, error error) {
+	manifest = &ProfileManifest{
 		Option:    NewProfileManifestOption(nil),
 		Workspace: NewProfileManifestWorkspace(nil, nil),
 		Project:   NewProfileManifestProject(nil),
 	}
 
-	if path != "" {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, errW(err, "load profile manifest error",
-				reason("get abs-path error"),
-				kv("path", path),
-			)
-		}
-		path = absPath
+	metadata, err := dsh_utils.DeserializeFromFile(path, "", manifest)
+	if err != nil {
+		return nil, errW(err, "load profile manifest error",
+			reason("load manifest from file error"),
+			kv("path", path),
+		)
 	}
-
-	if path != "" {
-		metadata, err := dsh_utils.DeserializeFromFile(path, "", manifest)
-		if err != nil {
-			return nil, errW(err, "load profile manifest error",
-				reason("load manifest from file error"),
-				kv("path", path),
-			)
-		}
-		manifest.manifestPath = metadata.Path
-	}
-
-	if err := manifest.init(); err != nil {
+	manifest.manifestPath = metadata.Path
+	if err = manifest.init(); err != nil {
 		return nil, err
 	}
 	return manifest, nil

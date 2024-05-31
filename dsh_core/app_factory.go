@@ -1,6 +1,7 @@
 package dsh_core
 
 import (
+	"path/filepath"
 	"slices"
 )
 
@@ -29,7 +30,14 @@ func (f *AppFactory) AddManifest(position int, manifest *ProfileManifest) {
 }
 
 func (f *AppFactory) AddProfile(position int, file string) error {
-	manifest, err := loadProfileManifest(file)
+	absPath, err := filepath.Abs(file)
+	if err != nil {
+		return errW(err, "add profile error",
+			reason("get abs-path error"),
+			kv("file", file),
+		)
+	}
+	manifest, err := loadProfileManifest(absPath)
 	if err != nil {
 		return err
 	}
