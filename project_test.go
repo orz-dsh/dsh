@@ -3,13 +3,24 @@ package main
 import (
 	"dsh/dsh_core"
 	"dsh/dsh_utils"
+	"os"
 	"runtime"
 	"testing"
 )
 
 func TestProject1(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace("./.test_workspace", logger)
+	err := os.Setenv("DSH_GLOBAL_VAR1", "global variable 1 in env")
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	err = os.Setenv("DSH_GLOBAL_VAR2", "global variable 2 in env")
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	workspace, err := dsh_core.OpenWorkspace(logger, "./.test_workspace", map[string]string{
+		"var2": "global variable 2 in map",
+	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -43,7 +54,7 @@ func TestProject1(t *testing.T) {
 
 func TestProject2(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace("./.test_workspace", logger)
+	workspace, err := dsh_core.OpenWorkspace(logger, "./.test_workspace", nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -62,7 +73,7 @@ func TestProject2(t *testing.T) {
 
 func TestProject3(t *testing.T) {
 	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	workspace, err := dsh_core.OpenWorkspace("./.test_workspace", logger)
+	workspace, err := dsh_core.OpenWorkspace(logger, "./.test_workspace", nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

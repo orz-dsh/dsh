@@ -4,6 +4,7 @@ import (
 	"dsh/dsh_utils"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Workspace struct {
@@ -19,7 +20,7 @@ type WorkspaceCleanSettings struct {
 	ExcludeOutputPath string
 }
 
-func OpenWorkspace(path string, logger *Logger) (workspace *Workspace, err error) {
+func OpenWorkspace(logger *Logger, path string, variables map[string]string) (workspace *Workspace, err error) {
 	systemInfo, err := dsh_utils.GetSystemInfo()
 	if err != nil {
 		return nil, errW(err, "open workspace error",
@@ -54,7 +55,8 @@ func OpenWorkspace(path string, logger *Logger) (workspace *Workspace, err error
 		)
 	}
 
-	evaluator := dsh_utils.NewEvaluator().SetData("local", map[string]any{
+	globalVariables := getWorkspaceGlobalVariables(variables)
+	evaluator := dsh_utils.NewEvaluator().SetData("global", globalVariables).SetData("local", map[string]any{
 		"os":                   systemInfo.Os,
 		"arch":                 systemInfo.Arch,
 		"hostname":             systemInfo.Hostname,
@@ -98,6 +100,22 @@ func getWorkspacePathDefault(systemInfo *SystemInfo) string {
 		return filepath.Join(systemInfo.HomeDir, "dsh")
 	}
 	return filepath.Join(os.TempDir(), "dsh")
+}
+
+func getWorkspaceGlobalVariables(variables map[string]string) map[string]any {
+	result := map[string]any{}
+	for _, e := range os.Environ() {
+		equalIndex := strings.Index(e, "=")
+		key := e[:equalIndex]
+		if name, found := strings.CutPrefix(key, "DSH_GLOBAL_"); found {
+			name = strings.ReplaceAll(strings.ToLower(name), "-", "_")
+			result[name] = e[equalIndex+1:]
+		}
+	}
+	for k, v := range variables {
+		result[k] = v
+	}
+	return result
 }
 
 func (w *Workspace) DescExtraKeyValues() KVS {

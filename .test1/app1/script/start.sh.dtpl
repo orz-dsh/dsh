@@ -31,3 +31,6 @@ echo "get options['_shell']: {{ .options._shell }}"
 echo "get options['_hostname']: {{ .options._hostname }}"
 echo "get options['_username']: {{ .options._username }}"
 echo "get options['test']: {{ .options.test }}"
+
+echo "get global['var1']: {{ .global.var1 }}"
+echo "get global['var2']: {{ .global.var2 }}"
