@@ -7,13 +7,13 @@ import (
 
 type AppMaker struct {
 	workspace *Workspace
-	manifests []*ProfileManifest
+	manifests []*ProfilePref
 }
 
 func newAppMaker(workspace *Workspace) *AppMaker {
 	factory := &AppMaker{
 		workspace: workspace,
-		manifests: []*ProfileManifest{},
+		manifests: []*ProfilePref{},
 	}
 	for i := 0; i < len(workspace.profileManifests); i++ {
 		factory.AddManifest(-1, workspace.profileManifests[i])
@@ -21,7 +21,7 @@ func newAppMaker(workspace *Workspace) *AppMaker {
 	return factory
 }
 
-func (f *AppMaker) AddManifest(position int, manifest *ProfileManifest) {
+func (f *AppMaker) AddManifest(position int, manifest *ProfilePref) {
 	if position < 0 {
 		f.manifests = append(f.manifests, manifest)
 	} else {
@@ -37,7 +37,7 @@ func (f *AppMaker) AddProfile(position int, file string) error {
 			kv("file", file),
 		)
 	}
-	manifest, err := loadProfileManifest(absPath)
+	manifest, err := loadProfilePref(absPath)
 	if err != nil {
 		return err
 	}
@@ -46,15 +46,19 @@ func (f *AppMaker) AddProfile(position int, file string) error {
 }
 
 func (f *AppMaker) AddOptionSpecifyItems(position int, items map[string]string) error {
-	manifest, err := MakeProfileManifest(NewProfileManifestOption(items), nil, nil)
+	var prefItems []*ProfileOptionItemPref
+	for name, value := range items {
+		prefItems = append(prefItems, NewProfileOptionItemPref(name, value, ""))
+	}
+	pref, err := MakeProfilePref(NewProfileOptionPref(prefItems), nil, nil)
 	if err != nil {
 		return err
 	}
-	f.AddManifest(position, manifest)
+	f.AddManifest(position, pref)
 	return nil
 }
 
-func (f *AppMaker) Make(link string) (*App, error) {
+func (f *AppMaker) Build(link string) (*App, error) {
 	f.workspace.logger.InfoDesc("load app", kv("link", link))
 
 	profile := newAppProfile(f.workspace, f.manifests)

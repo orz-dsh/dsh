@@ -10,12 +10,12 @@ type Workspace struct {
 	global           *Global
 	logger           *Logger
 	dir              string
-	manifest         *workspaceManifest
+	setting          *workspaceSetting
 	evaluator        *Evaluator
-	profileManifests []*ProfileManifest
+	profileManifests []*ProfilePref
 }
 
-type WorkspaceCleanSettings struct {
+type WorkspaceCleanSetting struct {
 	ExcludeOutputPath string
 }
 
@@ -41,10 +41,10 @@ func MakeWorkspace(global *Global, dir string) (workspace *Workspace, err error)
 			kv("dir", dir),
 		)
 	}
-	manifest, err := loadWorkspaceManifest(dir)
+	setting, err := loadWorkspaceSetting(dir)
 	if err != nil {
 		return nil, errW(err, "make workspace error",
-			reason("load manifest error"),
+			reason("load setting error"),
 			kv("dir", dir),
 		)
 	}
@@ -61,13 +61,13 @@ func MakeWorkspace(global *Global, dir string) (workspace *Workspace, err error)
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
 	})
 
-	profiles, err := manifest.Profile.entities.getFiles(evaluator)
+	profiles, err := setting.Profile.getFiles(evaluator)
 	if err != nil {
 		return nil, err
 	}
-	var profileManifests []*ProfileManifest
+	var profileManifests []*ProfilePref
 	for i := 0; i < len(profiles); i++ {
-		profileManifest, err := loadProfileManifest(profiles[i])
+		profileManifest, err := loadProfilePref(profiles[i])
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func MakeWorkspace(global *Global, dir string) (workspace *Workspace, err error)
 		global:           global,
 		logger:           global.logger,
 		dir:              dir,
-		manifest:         manifest,
+		setting:          setting,
 		evaluator:        evaluator,
 		profileManifests: profileManifests,
 	}
@@ -99,7 +99,7 @@ func (w *Workspace) DescExtraKeyValues() KVS {
 	return KVS{
 		kv("global", w.global),
 		kv("dir", w.dir),
-		kv("manifest", w.manifest),
+		kv("setting", w.setting),
 	}
 }
 
@@ -111,6 +111,6 @@ func (w *Workspace) NewAppMaker() *AppMaker {
 	return newAppMaker(w)
 }
 
-func (w *Workspace) Clean(settings WorkspaceCleanSettings) error {
-	return w.cleanOutputDir(settings.ExcludeOutputPath)
+func (w *Workspace) Clean(setting WorkspaceCleanSetting) error {
+	return w.cleanOutputDir(setting.ExcludeOutputPath)
 }

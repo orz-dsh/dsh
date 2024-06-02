@@ -14,7 +14,7 @@ type projectConfig struct {
 	ImportContainer *projectImportContainer
 }
 
-func makeProjectConfig(context *appContext, entity *projectEntity, option *projectOption) (config *projectConfig, err error) {
+func makeProjectConfig(context *appContext, entity *projectSchema, option *projectOption) (config *projectConfig, err error) {
 	sc, err := makeProjectConfigSourceContainer(context, entity, option)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ type projectConfigSourceContainer struct {
 	sourcePathsDict map[string]bool
 }
 
-func makeProjectConfigSourceContainer(context *appContext, entity *projectEntity, option *projectOption) (container *projectConfigSourceContainer, err error) {
+func makeProjectConfigSourceContainer(context *appContext, entity *projectSchema, option *projectOption) (container *projectConfigSourceContainer, err error) {
 	container = &projectConfigSourceContainer{
 		context:         context,
 		sourcePathsDict: map[string]bool{},

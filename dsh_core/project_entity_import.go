@@ -2,9 +2,9 @@ package dsh_core
 
 // region import
 
-type projectImport struct {
+type projectEntityImport struct {
 	context *appContext
-	Entity  *projectImportEntity
+	Entity  *projectSchemaImport
 	Target  *projectLinkTarget
 	project *appProject
 }
@@ -16,15 +16,15 @@ const (
 	projectImportScopeConfig projectImportScope = "config"
 )
 
-func newProjectImport(context *appContext, entity *projectImportEntity, target *projectLinkTarget) *projectImport {
-	return &projectImport{
+func newProjectImport(context *appContext, entity *projectSchemaImport, target *projectLinkTarget) *projectEntityImport {
+	return &projectEntityImport{
 		context: context,
 		Entity:  entity,
 		Target:  target,
 	}
 }
 
-func (i *projectImport) loadProject() error {
+func (i *projectEntityImport) loadProject() error {
 	if i.project == nil {
 		if project, err := i.context.loadProjectByTarget(i.Target); err != nil {
 			return err
@@ -44,13 +44,13 @@ type projectImportContainer struct {
 	scope         projectImportScope
 	ProjectName   string
 	ProjectPath   string
-	Imports       []*projectImport
-	importsByPath map[string]*projectImport
+	Imports       []*projectEntityImport
+	importsByPath map[string]*projectEntityImport
 	importsLoaded bool
 }
 
-func makeProjectImportContainer(context *appContext, entity *projectEntity, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
-	var imports []*projectImportEntity
+func makeProjectImportContainer(context *appContext, entity *projectSchema, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
+	var imports []*projectSchemaImport
 	if scope == projectImportScopeScript {
 		imports = entity.ScriptImports
 	} else if scope == projectImportScopeConfig {
@@ -63,7 +63,7 @@ func makeProjectImportContainer(context *appContext, entity *projectEntity, opti
 		scope:         scope,
 		ProjectName:   entity.Name,
 		ProjectPath:   entity.Path,
-		importsByPath: map[string]*projectImport{},
+		importsByPath: map[string]*projectEntityImport{},
 	}
 	for i := 0; i < len(imports); i++ {
 		entity := imports[i]
@@ -81,7 +81,7 @@ func makeProjectImportContainer(context *appContext, entity *projectEntity, opti
 	return container, nil
 }
 
-func (c *projectImportContainer) addImport(entity *projectImportEntity) (err error) {
+func (c *projectImportContainer) addImport(entity *projectSchemaImport) (err error) {
 	target, err := c.context.profile.getProjectLinkTarget(entity.link)
 	if err != nil {
 		return errW(err, "add import error",

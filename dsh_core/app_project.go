@@ -15,7 +15,7 @@ type appProject struct {
 	config  *projectConfig
 }
 
-func makeAppProject(context *appContext, entity *projectEntity) (project *appProject, err error) {
+func makeAppProject(context *appContext, entity *projectSchema) (project *appProject, err error) {
 	context.logger.InfoDesc("load project", kv("name", entity.Name))
 	option, err := makeProjectOption(context, entity)
 	if err != nil {
@@ -93,7 +93,7 @@ type appProjectContainer struct {
 	extraProjects []*appProject
 	projects      []*appProject
 	scope         projectImportScope
-	Imports       []*projectImport
+	Imports       []*projectEntityImport
 	importsLoaded bool
 }
 
@@ -117,8 +117,8 @@ func (c *appProjectContainer) loadImports() (err error) {
 		}
 	}
 
-	var imports []*projectImport
-	var importsByPath = map[string]*projectImport{}
+	var imports []*projectEntityImport
+	var importsByPath = map[string]*projectEntityImport{}
 
 	for i := 0; i < len(c.projects); i++ {
 		pic := c.projects[i].getImportContainer(c.scope)

@@ -33,7 +33,7 @@ func GetSerializationFormat(fileType FileType) SerializationFormat {
 	return ""
 }
 
-func DeserializeFromDir(dir string, fileNames []string, manifestEntity any, required bool) (metadata *SerializationMetadata, err error) {
+func DeserializeFromDir(dir string, fileNames []string, model any, required bool) (metadata *SerializationMetadata, err error) {
 	var findFileNames []string
 	for i := 0; i < len(fileNames); i++ {
 		fileName := fileNames[i]
@@ -56,7 +56,7 @@ func DeserializeFromDir(dir string, fileNames []string, manifestEntity any, requ
 		}
 	}
 
-	return DeserializeFromFile(file.Path, GetSerializationFormat(file.Type), manifestEntity)
+	return DeserializeFromFile(file.Path, GetSerializationFormat(file.Type), model)
 }
 
 func DeserializeFromFile(path string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {

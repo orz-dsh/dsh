@@ -36,7 +36,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := maker.Make("dir:./.test1/app1")
+	app, err := maker.Build("dir:./.test1/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -48,7 +48,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = workspace.Clean(dsh_core.WorkspaceCleanSettings{
+	err = workspace.Clean(dsh_core.WorkspaceCleanSetting{
 		ExcludeOutputPath: artifact.OutputPath,
 	})
 	if err != nil {
@@ -73,7 +73,7 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	_, err = maker.Make("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
+	_, err = maker.Build("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -98,7 +98,7 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	app, err := maker.Make("dir:./.test2/app1")
+	app, err := maker.Build("dir:./.test2/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -106,7 +106,7 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = workspace.Clean(dsh_core.WorkspaceCleanSettings{
+	err = workspace.Clean(dsh_core.WorkspaceCleanSetting{
 		ExcludeOutputPath: artifact.OutputPath,
 	})
 	if err != nil {

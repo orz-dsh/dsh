@@ -113,7 +113,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	return executor, nil
 }
 
-func (a *AppArtifact) getTargetName(entity *workspaceShellEntity, targetGlob string) (targetName string, err error) {
+func (a *AppArtifact) getTargetName(entity *workspaceShellSetting, targetGlob string) (targetName string, err error) {
 	if targetGlob == "" {
 		return "", errN("get target name error",
 			reason("target glob empty"),
@@ -150,7 +150,7 @@ func (a *AppArtifact) getTargetName(entity *workspaceShellEntity, targetGlob str
 	)
 }
 
-func (a *AppArtifact) getShellArgs(entity *workspaceShellEntity, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
+func (a *AppArtifact) getShellArgs(entity *workspaceShellSetting, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
 	args := entity.Args
 	if len(args) == 0 {
 		shellArgs = []string{targetPath}
@@ -166,7 +166,7 @@ func (a *AppArtifact) getShellArgs(entity *workspaceShellEntity, targetGlob stri
 				"path": targetPath,
 			},
 		})
-		shellArgs, err = entity.Args.getArgs(evaluator)
+		shellArgs, err = entity.getArgs(evaluator)
 		if err != nil {
 			return nil, errW(err, "get shell args error",
 				reason("eval shell args error"),

@@ -7,7 +7,7 @@ type projectOption struct {
 	evaluator *Evaluator
 }
 
-func makeProjectOption(context *appContext, entity *projectEntity) (*projectOption, error) {
+func makeProjectOption(context *appContext, entity *projectSchema) (*projectOption, error) {
 	items := context.option.GenericItems.copy()
 	for i := 0; i < len(entity.OptionDeclares); i++ {
 		declare := entity.OptionDeclares[i]
