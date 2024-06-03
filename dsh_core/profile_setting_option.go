@@ -54,19 +54,13 @@ func (s profileOptionSettingSet) getItems(evaluator *Evaluator) (map[string]stri
 
 // endregion
 
-// region ProfileOptionSettingModel
+// region profileOptionSettingModel
 
-type ProfileOptionSettingModel struct {
-	Items []*ProfileOptionItemSettingModel
+type profileOptionSettingModel struct {
+	Items []*profileOptionItemSettingModel
 }
 
-func NewProfileOptionSettingModel(items []*ProfileOptionItemSettingModel) *ProfileOptionSettingModel {
-	return &ProfileOptionSettingModel{
-		Items: items,
-	}
-}
-
-func (m *ProfileOptionSettingModel) convert(ctx *ModelConvertContext) (profileOptionSettingSet, error) {
+func (m *profileOptionSettingModel) convert(ctx *ModelConvertContext) (profileOptionSettingSet, error) {
 	settings := profileOptionSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
@@ -80,23 +74,15 @@ func (m *ProfileOptionSettingModel) convert(ctx *ModelConvertContext) (profileOp
 
 // endregion
 
-// region ProfileOptionItemSettingModel
+// region profileOptionItemSettingModel
 
-type ProfileOptionItemSettingModel struct {
+type profileOptionItemSettingModel struct {
 	Name  string
 	Value string
 	Match string
 }
 
-func NewProfileOptionItemSettingModel(name, value, match string) *ProfileOptionItemSettingModel {
-	return &ProfileOptionItemSettingModel{
-		Name:  name,
-		Value: value,
-		Match: match,
-	}
-}
-
-func (m *ProfileOptionItemSettingModel) convert(ctx *ModelConvertContext) (setting *profileOptionSetting, err error) {
+func (m *profileOptionItemSettingModel) convert(ctx *ModelConvertContext) (setting *profileOptionSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

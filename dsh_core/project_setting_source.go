@@ -34,6 +34,14 @@ type projectSourceSettingModel struct {
 	Match string
 }
 
+func newProjectSourceSettingModel(dir string, files []string, match string) *projectSourceSettingModel {
+	return &projectSourceSettingModel{
+		Dir:   dir,
+		Files: files,
+		Match: match,
+	}
+}
+
 func (m *projectSourceSettingModel) convert(ctx *ModelConvertContext) (setting *projectSourceSetting, err error) {
 	if m.Dir == "" {
 		return nil, ctx.Child("dir").NewValueEmptyError()

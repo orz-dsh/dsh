@@ -42,7 +42,7 @@ func newProfileSetting(optionSettings profileOptionSettingSet, projectSettings p
 }
 
 func loadProfileSetting(path string) (setting *profileSetting, error error) {
-	model := &ProfileSettingModel{}
+	model := &profileSettingModel{}
 
 	metadata, err := dsh_utils.DeserializeFromFile(path, "", model)
 	if err != nil {
@@ -57,7 +57,8 @@ func loadProfileSetting(path string) (setting *profileSetting, error error) {
 	return setting, nil
 }
 
-func loadProfileSettingModel(model *ProfileSettingModel) (setting *profileSetting, err error) {
+func loadProfileSettingBuilder(builder *ProfileSettingBuilder) (setting *profileSetting, err error) {
+	model := builder.buildModel()
 	if setting, err = model.convert(NewModelConvertContext("profile setting", "")); err != nil {
 		return nil, err
 	}
@@ -66,23 +67,15 @@ func loadProfileSettingModel(model *ProfileSettingModel) (setting *profileSettin
 
 // endregion
 
-// region ProfileSettingModel
+// region profileSettingModel
 
-type ProfileSettingModel struct {
-	Option    *ProfileOptionSettingModel
-	Workspace *ProfileWorkspaceSettingModel
-	Project   *ProfileProjectSettingModel
+type profileSettingModel struct {
+	Option    *profileOptionSettingModel
+	Project   *profileProjectSettingModel
+	Workspace *profileWorkspaceSettingModel
 }
 
-func NewProfileSettingModel(option *ProfileOptionSettingModel, workspace *ProfileWorkspaceSettingModel, project *ProfileProjectSettingModel) *ProfileSettingModel {
-	return &ProfileSettingModel{
-		Option:    option,
-		Workspace: workspace,
-		Project:   project,
-	}
-}
-
-func (m *ProfileSettingModel) convert(ctx *ModelConvertContext) (setting *profileSetting, err error) {
+func (m *profileSettingModel) convert(ctx *ModelConvertContext) (setting *profileSetting, err error) {
 	var optionSettings profileOptionSettingSet
 	if m.Option != nil {
 		if optionSettings, err = m.Option.convert(ctx.Child("option")); err != nil {

@@ -33,6 +33,13 @@ type projectImportSettingModel struct {
 	Match string
 }
 
+func newProjectImportSettingModel(link, match string) *projectImportSettingModel {
+	return &projectImportSettingModel{
+		Link:  link,
+		Match: match,
+	}
+}
+
 func (m *projectImportSettingModel) convert(ctx *ModelConvertContext) (setting *projectImportSetting, err error) {
 	if m.Link == "" {
 		return nil, ctx.Child("link").NewValueEmptyError()

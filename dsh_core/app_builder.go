@@ -16,12 +16,12 @@ func newAppMaker(workspace *Workspace) *AppMaker {
 		profileSettings: profileSettingSet{},
 	}
 	for i := 0; i < len(workspace.profileSettings); i++ {
-		factory.AddManifest(-1, workspace.profileSettings[i])
+		factory.addProfileSetting(-1, workspace.profileSettings[i])
 	}
 	return factory
 }
 
-func (f *AppMaker) AddManifest(position int, setting *profileSetting) {
+func (f *AppMaker) addProfileSetting(position int, setting *profileSetting) {
 	if position < 0 {
 		f.profileSettings = append(f.profileSettings, setting)
 	} else {
@@ -41,20 +41,16 @@ func (f *AppMaker) AddProfile(position int, file string) error {
 	if err != nil {
 		return err
 	}
-	f.AddManifest(position, manifest)
+	f.addProfileSetting(position, manifest)
 	return nil
 }
 
-func (f *AppMaker) AddOptionSpecifyItems(position int, items map[string]string) error {
-	var prefItems []*ProfileOptionItemSettingModel
-	for name, value := range items {
-		prefItems = append(prefItems, NewProfileOptionItemSettingModel(name, value, ""))
-	}
-	pref, err := loadProfileSettingModel(NewProfileSettingModel(NewProfileOptionSettingModel(prefItems), nil, nil))
+func (f *AppMaker) AddProfileSettingBuilder(position int, builder *ProfileSettingBuilder) error {
+	setting, err := loadProfileSettingBuilder(builder)
 	if err != nil {
 		return err
 	}
-	f.AddManifest(position, pref)
+	f.addProfileSetting(position, setting)
 	return nil
 }
 

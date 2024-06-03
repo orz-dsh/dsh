@@ -168,6 +168,16 @@ type workspaceShellItemSettingModel struct {
 	Match string
 }
 
+func newWorkspaceShellItemSettingModel(name, path string, exts, args []string, match string) *workspaceShellItemSettingModel {
+	return &workspaceShellItemSettingModel{
+		Name:  name,
+		Path:  path,
+		Exts:  exts,
+		Args:  args,
+		Match: match,
+	}
+}
+
 func (m *workspaceShellItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceShellSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()

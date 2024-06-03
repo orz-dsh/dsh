@@ -98,6 +98,14 @@ type workspaceImportRedirectItemSettingModel struct {
 	Match string
 }
 
+func newWorkspaceImportRedirectItemSettingModel(regex, link, match string) *workspaceImportRedirectItemSettingModel {
+	return &workspaceImportRedirectItemSettingModel{
+		Regex: regex,
+		Link:  link,
+		Match: match,
+	}
+}
+
 func (m *workspaceImportRedirectItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceImportRedirectSetting, err error) {
 	if m.Regex == "" {
 		return nil, ctx.Child("regex").NewValueEmptyError()

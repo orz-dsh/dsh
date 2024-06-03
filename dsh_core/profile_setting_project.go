@@ -83,19 +83,13 @@ func (s profileProjectSettingSet) getProjectSettings(evaluator *Evaluator) (proj
 
 // endregion
 
-// region ProfileProjectSettingModel
+// region profileProjectSettingModel
 
-type ProfileProjectSettingModel struct {
-	Items []*ProfileProjectItemSettingModel
+type profileProjectSettingModel struct {
+	Items []*profileProjectItemSettingModel
 }
 
-func NewProfileProjectSettingModel(items []*ProfileProjectItemSettingModel) *ProfileProjectSettingModel {
-	return &ProfileProjectSettingModel{
-		Items: items,
-	}
-}
-
-func (m *ProfileProjectSettingModel) convert(ctx *ModelConvertContext) (profileProjectSettingSet, error) {
+func (m *profileProjectSettingModel) convert(ctx *ModelConvertContext) (profileProjectSettingSet, error) {
 	settings := profileProjectSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
@@ -109,9 +103,9 @@ func (m *ProfileProjectSettingModel) convert(ctx *ModelConvertContext) (profileP
 
 // endregion
 
-// region ProfileProjectItemSettingModel
+// region profileProjectItemSettingModel
 
-type ProfileProjectItemSettingModel struct {
+type profileProjectItemSettingModel struct {
 	Name   string
 	Path   string
 	Match  string
@@ -119,7 +113,17 @@ type ProfileProjectItemSettingModel struct {
 	Config *projectConfigSettingModel
 }
 
-func (m *ProfileProjectItemSettingModel) convert(ctx *ModelConvertContext) (setting *profileProjectSetting, err error) {
+func newProfileProjectItemSettingModel(name, path, match string, script *projectScriptSettingModel, config *projectConfigSettingModel) *profileProjectItemSettingModel {
+	return &profileProjectItemSettingModel{
+		Name:   name,
+		Path:   path,
+		Match:  match,
+		Script: script,
+		Config: config,
+	}
+}
+
+func (m *profileProjectItemSettingModel) convert(ctx *ModelConvertContext) (setting *profileProjectSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

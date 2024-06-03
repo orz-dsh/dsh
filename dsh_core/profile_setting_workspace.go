@@ -1,13 +1,20 @@
 package dsh_core
 
-// region ProfileWorkspaceSettingModel
+// region profileWorkspaceSettingModel
 
-type ProfileWorkspaceSettingModel struct {
+type profileWorkspaceSettingModel struct {
 	Shell  *workspaceShellSettingModel
 	Import *workspaceImportSettingModel
 }
 
-func (m *ProfileWorkspaceSettingModel) convert(ctx *ModelConvertContext) (shellSettings workspaceShellSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet, err error) {
+func newProfileWorkspaceSettingModel(shell *workspaceShellSettingModel, import_ *workspaceImportSettingModel) *profileWorkspaceSettingModel {
+	return &profileWorkspaceSettingModel{
+		Shell:  shell,
+		Import: import_,
+	}
+}
+
+func (m *profileWorkspaceSettingModel) convert(ctx *ModelConvertContext) (shellSettings workspaceShellSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet, err error) {
 	if m.Shell != nil {
 		if shellSettings, err = m.Shell.convert(ctx.Child("shell")); err != nil {
 			return nil, nil, nil, err

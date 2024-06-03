@@ -28,11 +28,15 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
+
+	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
+		AddOptionItemMap(map[string]string{
+			"_os":  "linux",
+			"test": "a",
+		})
+
 	maker := workspace.NewAppMaker()
-	err = maker.AddOptionSpecifyItems(0, map[string]string{
-		"_os":  "linux",
-		"test": "a",
-	})
+	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -67,9 +71,13 @@ func TestProject2(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	maker := workspace.NewAppMaker()
-	err = maker.AddOptionSpecifyItems(0, map[string]string{
-		"option1": "value1",
-	})
+
+	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
+		AddOptionItemMap(map[string]string{
+			"option1": "value1",
+		})
+
+	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -94,7 +102,11 @@ func TestProject3(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		options["_shell"] = "powershell"
 	}
-	err = maker.AddOptionSpecifyItems(0, options)
+
+	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
+		AddOptionItemMap(options)
+
+	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

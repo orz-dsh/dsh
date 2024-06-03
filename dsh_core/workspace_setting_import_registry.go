@@ -112,6 +112,14 @@ type workspaceImportRegistryItemSettingModel struct {
 	Match string
 }
 
+func newWorkspaceImportRegistryItemSettingModel(name, link, match string) *workspaceImportRegistryItemSettingModel {
+	return &workspaceImportRegistryItemSettingModel{
+		Name:  name,
+		Link:  link,
+		Match: match,
+	}
+}
+
 func (m *workspaceImportRegistryItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceImportRegistrySetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
