@@ -11,7 +11,7 @@ type projectEntity struct {
 	config  *projectConfig
 }
 
-func createProjectEntity(context *appContext, schema *projectSchema) (project *projectEntity, err error) {
+func createProjectEntity(context *appContext, schema *projectSetting) (project *projectEntity, err error) {
 	context.logger.InfoDesc("create project instance", kv("name", schema.Name))
 	option, err := makeProjectOption(context, schema)
 	if err != nil {

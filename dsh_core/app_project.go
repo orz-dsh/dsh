@@ -15,7 +15,7 @@ type appProject struct {
 	config  *projectConfig
 }
 
-func makeAppProject(context *appContext, entity *projectSchema) (project *appProject, err error) {
+func makeAppProject(context *appContext, entity *projectSetting) (project *appProject, err error) {
 	context.logger.InfoDesc("load project", kv("name", entity.Name))
 	option, err := makeProjectOption(context, entity)
 	if err != nil {

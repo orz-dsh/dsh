@@ -2,7 +2,6 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"fmt"
 	"os/exec"
 )
 
@@ -143,11 +142,11 @@ type workspaceShellSettingModel struct {
 	Items []*workspaceShellItemSettingModel
 }
 
-func (m *workspaceShellSettingModel) convert(root *workspaceSettingModel) (workspaceShellSettingSet, error) {
+func (m *workspaceShellSettingModel) convert(ctx *ModelConvertContext) (workspaceShellSettingSet, error) {
 	settings := workspaceShellSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		item := m.Items[i]
-		if setting, err := item.convert(root, i); err != nil {
+		if setting, err := item.convert(ctx.ChildItem("items", i)); err != nil {
 			return nil, err
 		} else {
 			settings[item.Name] = append(settings[item.Name], setting)
@@ -169,41 +168,24 @@ type workspaceShellItemSettingModel struct {
 	Match string
 }
 
-func (m *workspaceShellItemSettingModel) convert(root *workspaceSettingModel, itemIndex int) (setting *workspaceShellSetting, err error) {
+func (m *workspaceShellItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceShellSetting, err error) {
 	if m.Name == "" {
-		return nil, errN("workspace setting invalid",
-			reason("value empty"),
-			kv("path", root.path),
-			kv("field", fmt.Sprintf("shell.items[%d].name", itemIndex)),
-		)
+		return nil, ctx.Child("name").NewValueEmptyError()
 	}
 
 	if m.Path != "" && !dsh_utils.IsFileExists(m.Path) {
-		return nil, errN("workspace setting invalid",
-			reason("value invalid"),
-			kv("path", root.path),
-			kv("field", fmt.Sprintf("shell.items[%d].path", itemIndex)),
-			kv("value", m.Path),
-		)
+		return nil, ctx.Child("path").NewValueInvalidError(m.Path)
 	}
 
 	for i := 0; i < len(m.Exts); i++ {
 		if m.Exts[i] == "" {
-			return nil, errN("workspace setting invalid",
-				reason("value empty"),
-				kv("path", root.path),
-				kv("field", fmt.Sprintf("shell.items[%d].exts[%d]", itemIndex, i)),
-			)
+			return nil, ctx.ChildItem("exts", i).NewValueEmptyError()
 		}
 	}
 
 	for i := 0; i < len(m.Args); i++ {
 		if m.Args[i] == "" {
-			return nil, errN("workspace setting invalid",
-				reason("value empty"),
-				kv("path", root.path),
-				kv("field", fmt.Sprintf("shell.items[%d].args[%d]", itemIndex, i)),
-			)
+			return nil, ctx.ChildItem("args", i).NewValueEmptyError()
 		}
 	}
 
@@ -211,12 +193,7 @@ func (m *workspaceShellItemSettingModel) convert(root *workspaceSettingModel, it
 	if m.Match != "" {
 		matchObj, err = dsh_utils.CompileExpr(m.Match)
 		if err != nil {
-			return nil, errW(err, "workspace setting invalid",
-				reason("value invalid"),
-				kv("path", root.path),
-				kv("field", fmt.Sprintf("shell.items[%d].match", itemIndex)),
-				kv("value", m.Match),
-			)
+			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
 		}
 	}
 

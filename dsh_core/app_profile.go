@@ -9,34 +9,34 @@ import (
 type appProfile struct {
 	logger                          *Logger
 	workspace                       *Workspace
-	profileOptionSpecifyEntities    profileOptionSchemaSet
-	profileProjectEntities          profileProjectSchemaSet
+	profileOptionSpecifyEntities    profileOptionSettingSet
+	profileProjectEntities          profileProjectSettingSet
 	workspaceShellEntities          workspaceShellSettingSet
 	workspaceImportRegistryEntities workspaceImportRegistrySettingSet
 	workspaceImportRedirectEntities workspaceImportRedirectSettingSet
-	projectEntitiesByPath           map[string]*projectSchema
-	projectEntitiesByName           map[string]*projectSchema
+	projectEntitiesByPath           map[string]*projectSetting
+	projectEntitiesByName           map[string]*projectSetting
 }
 
-func newAppProfile(workspace *Workspace, manifests []*ProfilePref) *appProfile {
-	profileOptionSpecifyEntities := profileOptionSchemaSet{}
-	profileProjectEntities := profileProjectSchemaSet{}
+func newAppProfile(workspace *Workspace, settings profileSettingSet) *appProfile {
+	profileOptionSpecifyEntities := profileOptionSettingSet{}
+	profileProjectEntities := profileProjectSettingSet{}
 	workspaceShellEntities := workspaceShellSettingSet{}
 	workspaceImportRegistryEntities := workspaceImportRegistrySettingSet{}
 	workspaceImportRedirectEntities := workspaceImportRedirectSettingSet{}
-	for i := 0; i < len(manifests); i++ {
-		manifest := manifests[i]
-		profileOptionSpecifyEntities = append(profileOptionSpecifyEntities, manifest.Option.schemas...)
-		profileProjectEntities = append(profileProjectEntities, manifest.Project.schemas...)
-		workspaceShellEntities.merge(manifest.Workspace.Shell.schemas)
-		workspaceImportRegistryEntities.merge(manifest.Workspace.Import.registrySchemas)
-		workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, manifest.Workspace.Import.redirectSchemas...)
+	for i := 0; i < len(settings); i++ {
+		setting := settings[i]
+		profileOptionSpecifyEntities = append(profileOptionSpecifyEntities, setting.optionSettings...)
+		profileProjectEntities = append(profileProjectEntities, setting.projectSettings...)
+		workspaceShellEntities.merge(setting.workspaceShellSettings)
+		workspaceImportRegistryEntities.merge(setting.workspaceImportRegistrySettings)
+		workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, setting.workspaceImportRedirectSettings...)
 	}
-	workspaceShellEntities.merge(workspace.setting.Shell)
+	workspaceShellEntities.merge(workspace.setting.ShellSettings)
 	workspaceShellEntities.mergeDefault()
-	workspaceImportRegistryEntities.merge(workspace.setting.ImportRegistries)
+	workspaceImportRegistryEntities.merge(workspace.setting.ImportRegistrySettings)
 	workspaceImportRegistryEntities.mergeDefault()
-	workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, workspace.setting.ImportRedirects...)
+	workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, workspace.setting.ImportRedirectSettings...)
 
 	profile := &appProfile{
 		logger:                          workspace.logger,
@@ -46,13 +46,13 @@ func newAppProfile(workspace *Workspace, manifests []*ProfilePref) *appProfile {
 		workspaceShellEntities:          workspaceShellEntities,
 		workspaceImportRegistryEntities: workspaceImportRegistryEntities,
 		workspaceImportRedirectEntities: workspaceImportRedirectEntities,
-		projectEntitiesByPath:           map[string]*projectSchema{},
-		projectEntitiesByName:           map[string]*projectSchema{},
+		projectEntitiesByPath:           map[string]*projectSetting{},
+		projectEntitiesByName:           map[string]*projectSetting{},
 	}
 	return profile
 }
 
-func (p *appProfile) getAppOption(entity *projectSchema, evaluator *Evaluator) (*appOption, error) {
+func (p *appProfile) getAppOption(entity *projectSetting, evaluator *Evaluator) (*appOption, error) {
 	specifyItems, err := p.profileOptionSpecifyEntities.getItems(evaluator)
 	if err != nil {
 		return nil, err
@@ -61,8 +61,8 @@ func (p *appProfile) getAppOption(entity *projectSchema, evaluator *Evaluator) (
 	return option, nil
 }
 
-func (p *appProfile) getExtraProjectEntities(evaluator *Evaluator) (projectSchemaSet, error) {
-	projectEntities, err := p.profileProjectEntities.getProjectEntities(evaluator)
+func (p *appProfile) getExtraProjectEntities(evaluator *Evaluator) (projectSettingSet, error) {
+	projectEntities, err := p.profileProjectEntities.getProjectSettings(evaluator)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (p *appProfile) getProjectLinkTarget(link *projectLink) (target *projectLin
 	return target, nil
 }
 
-func (p *appProfile) getProjectEntityByRawLink(rawLink string) (*projectSchema, error) {
+func (p *appProfile) getProjectEntityByRawLink(rawLink string) (*projectSetting, error) {
 	link, err := parseProjectLink(rawLink)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (p *appProfile) getProjectEntityByRawLink(rawLink string) (*projectSchema, 
 	return p.getProjectEntityByLinkTarget(target)
 }
 
-func (p *appProfile) getProjectEntityByLinkTarget(target *projectLinkTarget) (*projectSchema, error) {
+func (p *appProfile) getProjectEntityByLinkTarget(target *projectLinkTarget) (*projectSetting, error) {
 	if target.Git != nil {
 		return p.getProjectEntityByGit(target.Path, target.Git.Url, target.Git.parsedUrl, target.Git.Ref, target.Git.parsedRef)
 	} else {
@@ -157,47 +157,46 @@ func (p *appProfile) getProjectEntityByLinkTarget(target *projectLinkTarget) (*p
 	}
 }
 
-func (p *appProfile) getProjectEntityByDir(path string) (*projectSchema, error) {
+func (p *appProfile) getProjectEntityByDir(path string) (*projectSetting, error) {
 	if !dsh_utils.IsDirExists(path) {
-		return nil, errN("load project manifest error",
+		return nil, errN("load project setting error",
 			reason("project dir not exists"),
 			kv("path", path),
 		)
 	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, errW(err, "load project manifest error",
+		return nil, errW(err, "load project setting error",
 			reason("get abs-path error"),
 			kv("path", path),
 		)
 	}
 	path = absPath
-	if entity, exist := p.projectEntitiesByPath[path]; exist {
-		return entity, nil
+	if setting, exist := p.projectEntitiesByPath[path]; exist {
+		return setting, nil
 	}
 
-	p.logger.DebugDesc("load project manifest", kv("path", path))
-	var manifest *projectManifest
-	if manifest, err = loadProjectManifest(path); err != nil {
+	p.logger.DebugDesc("load project setting", kv("path", path))
+	var setting *projectSetting
+	if setting, err = loadProjectSetting(path); err != nil {
 		return nil, err
 	}
-	entity := manifest.entity
-	if existEntity, exist := p.projectEntitiesByName[entity.Name]; exist {
-		if existEntity.Path != entity.Path {
-			return nil, errN("get project entity error",
+	if existSetting, exist := p.projectEntitiesByName[setting.Name]; exist {
+		if existSetting.Path != setting.Path {
+			return nil, errN("get project setting error",
 				reason("project name duplicated"),
-				kv("projectName", entity.Name),
-				kv("projectPath1", entity.Path),
-				kv("projectPath2", existEntity.Path),
+				kv("projectName", setting.Name),
+				kv("projectPath1", setting.Path),
+				kv("projectPath2", existSetting.Path),
 			)
 		}
 	}
-	p.projectEntitiesByPath[entity.Path] = entity
-	p.projectEntitiesByName[entity.Name] = entity
-	return entity, nil
+	p.projectEntitiesByPath[setting.Path] = setting
+	p.projectEntitiesByName[setting.Name] = setting
+	return setting, nil
 }
 
-func (p *appProfile) getProjectEntityByGit(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *projectLinkGitRef) (entity *projectSchema, err error) {
+func (p *appProfile) getProjectEntityByGit(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *projectLinkGitRef) (entity *projectSetting, err error) {
 	if parsedUrl == nil {
 		if parsedUrl, err = url.Parse(rawUrl); err != nil {
 			return nil, errW(err, "load project manifest error",

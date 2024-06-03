@@ -7,12 +7,12 @@ import (
 )
 
 type Workspace struct {
-	global           *Global
-	logger           *Logger
-	dir              string
-	setting          *workspaceSetting
-	evaluator        *Evaluator
-	profileManifests []*ProfilePref
+	global          *Global
+	logger          *Logger
+	dir             string
+	setting         *workspaceSetting
+	evaluator       *Evaluator
+	profileSettings profileSettingSet
 }
 
 type WorkspaceCleanSetting struct {
@@ -61,26 +61,26 @@ func MakeWorkspace(global *Global, dir string) (workspace *Workspace, err error)
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
 	})
 
-	profiles, err := setting.Profile.getFiles(evaluator)
+	profiles, err := setting.ProfileSettings.getFiles(evaluator)
 	if err != nil {
 		return nil, err
 	}
-	var profileManifests []*ProfilePref
+	var profileSettings profileSettingSet
 	for i := 0; i < len(profiles); i++ {
-		profileManifest, err := loadProfilePref(profiles[i])
+		profileSetting, err := loadProfileSetting(profiles[i])
 		if err != nil {
 			return nil, err
 		}
-		profileManifests = append(profileManifests, profileManifest)
+		profileSettings = append(profileSettings, profileSetting)
 	}
 
 	workspace = &Workspace{
-		global:           global,
-		logger:           global.logger,
-		dir:              dir,
-		setting:          setting,
-		evaluator:        evaluator,
-		profileManifests: profileManifests,
+		global:          global,
+		logger:          global.logger,
+		dir:             dir,
+		setting:         setting,
+		evaluator:       evaluator,
+		profileSettings: profileSettings,
 	}
 	return workspace, nil
 }

@@ -97,7 +97,7 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	return nil, nil, nil
 }
 
-func (o *appOption) findResult(projectName string, declare *projectSchemaOption) (result *appOptionResult, err error) {
+func (o *appOption) findResult(projectName string, declare *projectOptionSetting) (result *appOptionResult, err error) {
 	found := false
 	var rawValue string
 	var parsedValue any = nil

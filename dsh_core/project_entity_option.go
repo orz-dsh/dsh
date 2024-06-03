@@ -7,10 +7,10 @@ type projectOption struct {
 	evaluator *Evaluator
 }
 
-func makeProjectOption(context *appContext, entity *projectSchema) (*projectOption, error) {
+func makeProjectOption(context *appContext, entity *projectSetting) (*projectOption, error) {
 	items := context.option.GenericItems.copy()
-	for i := 0; i < len(entity.OptionDeclares); i++ {
-		declare := entity.OptionDeclares[i]
+	for i := 0; i < len(entity.OptionSettings); i++ {
+		declare := entity.OptionSettings[i]
 		result, err := context.option.findResult(entity.Name, declare)
 		if err != nil {
 			return nil, errW(err, "load project options error",
@@ -24,8 +24,8 @@ func makeProjectOption(context *appContext, entity *projectSchema) (*projectOpti
 	}
 
 	evaluator := context.evaluator.SetRootData("options", items)
-	for i := 0; i < len(entity.OptionVerifies); i++ {
-		verify := entity.OptionVerifies[i]
+	for i := 0; i < len(entity.OptionVerifySettings); i++ {
+		verify := entity.OptionVerifySettings[i]
 		result, err := evaluator.EvalBoolExpr(verify.expr)
 		if err != nil {
 			return nil, errW(err, "load project options error",
@@ -45,10 +45,10 @@ func makeProjectOption(context *appContext, entity *projectSchema) (*projectOpti
 		}
 	}
 
-	for i := 0; i < len(entity.OptionDeclares); i++ {
-		declare := entity.OptionDeclares[i]
-		for j := 0; j < len(declare.Assigns); j++ {
-			assign := declare.Assigns[j]
+	for i := 0; i < len(entity.OptionSettings); i++ {
+		declare := entity.OptionSettings[i]
+		for j := 0; j < len(declare.AssignSettings); j++ {
+			assign := declare.AssignSettings[j]
 			if err := context.option.addAssign(entity.Name, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
 				return nil, errW(err, "load project options error",
 					reason("add option assign error"),

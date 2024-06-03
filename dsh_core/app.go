@@ -22,7 +22,7 @@ type AppMakeScriptsSettings struct {
 	UseHardLink     bool
 }
 
-func makeApp(context *appContext, mainProjectEntity *projectSchema, extraProjectEntities []*projectSchema) (*App, error) {
+func makeApp(context *appContext, mainProjectEntity *projectSetting, extraProjectEntities []*projectSetting) (*App, error) {
 	mainProject, err := context.loadProject(mainProjectEntity)
 	if err != nil {
 		return nil, err

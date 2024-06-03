@@ -6,26 +6,26 @@ import (
 )
 
 type AppMaker struct {
-	workspace *Workspace
-	manifests []*ProfilePref
+	workspace       *Workspace
+	profileSettings profileSettingSet
 }
 
 func newAppMaker(workspace *Workspace) *AppMaker {
 	factory := &AppMaker{
-		workspace: workspace,
-		manifests: []*ProfilePref{},
+		workspace:       workspace,
+		profileSettings: profileSettingSet{},
 	}
-	for i := 0; i < len(workspace.profileManifests); i++ {
-		factory.AddManifest(-1, workspace.profileManifests[i])
+	for i := 0; i < len(workspace.profileSettings); i++ {
+		factory.AddManifest(-1, workspace.profileSettings[i])
 	}
 	return factory
 }
 
-func (f *AppMaker) AddManifest(position int, manifest *ProfilePref) {
+func (f *AppMaker) AddManifest(position int, setting *profileSetting) {
 	if position < 0 {
-		f.manifests = append(f.manifests, manifest)
+		f.profileSettings = append(f.profileSettings, setting)
 	} else {
-		f.manifests = slices.Insert(f.manifests, position, manifest)
+		f.profileSettings = slices.Insert(f.profileSettings, position, setting)
 	}
 }
 
@@ -37,7 +37,7 @@ func (f *AppMaker) AddProfile(position int, file string) error {
 			kv("file", file),
 		)
 	}
-	manifest, err := loadProfilePref(absPath)
+	manifest, err := loadProfileSetting(absPath)
 	if err != nil {
 		return err
 	}
@@ -46,11 +46,11 @@ func (f *AppMaker) AddProfile(position int, file string) error {
 }
 
 func (f *AppMaker) AddOptionSpecifyItems(position int, items map[string]string) error {
-	var prefItems []*ProfileOptionItemPref
+	var prefItems []*ProfileOptionItemSettingModel
 	for name, value := range items {
-		prefItems = append(prefItems, NewProfileOptionItemPref(name, value, ""))
+		prefItems = append(prefItems, NewProfileOptionItemSettingModel(name, value, ""))
 	}
-	pref, err := MakeProfilePref(NewProfileOptionPref(prefItems), nil, nil)
+	pref, err := loadProfileSettingModel(NewProfileSettingModel(NewProfileOptionSettingModel(prefItems), nil, nil))
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (f *AppMaker) AddOptionSpecifyItems(position int, items map[string]string) 
 func (f *AppMaker) Build(link string) (*App, error) {
 	f.workspace.logger.InfoDesc("load app", kv("link", link))
 
-	profile := newAppProfile(f.workspace, f.manifests)
+	profile := newAppProfile(f.workspace, f.profileSettings)
 
 	entity, err := profile.getProjectEntityByRawLink(link)
 	if err != nil {

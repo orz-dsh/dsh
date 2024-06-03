@@ -4,8 +4,7 @@ import "time"
 
 // region default
 
-const workspaceCleanOutputSettingCountDefault = 3
-const workspaceCleanOutputSettingExpiresDefault = 24 * time.Hour
+var workspaceCleanSettingDefault = newWorkspaceCleanSetting(3, 24*time.Hour)
 
 // endregion
 
@@ -31,35 +30,16 @@ type workspaceCleanSettingModel struct {
 	Output *workspaceCleanOutputSettingModel
 }
 
-func (m *workspaceCleanSettingModel) convert(root *workspaceSettingModel) (setting *workspaceCleanSetting, err error) {
-	outputCount := workspaceCleanOutputSettingCountDefault
-	if m.Output.Count != nil {
-		value := *m.Output.Count
-		if value <= 0 {
-			return nil, errN("workspace setting invalid",
-				reason("value invalid"),
-				kv("path", root.path),
-				kv("field", "clean.output.count"),
-				kv("value", value),
-			)
+func (m *workspaceCleanSettingModel) convert(ctx *ModelConvertContext) (*workspaceCleanSetting, error) {
+	if m.Output != nil {
+		if outputCount, outputExpires, err := m.Output.convert(ctx.Child("output")); err != nil {
+			return nil, err
+		} else {
+			return newWorkspaceCleanSetting(outputCount, outputExpires), nil
 		}
-		outputCount = value
+	} else {
+		return workspaceCleanSettingDefault, nil
 	}
-
-	outputExpires := workspaceCleanOutputSettingExpiresDefault
-	if m.Output.Expires != "" {
-		outputExpires, err = time.ParseDuration(m.Output.Expires)
-		if err != nil {
-			return nil, errN("workspace setting invalid",
-				reason("value invalid"),
-				kv("path", root.path),
-				kv("field", "clean.output.expires"),
-				kv("value", m.Output.Expires),
-			)
-		}
-	}
-
-	return newWorkspaceCleanSetting(outputCount, outputExpires), nil
 }
 
 // endregion
@@ -69,6 +49,28 @@ func (m *workspaceCleanSettingModel) convert(root *workspaceSettingModel) (setti
 type workspaceCleanOutputSettingModel struct {
 	Count   *int
 	Expires string
+}
+
+func (m *workspaceCleanOutputSettingModel) convert(ctx *ModelConvertContext) (int, time.Duration, error) {
+	count := workspaceCleanSettingDefault.OutputCount
+	if m.Count != nil {
+		value := *m.Count
+		if value <= 0 {
+			return 0, 0, ctx.Child("count").NewValueInvalidError(value)
+		}
+		count = value
+	}
+
+	expires := workspaceCleanSettingDefault.OutputExpires
+	if m.Expires != "" {
+		if value, err := time.ParseDuration(m.Expires); err != nil {
+			return 0, 0, ctx.Child("expires").WrapValueInvalidError(err, m.Expires)
+		} else {
+			expires = value
+		}
+	}
+
+	return count, expires, nil
 }
 
 // endregion

@@ -20,7 +20,7 @@ func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfi
 	}
 }
 
-func (c *appContext) loadProject(projectEntity *projectSchema) (project *appProject, err error) {
+func (c *appContext) loadProject(projectEntity *projectSetting) (project *appProject, err error) {
 	if existProject, exist := c.projectsByName[projectEntity.Name]; exist {
 		return existProject, nil
 	}

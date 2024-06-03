@@ -2,7 +2,6 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
-	"fmt"
 	"path/filepath"
 )
 
@@ -74,10 +73,10 @@ type workspaceProfileSettingModel struct {
 	Items []*workspaceProfileItemSettingModel
 }
 
-func (m *workspaceProfileSettingModel) convert(root *workspaceSettingModel) (workspaceProfileSettingSet, error) {
+func (m *workspaceProfileSettingModel) convert(ctx *ModelConvertContext) (workspaceProfileSettingSet, error) {
 	settings := workspaceProfileSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
-		if model, err := m.Items[i].convert(root, i); err != nil {
+		if model, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
 			return nil, err
 		} else {
 			settings = append(settings, model)
@@ -97,25 +96,16 @@ type workspaceProfileItemSettingModel struct {
 	Match    string
 }
 
-func (m *workspaceProfileItemSettingModel) convert(root *workspaceSettingModel, itemIndex int) (setting *workspaceProfileSetting, err error) {
+func (m *workspaceProfileItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceProfileSetting, err error) {
 	if m.File == "" {
-		return nil, errN("workspace setting invalid",
-			reason("value empty"),
-			kv("path", root.path),
-			kv("field", fmt.Sprintf("profile.items[%d].file", itemIndex)),
-		)
+		return nil, ctx.Child("file").NewValueEmptyError()
 	}
 
 	var matchObj *EvalExpr
 	if m.Match != "" {
 		matchObj, err = dsh_utils.CompileExpr(m.Match)
 		if err != nil {
-			return nil, errW(err, "workspace setting invalid",
-				reason("value invalid"),
-				kv("path", root.path),
-				kv("field", fmt.Sprintf("profile.items[%d].match", itemIndex)),
-				kv("value", m.Match),
-			)
+			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
 		}
 	}
 

@@ -14,7 +14,7 @@ type projectScript struct {
 	ImportContainer *projectImportContainer
 }
 
-func makeProjectScript(context *appContext, entity *projectSchema, option *projectOption) (script *projectScript, err error) {
+func makeProjectScript(context *appContext, entity *projectSetting, option *projectOption) (script *projectScript, err error) {
 	sc, err := makeProjectScriptSourceContainer(context, entity, option)
 	if err != nil {
 		return nil, err
@@ -52,13 +52,13 @@ type projectScriptSourceContainer struct {
 	sourcesByName      map[string]*projectScriptSource
 }
 
-func makeProjectScriptSourceContainer(context *appContext, entity *projectSchema, option *projectOption) (container *projectScriptSourceContainer, err error) {
+func makeProjectScriptSourceContainer(context *appContext, entity *projectSetting, option *projectOption) (container *projectScriptSourceContainer, err error) {
 	container = &projectScriptSourceContainer{
 		context:       context,
 		ProjectName:   entity.Name,
 		sourcesByName: map[string]*projectScriptSource{},
 	}
-	sources := entity.ScriptSources
+	sources := entity.ScriptSourceSettings
 	for i := 0; i < len(sources); i++ {
 		source := sources[i]
 		matched, err := option.evaluator.EvalBoolExpr(source.match)

@@ -4,7 +4,7 @@ package dsh_core
 
 type projectEntityImport struct {
 	context *appContext
-	Entity  *projectSchemaImport
+	Entity  *projectImportSetting
 	Target  *projectLinkTarget
 	project *appProject
 }
@@ -16,7 +16,7 @@ const (
 	projectImportScopeConfig projectImportScope = "config"
 )
 
-func newProjectImport(context *appContext, entity *projectSchemaImport, target *projectLinkTarget) *projectEntityImport {
+func newProjectImport(context *appContext, entity *projectImportSetting, target *projectLinkTarget) *projectEntityImport {
 	return &projectEntityImport{
 		context: context,
 		Entity:  entity,
@@ -49,12 +49,12 @@ type projectImportContainer struct {
 	importsLoaded bool
 }
 
-func makeProjectImportContainer(context *appContext, entity *projectSchema, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
-	var imports []*projectSchemaImport
+func makeProjectImportContainer(context *appContext, entity *projectSetting, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
+	var imports []*projectImportSetting
 	if scope == projectImportScopeScript {
-		imports = entity.ScriptImports
+		imports = entity.ScriptImportSettings
 	} else if scope == projectImportScopeConfig {
-		imports = entity.ConfigImports
+		imports = entity.ConfigImportSettings
 	} else {
 		impossible()
 	}
@@ -81,7 +81,7 @@ func makeProjectImportContainer(context *appContext, entity *projectSchema, opti
 	return container, nil
 }
 
-func (c *projectImportContainer) addImport(entity *projectSchemaImport) (err error) {
+func (c *projectImportContainer) addImport(entity *projectImportSetting) (err error) {
 	target, err := c.context.profile.getProjectLinkTarget(entity.link)
 	if err != nil {
 		return errW(err, "add import error",
