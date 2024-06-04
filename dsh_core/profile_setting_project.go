@@ -89,6 +89,12 @@ type profileProjectSettingModel struct {
 	Items []*profileProjectItemSettingModel
 }
 
+func newProfileProjectSettingModel(items []*profileProjectItemSettingModel) *profileProjectSettingModel {
+	return &profileProjectSettingModel{
+		Items: items,
+	}
+}
+
 func (m *profileProjectSettingModel) convert(ctx *ModelConvertContext) (profileProjectSettingSet, error) {
 	settings := profileProjectSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
@@ -127,7 +133,7 @@ func (m *profileProjectItemSettingModel) convert(ctx *ModelConvertContext) (sett
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
-	if checked := projectNameCheckRegex.MatchString(m.Name); !checked {
+	if !projectNameCheckRegex.MatchString(m.Name) {
 		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
 	}
 

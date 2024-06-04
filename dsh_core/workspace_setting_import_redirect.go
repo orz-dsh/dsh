@@ -5,6 +5,12 @@ import (
 	"regexp"
 )
 
+// region base
+
+var workspaceImportRedirectLinkCheckRegex = regexp.MustCompile("^(git|dir):.*$")
+
+// endregion
+
 // region workspaceImportRedirectSetting
 
 type workspaceImportRedirectSetting struct {
@@ -118,7 +124,9 @@ func (m *workspaceImportRedirectItemSettingModel) convert(ctx *ModelConvertConte
 	if m.Link == "" {
 		return nil, ctx.Child("link").NewValueEmptyError()
 	}
-	// TODO: check link template
+	if !workspaceImportRedirectLinkCheckRegex.MatchString(m.Link) {
+		return nil, ctx.Child("link").NewValueInvalidError(m.Link)
+	}
 
 	var matchObj *EvalExpr
 	if m.Match != "" {

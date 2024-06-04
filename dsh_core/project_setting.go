@@ -7,7 +7,7 @@ import (
 
 // region base
 
-var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*$")
+var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$")
 
 // endregion
 
@@ -93,7 +93,7 @@ func (m *projectSettingModel) convert(ctx *ModelConvertContext, projectPath stri
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
-	if checked := projectNameCheckRegex.MatchString(m.Name); !checked {
+	if !projectNameCheckRegex.MatchString(m.Name) {
 		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
 	}
 	ctx.AddVariable("projectName", m.Name)

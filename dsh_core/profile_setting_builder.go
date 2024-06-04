@@ -9,15 +9,57 @@ type ProfileSettingBuilder struct {
 }
 
 func NewProfileSettingBuilder() *ProfileSettingBuilder {
-	return &ProfileSettingBuilder{
-		option:    &profileOptionSettingModel{},
-		project:   &profileProjectSettingModel{},
-		workspace: &profileWorkspaceSettingModel{},
+	return &ProfileSettingBuilder{}
+}
+
+func (b *ProfileSettingBuilder) Option() *ProfileOptionSettingBuilder {
+	return newProfileOptionSettingBuilder(b)
+}
+
+func (b *ProfileSettingBuilder) Project() *ProfileProjectSettingBuilder {
+	return newProfileProjectSettingBuilder(b)
+}
+
+func (b *ProfileSettingBuilder) Workspace() *ProfileWorkspaceSettingBuilder {
+	return newProfileWorkspaceSettingBuilder(b)
+}
+
+func (b *ProfileSettingBuilder) setOption(option *profileOptionSettingModel) *ProfileSettingBuilder {
+	b.option = option
+	return b
+}
+
+func (b *ProfileSettingBuilder) setProject(project *profileProjectSettingModel) *ProfileSettingBuilder {
+	b.project = project
+	return b
+}
+
+func (b *ProfileSettingBuilder) setWorkspace(workspace *profileWorkspaceSettingModel) *ProfileSettingBuilder {
+	b.workspace = workspace
+	return b
+}
+
+func (b *ProfileSettingBuilder) buildModel() *profileSettingModel {
+	return newProfileSettingModel(b.option, b.project, b.workspace)
+}
+
+// endregion
+
+// region ProfileOptionSettingBuilder
+
+type ProfileOptionSettingBuilder struct {
+	parent *ProfileSettingBuilder
+	items  []*profileOptionItemSettingModel
+}
+
+func newProfileOptionSettingBuilder(parent *ProfileSettingBuilder) *ProfileOptionSettingBuilder {
+	return &ProfileOptionSettingBuilder{
+		parent: parent,
 	}
 }
 
-func (b *ProfileSettingBuilder) AddOptionItem(name string, value string, match string) *ProfileSettingBuilder {
-	b.option.Items = append(b.option.Items, &profileOptionItemSettingModel{
+func (b *ProfileOptionSettingBuilder) AddItem(name, value, match string) *ProfileOptionSettingBuilder {
+	b.items = append(b.items, &profileOptionItemSettingModel{
 		Name:  name,
 		Value: value,
 		Match: match,
@@ -25,24 +67,51 @@ func (b *ProfileSettingBuilder) AddOptionItem(name string, value string, match s
 	return b
 }
 
-func (b *ProfileSettingBuilder) AddOptionItemMap(items map[string]string) *ProfileSettingBuilder {
+func (b *ProfileOptionSettingBuilder) AddItemMap(items map[string]string) *ProfileOptionSettingBuilder {
 	for name, value := range items {
-		b.AddOptionItem(name, value, "")
+		b.AddItem(name, value, "")
 	}
 	return b
 }
 
-func (b *ProfileSettingBuilder) AddProjectItem(builder *ProfileProjectItemSettingBuilder) *ProfileSettingBuilder {
-	b.project.Items = append(b.project.Items, builder.buildModel())
+func (b *ProfileOptionSettingBuilder) Commit() *ProfileSettingBuilder {
+	return b.parent.setOption(b.buildModel())
+}
+
+func (b *ProfileOptionSettingBuilder) buildModel() *profileOptionSettingModel {
+	return newProfileOptionSettingModel(b.items)
+}
+
+// endregion
+
+// region ProfileProjectSettingBuilder
+
+type ProfileProjectSettingBuilder struct {
+	parent *ProfileSettingBuilder
+	items  []*profileProjectItemSettingModel
+}
+
+func newProfileProjectSettingBuilder(parent *ProfileSettingBuilder) *ProfileProjectSettingBuilder {
+	return &ProfileProjectSettingBuilder{
+		parent: parent,
+	}
+}
+
+func (b *ProfileProjectSettingBuilder) Item(name, path string) *ProfileProjectItemSettingBuilder {
+	return newProfileProjectItemSettingBuilder(b, name, path)
+}
+
+func (b *ProfileProjectSettingBuilder) Commit() *ProfileSettingBuilder {
+	return b.parent.setProject(b.buildModel())
+}
+
+func (b *ProfileProjectSettingBuilder) addItem(item *profileProjectItemSettingModel) *ProfileProjectSettingBuilder {
+	b.items = append(b.items, item)
 	return b
 }
 
-func (b *ProfileSettingBuilder) buildModel() *profileSettingModel {
-	return &profileSettingModel{
-		Option:    b.option,
-		Project:   b.project,
-		Workspace: b.workspace,
-	}
+func (b *ProfileProjectSettingBuilder) buildModel() *profileProjectSettingModel {
+	return newProfileProjectSettingModel(b.items)
 }
 
 // endregion
@@ -50,6 +119,7 @@ func (b *ProfileSettingBuilder) buildModel() *profileSettingModel {
 // region ProfileProjectItemSettingBuilder
 
 type ProfileProjectItemSettingBuilder struct {
+	parent *ProfileProjectSettingBuilder
 	name   string
 	path   string
 	match  string
@@ -57,8 +127,9 @@ type ProfileProjectItemSettingBuilder struct {
 	config *projectConfigSettingModel
 }
 
-func NewProfileProjectItemSettingBuilder(name, path string) *ProfileProjectItemSettingBuilder {
+func newProfileProjectItemSettingBuilder(parent *ProfileProjectSettingBuilder, name, path string) *ProfileProjectItemSettingBuilder {
 	return &ProfileProjectItemSettingBuilder{
+		parent: parent,
 		name:   name,
 		path:   path,
 		script: &projectScriptSettingModel{},
@@ -91,6 +162,10 @@ func (b *ProfileProjectItemSettingBuilder) AddConfigImport(link, match string) *
 	return b
 }
 
+func (b *ProfileProjectItemSettingBuilder) Commit() *ProfileProjectSettingBuilder {
+	return b.parent.addItem(b.buildModel())
+}
+
 func (b *ProfileProjectItemSettingBuilder) buildModel() *profileProjectItemSettingModel {
 	return newProfileProjectItemSettingModel(b.name, b.path, b.match, b.script, b.config)
 }
@@ -100,37 +175,105 @@ func (b *ProfileProjectItemSettingBuilder) buildModel() *profileProjectItemSetti
 // region ProfileWorkspaceSettingBuilder
 
 type ProfileWorkspaceSettingBuilder struct {
+	parent  *ProfileSettingBuilder
 	shell   *workspaceShellSettingModel
 	import_ *workspaceImportSettingModel
 }
 
-func NewProfileWorkspaceSettingBuilder() *ProfileWorkspaceSettingBuilder {
+func newProfileWorkspaceSettingBuilder(parent *ProfileSettingBuilder) *ProfileWorkspaceSettingBuilder {
 	return &ProfileWorkspaceSettingBuilder{
-		shell: &workspaceShellSettingModel{},
-		import_: &workspaceImportSettingModel{
-			Registry: &workspaceImportRegistrySettingModel{},
-			Redirect: &workspaceImportRedirectSettingModel{},
-		},
+		parent: parent,
 	}
 }
 
-func (b *ProfileWorkspaceSettingBuilder) AddShellItem(name, path string, exts, args []string, match string) *ProfileWorkspaceSettingBuilder {
-	b.shell.Items = append(b.shell.Items, newWorkspaceShellItemSettingModel(name, path, exts, args, match))
+func (b *ProfileWorkspaceSettingBuilder) Shell() *ProfileWorkspaceShellSettingBuilder {
+	return newProfileWorkspaceShellSettingBuilder(b)
+}
+
+func (b *ProfileWorkspaceSettingBuilder) Import() *ProfileWorkspaceImportSettingBuilder {
+	return newProfileWorkspaceImportSettingBuilder(b)
+}
+
+func (b *ProfileWorkspaceSettingBuilder) Commit() *ProfileSettingBuilder {
+	return b.parent.setWorkspace(b.buildModel())
+}
+
+func (b *ProfileWorkspaceSettingBuilder) setShell(shell *workspaceShellSettingModel) *ProfileWorkspaceSettingBuilder {
+	b.shell = shell
 	return b
 }
 
-func (b *ProfileWorkspaceSettingBuilder) AddImportRegistryItem(name, link, match string) *ProfileWorkspaceSettingBuilder {
-	b.import_.Registry.Items = append(b.import_.Registry.Items, newWorkspaceImportRegistryItemSettingModel(name, link, match))
-	return b
-}
-
-func (b *ProfileWorkspaceSettingBuilder) AddImportRedirectItem(regex, link, match string) *ProfileWorkspaceSettingBuilder {
-	b.import_.Redirect.Items = append(b.import_.Redirect.Items, newWorkspaceImportRedirectItemSettingModel(regex, link, match))
+func (b *ProfileWorkspaceSettingBuilder) setImport(import_ *workspaceImportSettingModel) *ProfileWorkspaceSettingBuilder {
+	b.import_ = import_
 	return b
 }
 
 func (b *ProfileWorkspaceSettingBuilder) buildModel() *profileWorkspaceSettingModel {
 	return newProfileWorkspaceSettingModel(b.shell, b.import_)
+}
+
+// endregion
+
+// region ProfileWorkspaceShellSettingBuilder
+
+type ProfileWorkspaceShellSettingBuilder struct {
+	parent *ProfileWorkspaceSettingBuilder
+	items  []*workspaceShellItemSettingModel
+}
+
+func newProfileWorkspaceShellSettingBuilder(parent *ProfileWorkspaceSettingBuilder) *ProfileWorkspaceShellSettingBuilder {
+	return &ProfileWorkspaceShellSettingBuilder{
+		parent: parent,
+	}
+}
+
+func (b *ProfileWorkspaceShellSettingBuilder) AddItem(name, path string, exts, args []string, match string) *ProfileWorkspaceShellSettingBuilder {
+	b.items = append(b.items, newWorkspaceShellItemSettingModel(name, path, exts, args, match))
+	return b
+}
+
+func (b *ProfileWorkspaceShellSettingBuilder) Commit() *ProfileWorkspaceSettingBuilder {
+	return b.parent.setShell(b.buildModel())
+}
+
+func (b *ProfileWorkspaceShellSettingBuilder) buildModel() *workspaceShellSettingModel {
+	return newWorkspaceShellSettingModel(b.items)
+}
+
+// endregion
+
+// region ProfileWorkspaceImportSettingBuilder
+
+type ProfileWorkspaceImportSettingBuilder struct {
+	parent   *ProfileWorkspaceSettingBuilder
+	registry *workspaceImportRegistrySettingModel
+	redirect *workspaceImportRedirectSettingModel
+}
+
+func newProfileWorkspaceImportSettingBuilder(parent *ProfileWorkspaceSettingBuilder) *ProfileWorkspaceImportSettingBuilder {
+	return &ProfileWorkspaceImportSettingBuilder{
+		parent:   parent,
+		registry: &workspaceImportRegistrySettingModel{},
+		redirect: &workspaceImportRedirectSettingModel{},
+	}
+}
+
+func (b *ProfileWorkspaceImportSettingBuilder) AddRegistryItem(name, link, match string) *ProfileWorkspaceImportSettingBuilder {
+	b.registry.Items = append(b.registry.Items, newWorkspaceImportRegistryItemSettingModel(name, link, match))
+	return b
+}
+
+func (b *ProfileWorkspaceImportSettingBuilder) AddRedirectItem(regex, link, match string) *ProfileWorkspaceImportSettingBuilder {
+	b.redirect.Items = append(b.redirect.Items, newWorkspaceImportRedirectItemSettingModel(regex, link, match))
+	return b
+}
+
+func (b *ProfileWorkspaceImportSettingBuilder) Commit() *ProfileWorkspaceSettingBuilder {
+	return b.parent.setImport(b.buildModel())
+}
+
+func (b *ProfileWorkspaceImportSettingBuilder) buildModel() *workspaceImportSettingModel {
+	return newWorkspaceImportSettingModel(b.registry, b.redirect)
 }
 
 // endregion

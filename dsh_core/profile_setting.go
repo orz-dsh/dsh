@@ -75,6 +75,14 @@ type profileSettingModel struct {
 	Workspace *profileWorkspaceSettingModel
 }
 
+func newProfileSettingModel(option *profileOptionSettingModel, project *profileProjectSettingModel, workspace *profileWorkspaceSettingModel) *profileSettingModel {
+	return &profileSettingModel{
+		Option:    option,
+		Project:   project,
+		Workspace: workspace,
+	}
+}
+
 func (m *profileSettingModel) convert(ctx *ModelConvertContext) (setting *profileSetting, err error) {
 	var optionSettings profileOptionSettingSet
 	if m.Option != nil {

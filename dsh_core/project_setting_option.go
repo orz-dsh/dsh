@@ -17,7 +17,7 @@ const (
 	projectOptionValueTypeDecimal projectOptionValueType = "decimal"
 )
 
-var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*$")
+var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$")
 
 // endregion
 
@@ -196,7 +196,7 @@ func (m *projectOptionItemSettingModel) convert(ctx *ModelConvertContext, itemNa
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
-	if checked := projectOptionNameCheckRegex.MatchString(m.Name); !checked {
+	if !projectOptionNameCheckRegex.MatchString(m.Name) {
 		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
 	}
 	if _, exist := itemNamesDict[m.Name]; exist {

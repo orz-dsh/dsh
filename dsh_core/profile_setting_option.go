@@ -7,7 +7,7 @@ import (
 
 // region base
 
-var profileOptionNameCheckRegex = regexp.MustCompile("^_?[a-z][a-z0-9_]*$")
+var profileOptionNameCheckRegex = regexp.MustCompile("^_?[a-z][a-z0-9_]*[a-z]$")
 
 // endregion
 
@@ -60,6 +60,12 @@ type profileOptionSettingModel struct {
 	Items []*profileOptionItemSettingModel
 }
 
+func newProfileOptionSettingModel(items []*profileOptionItemSettingModel) *profileOptionSettingModel {
+	return &profileOptionSettingModel{
+		Items: items,
+	}
+}
+
 func (m *profileOptionSettingModel) convert(ctx *ModelConvertContext) (profileOptionSettingSet, error) {
 	settings := profileOptionSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
@@ -86,7 +92,7 @@ func (m *profileOptionItemSettingModel) convert(ctx *ModelConvertContext) (setti
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
-	if checked := profileOptionNameCheckRegex.MatchString(m.Name); !checked {
+	if !profileOptionNameCheckRegex.MatchString(m.Name) {
 		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
 	}
 

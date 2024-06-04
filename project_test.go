@@ -30,10 +30,12 @@ func TestProject1(t *testing.T) {
 	}
 
 	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
-		AddOptionItemMap(map[string]string{
+		Option().
+		AddItemMap(map[string]string{
 			"_os":  "linux",
 			"test": "a",
-		})
+		}).
+		Commit()
 
 	maker := workspace.NewAppMaker()
 	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
@@ -73,9 +75,11 @@ func TestProject2(t *testing.T) {
 	maker := workspace.NewAppMaker()
 
 	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
-		AddOptionItemMap(map[string]string{
+		Option().
+		AddItemMap(map[string]string{
 			"option1": "value1",
-		})
+		}).
+		Commit()
 
 	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
 	if err != nil {
@@ -104,7 +108,9 @@ func TestProject3(t *testing.T) {
 	}
 
 	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
-		AddOptionItemMap(options)
+		Option().
+		AddItemMap(options).
+		Commit()
 
 	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
 	if err != nil {

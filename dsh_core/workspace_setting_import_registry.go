@@ -1,6 +1,16 @@
 package dsh_core
 
-import "dsh/dsh_utils"
+import (
+	"dsh/dsh_utils"
+	"regexp"
+)
+
+// region base
+
+var workspaceImportRegistryNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_-]*[a-z0-9]$")
+var workspaceImportRegistryLinkCheckRegex = regexp.MustCompile("^(git|dir):.*$")
+
+// endregion
 
 // region default
 
@@ -124,11 +134,16 @@ func (m *workspaceImportRegistryItemSettingModel) convert(ctx *ModelConvertConte
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
+	if !workspaceImportRegistryNameCheckRegex.MatchString(m.Name) {
+		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
+	}
 
 	if m.Link == "" {
 		return nil, ctx.Child("link").NewValueEmptyError()
 	}
-	// TODO: check link template
+	if !workspaceImportRegistryLinkCheckRegex.MatchString(m.Link) {
+		return nil, ctx.Child("link").NewValueInvalidError(m.Link)
+	}
 
 	var matchObj *EvalExpr
 	if m.Match != "" {

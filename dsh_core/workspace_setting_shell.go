@@ -142,6 +142,12 @@ type workspaceShellSettingModel struct {
 	Items []*workspaceShellItemSettingModel
 }
 
+func newWorkspaceShellSettingModel(items []*workspaceShellItemSettingModel) *workspaceShellSettingModel {
+	return &workspaceShellSettingModel{
+		Items: items,
+	}
+}
+
 func (m *workspaceShellSettingModel) convert(ctx *ModelConvertContext) (workspaceShellSettingSet, error) {
 	settings := workspaceShellSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
