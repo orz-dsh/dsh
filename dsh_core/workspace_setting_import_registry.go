@@ -7,7 +7,6 @@ import (
 
 // region base
 
-var workspaceImportRegistryNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_-]*[a-z0-9]$")
 var workspaceImportRegistryLinkCheckRegex = regexp.MustCompile("^(git|dir):.*$")
 
 // endregion
@@ -134,7 +133,7 @@ func (m *workspaceImportRegistryItemSettingModel) convert(ctx *modelConvertConte
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
-	if !workspaceImportRegistryNameCheckRegex.MatchString(m.Name) {
+	if !projectLinkRegistryNameCheckRegex.MatchString(m.Name) {
 		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
 	}
 

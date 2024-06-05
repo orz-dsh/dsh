@@ -4,6 +4,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -69,6 +70,8 @@ const (
 	projectLinkRefSeparatorLen    = len(projectLinkRefSeparator)
 )
 
+var projectLinkRegistryNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_-]*[a-z0-9]$")
+
 type projectLinkTarget struct {
 	Link *projectLink
 	Path string
@@ -124,6 +127,13 @@ func parseProjectLinkRegistry(rawLink string, content string) (link *projectLink
 		return nil, errN("parse project link error",
 			reason("name is empty"),
 			kv("rawLink", rawLink),
+		)
+	}
+	if !projectLinkRegistryNameCheckRegex.MatchString(name) {
+		return nil, errN("parse project link error",
+			reason("name is invalid"),
+			kv("rawLink", rawLink),
+			kv("name", name),
 		)
 	}
 	if rawRef == "" {
