@@ -28,21 +28,16 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-
-	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
-		Option().
+	app, err := workspace.NewAppBuilder().
+		AddProfileSetting(0).
+		SetOptionSetting().
 		AddItemMap(map[string]string{
 			"_os":  "linux",
 			"test": "a",
 		}).
-		Commit()
-
-	maker := workspace.NewAppMaker()
-	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
-	if err != nil {
-		logger.Panic("%+v", err)
-	}
-	app, err := maker.Build("dir:./.test1/app1")
+		CommitOptionSetting().
+		CommitProfileSetting().
+		Build("dir:./.test1/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -72,20 +67,15 @@ func TestProject2(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	maker := workspace.NewAppMaker()
-
-	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
-		Option().
+	_, err = workspace.NewAppBuilder().
+		AddProfileSetting(0).
+		SetOptionSetting().
 		AddItemMap(map[string]string{
 			"option1": "value1",
 		}).
-		Commit()
-
-	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
-	if err != nil {
-		logger.Panic("%+v", err)
-	}
-	_, err = maker.Build("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
+		CommitOptionSetting().
+		CommitProfileSetting().
+		Build("git:https://github.com/orz-dsh/not-exist-project.git#ref=main")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -101,22 +91,17 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	maker := workspace.NewAppMaker()
 	options := map[string]string{}
 	if runtime.GOOS == "windows" {
 		options["_shell"] = "powershell"
 	}
-
-	profileSettingBuilder := dsh_core.NewProfileSettingBuilder().
-		Option().
+	app, err := workspace.NewAppBuilder().
+		AddProfileSetting(0).
+		SetOptionSetting().
 		AddItemMap(options).
-		Commit()
-
-	err = maker.AddProfileSettingBuilder(0, profileSettingBuilder)
-	if err != nil {
-		logger.Panic("%+v", err)
-	}
-	app, err := maker.Build("dir:./.test2/app1")
+		CommitOptionSetting().
+		CommitProfileSetting().
+		Build("dir:./.test2/app1")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

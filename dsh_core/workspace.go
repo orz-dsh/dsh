@@ -107,8 +107,8 @@ func (w *Workspace) GetDir() string {
 	return w.dir
 }
 
-func (w *Workspace) NewAppMaker() *AppMaker {
-	return newAppMaker(w)
+func (w *Workspace) NewAppBuilder() *AppBuilder {
+	return newAppBuilder(w)
 }
 
 func (w *Workspace) Clean(setting WorkspaceCleanSetting) error {

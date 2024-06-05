@@ -5,66 +5,60 @@ import (
 	"slices"
 )
 
-type AppMaker struct {
+type AppBuilder struct {
 	workspace       *Workspace
 	profileSettings profileSettingSet
+	err             error
 }
 
-func newAppMaker(workspace *Workspace) *AppMaker {
-	factory := &AppMaker{
-		workspace:       workspace,
-		profileSettings: profileSettingSet{},
-	}
+func newAppBuilder(workspace *Workspace) *AppBuilder {
+	var profileSettings profileSettingSet
 	for i := 0; i < len(workspace.profileSettings); i++ {
-		factory.addProfileSetting(-1, workspace.profileSettings[i])
+		profileSettings = append(profileSettings, workspace.profileSettings[i])
 	}
-	return factory
-}
-
-func (f *AppMaker) addProfileSetting(position int, setting *profileSetting) {
-	if position < 0 {
-		f.profileSettings = append(f.profileSettings, setting)
-	} else {
-		f.profileSettings = slices.Insert(f.profileSettings, position, setting)
+	return &AppBuilder{
+		workspace:       workspace,
+		profileSettings: profileSettings,
 	}
 }
 
-func (f *AppMaker) AddProfile(position int, file string) error {
-	absPath, err := filepath.Abs(file)
+func (b *AppBuilder) AddProfileSetting(position int) *ProfileSettingBuilder[*AppBuilder] {
+	return newProfileSettingBuilder(func(setting *profileSetting, err error) *AppBuilder {
+		return b.addProfileSetting(position, setting, err)
+	})
+}
+
+func (b *AppBuilder) AddProfileSettingFile(position int, file string) *AppBuilder {
+	path, err := filepath.Abs(file)
 	if err != nil {
-		return errW(err, "add profile error",
-			reason("get abs-path error"),
-			kv("file", file),
-		)
+		return b.addProfileSetting(position, nil, err)
 	}
-	manifest, err := loadProfileSetting(absPath)
+	setting, err := loadProfileSetting(path)
 	if err != nil {
-		return err
+		return b.addProfileSetting(position, nil, err)
 	}
-	f.addProfileSetting(position, manifest)
-	return nil
+	return b.addProfileSetting(position, setting, nil)
 }
 
-func (f *AppMaker) AddProfileSettingBuilder(position int, builder *ProfileSettingBuilder) error {
-	setting, err := loadProfileSettingBuilder(builder)
-	if err != nil {
-		return err
-	}
-	f.addProfileSetting(position, setting)
-	return nil
+func (b *AppBuilder) Error() error {
+	return b.err
 }
 
-func (f *AppMaker) Build(link string) (*App, error) {
-	f.workspace.logger.InfoDesc("load app", kv("link", link))
+func (b *AppBuilder) Build(link string) (*App, error) {
+	b.workspace.logger.InfoDesc("load app", kv("link", link))
 
-	profile := newAppProfile(f.workspace, f.profileSettings)
+	if b.err != nil {
+		return nil, b.err
+	}
+
+	profile := newAppProfile(b.workspace, b.profileSettings)
 
 	entity, err := profile.getProjectEntityByRawLink(link)
 	if err != nil {
 		return nil, err
 	}
 
-	evaluator := f.workspace.evaluator.SetData("main_project", map[string]any{
+	evaluator := b.workspace.evaluator.SetData("main_project", map[string]any{
 		"name": entity.Name,
 		"path": entity.Path,
 	})
@@ -79,11 +73,27 @@ func (f *AppMaker) Build(link string) (*App, error) {
 		return nil, err
 	}
 
-	context := newAppContext(f.workspace, evaluator, profile, option)
+	context := newAppContext(b.workspace, evaluator, profile, option)
 
 	app, err := makeApp(context, entity, extraProjectEntities)
 	if err != nil {
 		return nil, err
 	}
 	return app, nil
+}
+
+func (b *AppBuilder) addProfileSetting(position int, setting *profileSetting, err error) *AppBuilder {
+	if b.err != nil {
+		return b
+	}
+	if err != nil {
+		b.err = err
+		return b
+	}
+	if position < 0 {
+		b.profileSettings = append(b.profileSettings, setting)
+	} else {
+		b.profileSettings = slices.Insert(b.profileSettings, position, setting)
+	}
+	return b
 }

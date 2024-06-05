@@ -57,8 +57,7 @@ func loadProfileSetting(path string) (setting *profileSetting, error error) {
 	return setting, nil
 }
 
-func loadProfileSettingBuilder(builder *ProfileSettingBuilder) (setting *profileSetting, err error) {
-	model := builder.buildModel()
+func loadProfileSettingModel(model *profileSettingModel) (setting *profileSetting, err error) {
 	if setting, err = model.convert(NewModelConvertContext("profile setting", "")); err != nil {
 		return nil, err
 	}
