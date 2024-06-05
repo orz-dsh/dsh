@@ -34,15 +34,7 @@ func GetSerializationFormat(fileType FileType) SerializationFormat {
 }
 
 func DeserializeFromDir(dir string, fileGlobs []string, model any, required bool) (metadata *SerializationMetadata, err error) {
-	var fileNames []string
-	for i := 0; i < len(fileGlobs); i++ {
-		fileName := fileGlobs[i]
-		fileNames = append(fileNames, fileName+".yml")
-		fileNames = append(fileNames, fileName+".yaml")
-		fileNames = append(fileNames, fileName+".toml")
-		fileNames = append(fileNames, fileName+".json")
-	}
-
+	fileNames := GetFileNames(fileGlobs, serializationSupportedFileTypes)
 	file := FindFile(dir, fileNames, serializationSupportedFileTypes)
 	if file == nil {
 		if required {

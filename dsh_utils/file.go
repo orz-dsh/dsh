@@ -254,6 +254,33 @@ func GetFileType(file string, types []FileType) FileType {
 	return ""
 }
 
+func GetFileNames(globs []string, types []FileType) []string {
+	var fileNames []string
+	for i := 0; i < len(globs); i++ {
+		fileName := globs[i]
+		for j := 0; j < len(types); j++ {
+			switch types[j] {
+			case FileTypeYaml:
+				fileNames = append(fileNames, fileName+".yml")
+				fileNames = append(fileNames, fileName+".yaml")
+			case FileTypeToml:
+				fileNames = append(fileNames, fileName+".toml")
+			case FileTypeJson:
+				fileNames = append(fileNames, fileName+".json")
+			case FileTypeTemplate:
+				fileNames = append(fileNames, fileName+".dtpl")
+			case FileTypeTemplateLib:
+				fileNames = append(fileNames, fileName+".dtpl.lib")
+			case FileTypePlain:
+				fileNames = append(fileNames, fileName)
+			default:
+				impossible()
+			}
+		}
+	}
+	return fileNames
+}
+
 func RemoveFileExt(file string) string {
 	ext := filepath.Ext(file)
 	if ext == "" {
