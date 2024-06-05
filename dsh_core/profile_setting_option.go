@@ -66,7 +66,7 @@ func newProfileOptionSettingModel(items []*profileOptionItemSettingModel) *profi
 	}
 }
 
-func (m *profileOptionSettingModel) convert(ctx *ModelConvertContext) (profileOptionSettingSet, error) {
+func (m *profileOptionSettingModel) convert(ctx *modelConvertContext) (profileOptionSettingSet, error) {
 	settings := profileOptionSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
@@ -88,7 +88,7 @@ type profileOptionItemSettingModel struct {
 	Match string
 }
 
-func (m *profileOptionItemSettingModel) convert(ctx *ModelConvertContext) (setting *profileOptionSetting, err error) {
+func (m *profileOptionItemSettingModel) convert(ctx *modelConvertContext) (setting *profileOptionSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

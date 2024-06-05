@@ -99,7 +99,7 @@ type workspaceImportRegistrySettingModel struct {
 	Items []*workspaceImportRegistryItemSettingModel
 }
 
-func (m *workspaceImportRegistrySettingModel) convert(ctx *ModelConvertContext) (workspaceImportRegistrySettingSet, error) {
+func (m *workspaceImportRegistrySettingModel) convert(ctx *modelConvertContext) (workspaceImportRegistrySettingSet, error) {
 	settings := workspaceImportRegistrySettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		item := m.Items[i]
@@ -130,7 +130,7 @@ func newWorkspaceImportRegistryItemSettingModel(name, link, match string) *works
 	}
 }
 
-func (m *workspaceImportRegistryItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceImportRegistrySetting, err error) {
+func (m *workspaceImportRegistryItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceImportRegistrySetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

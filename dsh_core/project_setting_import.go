@@ -40,7 +40,7 @@ func newProjectImportSettingModel(link, match string) *projectImportSettingModel
 	}
 }
 
-func (m *projectImportSettingModel) convert(ctx *ModelConvertContext) (setting *projectImportSetting, err error) {
+func (m *projectImportSettingModel) convert(ctx *modelConvertContext) (setting *projectImportSetting, err error) {
 	if m.Link == "" {
 		return nil, ctx.Child("link").NewValueEmptyError()
 	}

@@ -73,7 +73,7 @@ type workspaceProfileSettingModel struct {
 	Items []*workspaceProfileItemSettingModel
 }
 
-func (m *workspaceProfileSettingModel) convert(ctx *ModelConvertContext) (workspaceProfileSettingSet, error) {
+func (m *workspaceProfileSettingModel) convert(ctx *modelConvertContext) (workspaceProfileSettingSet, error) {
 	settings := workspaceProfileSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		if model, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
@@ -96,7 +96,7 @@ type workspaceProfileItemSettingModel struct {
 	Match    string
 }
 
-func (m *workspaceProfileItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceProfileSetting, err error) {
+func (m *workspaceProfileItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceProfileSetting, err error) {
 	if m.File == "" {
 		return nil, ctx.Child("file").NewValueEmptyError()
 	}

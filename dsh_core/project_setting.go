@@ -71,7 +71,7 @@ func loadProjectSetting(path string) (setting *projectSetting, err error) {
 			kv("path", path),
 		)
 	}
-	if setting, err = model.convert(NewModelConvertContext("project setting", metadata.Path), path); err != nil {
+	if setting, err = model.convert(newModelConvertContext("project setting", metadata.Path), path); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -89,7 +89,7 @@ type projectSettingModel struct {
 	Config  *projectConfigSettingModel
 }
 
-func (m *projectSettingModel) convert(ctx *ModelConvertContext, projectPath string) (setting *projectSetting, err error) {
+func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath string) (setting *projectSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

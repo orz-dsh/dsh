@@ -151,7 +151,7 @@ type projectOptionSettingModel struct {
 	Verifies []string
 }
 
-func (m *projectOptionSettingModel) convert(ctx *ModelConvertContext) (projectOptionSettingSet, projectOptionVerifySettingSet, error) {
+func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (projectOptionSettingSet, projectOptionVerifySettingSet, error) {
 	optionSettings := projectOptionSettingSet{}
 	optionNamesDict := map[string]bool{}
 	assignTargetsDict := map[string]bool{}
@@ -192,7 +192,7 @@ type projectOptionItemSettingModel struct {
 	Assigns  []*projectOptionItemAssignSettingModel
 }
 
-func (m *projectOptionItemSettingModel) convert(ctx *ModelConvertContext, itemNamesDict, assignTargetsDict map[string]bool) (setting *projectOptionSetting, err error) {
+func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNamesDict, assignTargetsDict map[string]bool) (setting *projectOptionSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
@@ -243,7 +243,7 @@ type projectOptionItemAssignSettingModel struct {
 	Mapping string
 }
 
-func (m *projectOptionItemAssignSettingModel) convert(ctx *ModelConvertContext, targetsDict map[string]bool) (setting *projectOptionAssignSetting, err error) {
+func (m *projectOptionItemAssignSettingModel) convert(ctx *modelConvertContext, targetsDict map[string]bool) (setting *projectOptionAssignSetting, err error) {
 	if m.Project == "" {
 		return nil, ctx.Child("project").NewValueEmptyError()
 	}

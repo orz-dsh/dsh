@@ -82,7 +82,7 @@ type workspaceImportRedirectSettingModel struct {
 	Items []*workspaceImportRedirectItemSettingModel
 }
 
-func (m *workspaceImportRedirectSettingModel) convert(ctx *ModelConvertContext) (workspaceImportRedirectSettingSet, error) {
+func (m *workspaceImportRedirectSettingModel) convert(ctx *modelConvertContext) (workspaceImportRedirectSettingSet, error) {
 	settings := workspaceImportRedirectSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		if model, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
@@ -112,7 +112,7 @@ func newWorkspaceImportRedirectItemSettingModel(regex, link, match string) *work
 	}
 }
 
-func (m *workspaceImportRedirectItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceImportRedirectSetting, err error) {
+func (m *workspaceImportRedirectItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceImportRedirectSetting, err error) {
 	if m.Regex == "" {
 		return nil, ctx.Child("regex").NewValueEmptyError()
 	}

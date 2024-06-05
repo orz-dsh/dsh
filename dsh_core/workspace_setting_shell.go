@@ -148,7 +148,7 @@ func newWorkspaceShellSettingModel(items []*workspaceShellItemSettingModel) *wor
 	}
 }
 
-func (m *workspaceShellSettingModel) convert(ctx *ModelConvertContext) (workspaceShellSettingSet, error) {
+func (m *workspaceShellSettingModel) convert(ctx *modelConvertContext) (workspaceShellSettingSet, error) {
 	settings := workspaceShellSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		item := m.Items[i]
@@ -184,7 +184,7 @@ func newWorkspaceShellItemSettingModel(name, path string, exts, args []string, m
 	}
 }
 
-func (m *workspaceShellItemSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceShellSetting, err error) {
+func (m *workspaceShellItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceShellSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

@@ -26,7 +26,7 @@ type projectRuntimeSettingModel struct {
 	MaxVersion dsh_utils.Version `yaml:"maxVersion" toml:"maxVersion" json:"maxVersion"`
 }
 
-func (m *projectRuntimeSettingModel) convert(ctx *ModelConvertContext) (setting *projectRuntimeSetting, err error) {
+func (m *projectRuntimeSettingModel) convert(ctx *modelConvertContext) (setting *projectRuntimeSetting, err error) {
 	if err = dsh_utils.CheckRuntimeVersion(m.MinVersion, m.MaxVersion); err != nil {
 		return nil, ctx.WrapError(err, "runtime incompatible",
 			kv("minVersion", m.MinVersion),

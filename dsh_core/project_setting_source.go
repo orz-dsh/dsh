@@ -42,7 +42,7 @@ func newProjectSourceSettingModel(dir string, files []string, match string) *pro
 	}
 }
 
-func (m *projectSourceSettingModel) convert(ctx *ModelConvertContext) (setting *projectSourceSetting, err error) {
+func (m *projectSourceSettingModel) convert(ctx *modelConvertContext) (setting *projectSourceSetting, err error) {
 	if m.Dir == "" {
 		return nil, ctx.Child("dir").NewValueEmptyError()
 	}

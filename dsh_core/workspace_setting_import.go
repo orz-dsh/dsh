@@ -14,7 +14,7 @@ func newWorkspaceImportSettingModel(registry *workspaceImportRegistrySettingMode
 	}
 }
 
-func (m *workspaceImportSettingModel) convert(ctx *ModelConvertContext) (registrySettings workspaceImportRegistrySettingSet, redirectSettings workspaceImportRedirectSettingSet, err error) {
+func (m *workspaceImportSettingModel) convert(ctx *modelConvertContext) (registrySettings workspaceImportRegistrySettingSet, redirectSettings workspaceImportRedirectSettingSet, err error) {
 	if m.Registry != nil {
 		if registrySettings, err = m.Registry.convert(ctx.Child("registry")); err != nil {
 			return nil, nil, err

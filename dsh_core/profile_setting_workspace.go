@@ -14,7 +14,7 @@ func newProfileWorkspaceSettingModel(shell *workspaceShellSettingModel, import_ 
 	}
 }
 
-func (m *profileWorkspaceSettingModel) convert(ctx *ModelConvertContext) (shellSettings workspaceShellSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet, err error) {
+func (m *profileWorkspaceSettingModel) convert(ctx *modelConvertContext) (shellSettings workspaceShellSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet, err error) {
 	if m.Shell != nil {
 		if shellSettings, err = m.Shell.convert(ctx.Child("shell")); err != nil {
 			return nil, nil, nil, err

@@ -51,14 +51,14 @@ func loadProfileSetting(path string) (setting *profileSetting, error error) {
 			kv("path", path),
 		)
 	}
-	if setting, err = model.convert(NewModelConvertContext("profile setting", metadata.Path)); err != nil {
+	if setting, err = model.convert(newModelConvertContext("profile setting", metadata.Path)); err != nil {
 		return nil, err
 	}
 	return setting, nil
 }
 
 func loadProfileSettingModel(model *profileSettingModel) (setting *profileSetting, err error) {
-	if setting, err = model.convert(NewModelConvertContext("profile setting", "")); err != nil {
+	if setting, err = model.convert(newModelConvertContext("profile setting", "")); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -82,7 +82,7 @@ func newProfileSettingModel(option *profileOptionSettingModel, project *profileP
 	}
 }
 
-func (m *profileSettingModel) convert(ctx *ModelConvertContext) (setting *profileSetting, err error) {
+func (m *profileSettingModel) convert(ctx *modelConvertContext) (setting *profileSetting, err error) {
 	var optionSettings profileOptionSettingSet
 	if m.Option != nil {
 		if optionSettings, err = m.Option.convert(ctx.Child("option")); err != nil {

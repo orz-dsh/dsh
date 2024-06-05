@@ -7,7 +7,7 @@ type projectScriptSettingModel struct {
 	Imports []*projectImportSettingModel
 }
 
-func (m *projectScriptSettingModel) convert(ctx *ModelConvertContext) (projectSourceSettingSet, projectImportSettingSet, error) {
+func (m *projectScriptSettingModel) convert(ctx *modelConvertContext) (projectSourceSettingSet, projectImportSettingSet, error) {
 	sourceSettings := projectSourceSettingSet{}
 	for i := 0; i < len(m.Sources); i++ {
 		if setting, err := m.Sources[i].convert(ctx.ChildItem("sources", i)); err != nil {

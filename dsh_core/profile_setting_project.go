@@ -95,7 +95,7 @@ func newProfileProjectSettingModel(items []*profileProjectItemSettingModel) *pro
 	}
 }
 
-func (m *profileProjectSettingModel) convert(ctx *ModelConvertContext) (profileProjectSettingSet, error) {
+func (m *profileProjectSettingModel) convert(ctx *modelConvertContext) (profileProjectSettingSet, error) {
 	settings := profileProjectSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
@@ -129,7 +129,7 @@ func newProfileProjectItemSettingModel(name, path, match string, script *project
 	}
 }
 
-func (m *profileProjectItemSettingModel) convert(ctx *ModelConvertContext) (setting *profileProjectSetting, err error) {
+func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (setting *profileProjectSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}

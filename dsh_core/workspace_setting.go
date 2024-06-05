@@ -52,7 +52,7 @@ func loadWorkspaceSetting(path string) (setting *workspaceSetting, err error) {
 	if metadata != nil {
 		file = metadata.Path
 	}
-	if setting, err = model.convert(NewModelConvertContext("workspace setting", file)); err != nil {
+	if setting, err = model.convert(newModelConvertContext("workspace setting", file)); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -69,7 +69,7 @@ type workspaceSettingModel struct {
 	Import  *workspaceImportSettingModel
 }
 
-func (s *workspaceSettingModel) convert(ctx *ModelConvertContext) (setting *workspaceSetting, err error) {
+func (s *workspaceSettingModel) convert(ctx *modelConvertContext) (setting *workspaceSetting, err error) {
 	var cleanSetting *workspaceCleanSetting
 	if s.Clean != nil {
 		if cleanSetting, err = s.Clean.convert(ctx.Child("clean")); err != nil {

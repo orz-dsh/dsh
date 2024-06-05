@@ -30,7 +30,7 @@ type workspaceCleanSettingModel struct {
 	Output *workspaceCleanOutputSettingModel
 }
 
-func (m *workspaceCleanSettingModel) convert(ctx *ModelConvertContext) (*workspaceCleanSetting, error) {
+func (m *workspaceCleanSettingModel) convert(ctx *modelConvertContext) (*workspaceCleanSetting, error) {
 	if m.Output != nil {
 		if outputCount, outputExpires, err := m.Output.convert(ctx.Child("output")); err != nil {
 			return nil, err
@@ -51,7 +51,7 @@ type workspaceCleanOutputSettingModel struct {
 	Expires string
 }
 
-func (m *workspaceCleanOutputSettingModel) convert(ctx *ModelConvertContext) (int, time.Duration, error) {
+func (m *workspaceCleanOutputSettingModel) convert(ctx *modelConvertContext) (int, time.Duration, error) {
 	count := workspaceCleanSettingDefault.OutputCount
 	if m.Count != nil {
 		value := *m.Count

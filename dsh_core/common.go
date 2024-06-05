@@ -5,29 +5,29 @@ import (
 	"fmt"
 )
 
-type ModelConvertContext struct {
+type modelConvertContext struct {
 	Title     string
 	File      string
 	Field     string
 	Variables map[string]any
 }
 
-func NewModelConvertContext(title, file string) *ModelConvertContext {
-	return &ModelConvertContext{
+func newModelConvertContext(title, file string) *modelConvertContext {
+	return &modelConvertContext{
 		Title:     title,
 		File:      file,
 		Variables: map[string]any{},
 	}
 }
 
-func (c *ModelConvertContext) Child(field string) *ModelConvertContext {
+func (c *modelConvertContext) Child(field string) *modelConvertContext {
 	newField := c.Field
 	if newField == "" {
 		newField = field
 	} else {
 		newField += "." + field
 	}
-	return &ModelConvertContext{
+	return &modelConvertContext{
 		Title:     c.Title,
 		File:      c.File,
 		Field:     newField,
@@ -35,15 +35,15 @@ func (c *ModelConvertContext) Child(field string) *ModelConvertContext {
 	}
 }
 
-func (c *ModelConvertContext) ChildItem(field string, index int) *ModelConvertContext {
+func (c *modelConvertContext) ChildItem(field string, index int) *modelConvertContext {
 	return c.Child(fmt.Sprintf("%s[%d]", field, index))
 }
 
-func (c *ModelConvertContext) AddVariable(key string, value any) {
+func (c *modelConvertContext) AddVariable(key string, value any) {
 	c.Variables[key] = value
 }
 
-func (c *ModelConvertContext) GetStringVariable(key string) string {
+func (c *modelConvertContext) GetStringVariable(key string) string {
 	if value, exist := c.Variables[key]; exist {
 		return value.(string)
 	} else {
@@ -52,7 +52,7 @@ func (c *ModelConvertContext) GetStringVariable(key string) string {
 	}
 }
 
-func (c *ModelConvertContext) NewError(rsn string, extra ...dsh_utils.DescKeyValue) error {
+func (c *modelConvertContext) NewError(rsn string, extra ...dsh_utils.DescKeyValue) error {
 	kvs := KVS{
 		reason(rsn),
 		kv("file", c.File),
@@ -61,7 +61,7 @@ func (c *ModelConvertContext) NewError(rsn string, extra ...dsh_utils.DescKeyVal
 	return dsh_utils.NewError(1, fmt.Sprintf("%s error", c.Title), append(kvs, extra...)...)
 }
 
-func (c *ModelConvertContext) WrapError(err error, rsn string, extra ...dsh_utils.DescKeyValue) error {
+func (c *modelConvertContext) WrapError(err error, rsn string, extra ...dsh_utils.DescKeyValue) error {
 	kvs := KVS{
 		reason(rsn),
 		kv("file", c.File),
@@ -70,7 +70,7 @@ func (c *ModelConvertContext) WrapError(err error, rsn string, extra ...dsh_util
 	return dsh_utils.WrapError(1, err, fmt.Sprintf("%s error", c.Title), append(kvs, extra...)...)
 }
 
-func (c *ModelConvertContext) NewValueEmptyError() error {
+func (c *modelConvertContext) NewValueEmptyError() error {
 	return dsh_utils.NewError(1, fmt.Sprintf("%s error", c.Title),
 		reason("value empty"),
 		kv("file", c.File),
@@ -78,7 +78,7 @@ func (c *ModelConvertContext) NewValueEmptyError() error {
 	)
 }
 
-func (c *ModelConvertContext) NewValueInvalidError(value any) error {
+func (c *modelConvertContext) NewValueInvalidError(value any) error {
 	return dsh_utils.NewError(1, fmt.Sprintf("%s error", c.Title),
 		reason("value invalid"),
 		kv("file", c.File),
@@ -87,7 +87,7 @@ func (c *ModelConvertContext) NewValueInvalidError(value any) error {
 	)
 }
 
-func (c *ModelConvertContext) WrapValueInvalidError(err error, value any) error {
+func (c *modelConvertContext) WrapValueInvalidError(err error, value any) error {
 	return dsh_utils.WrapError(1, err, fmt.Sprintf("%s error", c.Title),
 		reason("value invalid"),
 		kv("file", c.File),
