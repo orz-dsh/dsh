@@ -33,15 +33,15 @@ func GetSerializationFormat(fileType FileType) SerializationFormat {
 	return ""
 }
 
-func DeserializeFromDir(dir string, fileGlobs []string, model any, required bool) (metadata *SerializationMetadata, err error) {
-	fileNames := GetFileNames(fileGlobs, serializationSupportedFileTypes)
-	file := FindFile(dir, fileNames, serializationSupportedFileTypes)
+func DeserializeFromDir(dir string, globs []string, model any, required bool) (metadata *SerializationMetadata, err error) {
+	names := GetFileNames(globs, serializationSupportedFileTypes)
+	file := FindFile(dir, names, serializationSupportedFileTypes)
 	if file == nil {
 		if required {
 			return nil, errN("deserialize error",
 				reason("file not found"),
 				kv("dir", dir),
-				kv("fileNames", fileNames),
+				kv("names", names),
 			)
 		} else {
 			return nil, nil
