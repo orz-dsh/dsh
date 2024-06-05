@@ -33,23 +33,23 @@ func GetSerializationFormat(fileType FileType) SerializationFormat {
 	return ""
 }
 
-func DeserializeFromDir(dir string, fileNames []string, model any, required bool) (metadata *SerializationMetadata, err error) {
-	var findFileNames []string
-	for i := 0; i < len(fileNames); i++ {
-		fileName := fileNames[i]
-		findFileNames = append(findFileNames, fileName+".yml")
-		findFileNames = append(findFileNames, fileName+".yaml")
-		findFileNames = append(findFileNames, fileName+".toml")
-		findFileNames = append(findFileNames, fileName+".json")
+func DeserializeFromDir(dir string, fileGlobs []string, model any, required bool) (metadata *SerializationMetadata, err error) {
+	var fileNames []string
+	for i := 0; i < len(fileGlobs); i++ {
+		fileName := fileGlobs[i]
+		fileNames = append(fileNames, fileName+".yml")
+		fileNames = append(fileNames, fileName+".yaml")
+		fileNames = append(fileNames, fileName+".toml")
+		fileNames = append(fileNames, fileName+".json")
 	}
 
-	file := FindFile(dir, findFileNames, serializationSupportedFileTypes)
+	file := FindFile(dir, fileNames, serializationSupportedFileTypes)
 	if file == nil {
 		if required {
 			return nil, errN("deserialize error",
 				reason("file not found"),
 				kv("dir", dir),
-				kv("findFileNames", findFileNames),
+				kv("fileNames", fileNames),
 			)
 		} else {
 			return nil, nil
