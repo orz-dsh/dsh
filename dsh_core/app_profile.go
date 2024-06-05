@@ -146,10 +146,10 @@ func (p *appProfile) getProjectEntityByRawLink(rawLink string) (*projectSetting,
 	if err != nil {
 		return nil, err
 	}
-	return p.getProjectEntityByLinkTarget(target)
+	return p.getProjectSettingByLinkTarget(target)
 }
 
-func (p *appProfile) getProjectEntityByLinkTarget(target *projectLinkTarget) (*projectSetting, error) {
+func (p *appProfile) getProjectSettingByLinkTarget(target *projectLinkTarget) (*projectSetting, error) {
 	if target.Git != nil {
 		return p.getProjectEntityByGit(target.Path, target.Git.Url, target.Git.parsedUrl, target.Git.Ref, target.Git.parsedRef)
 	} else {

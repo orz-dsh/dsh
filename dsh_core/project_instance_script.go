@@ -7,23 +7,23 @@ import (
 	"time"
 )
 
-// region script
+// region projectScriptInstance
 
-type projectScript struct {
-	SourceContainer *projectScriptSourceContainer
+type projectScriptInstance struct {
+	SourceContainer *projectScriptSourceInstanceContainer
 	ImportContainer *projectImportInstanceContainer
 }
 
-func makeProjectScript(context *appContext, entity *projectSetting, option *projectOption) (script *projectScript, err error) {
-	sc, err := makeProjectScriptSourceContainer(context, entity, option)
+func newProjectScriptInstance(context *appContext, setting *projectSetting, option *projectOptionInstance) (script *projectScriptInstance, err error) {
+	sc, err := newProjectScriptSourceInstanceContainer(context, setting, option)
 	if err != nil {
 		return nil, err
 	}
-	ic, err := makeProjectImportContainer(context, entity, option, projectImportScopeScript)
+	ic, err := newProjectImportInstanceContainer(context, setting, option, projectImportScopeScript)
 	if err != nil {
 		return nil, err
 	}
-	script = &projectScript{
+	script = &projectScriptInstance{
 		SourceContainer: sc,
 		ImportContainer: ic,
 	}
@@ -32,9 +32,9 @@ func makeProjectScript(context *appContext, entity *projectSetting, option *proj
 
 // endregion
 
-// region source
+// region projectScriptSourceInstance
 
-type projectScriptSource struct {
+type projectScriptSourceInstance struct {
 	SourcePath string
 	SourceName string
 }
@@ -43,24 +43,23 @@ type projectScriptSource struct {
 
 // region container
 
-type projectScriptSourceContainer struct {
+type projectScriptSourceInstanceContainer struct {
 	context            *appContext
 	ProjectName        string
-	PlainSources       []*projectScriptSource
-	TemplateSources    []*projectScriptSource
-	TemplateLibSources []*projectScriptSource
-	sourcesByName      map[string]*projectScriptSource
+	PlainSources       []*projectScriptSourceInstance
+	TemplateSources    []*projectScriptSourceInstance
+	TemplateLibSources []*projectScriptSourceInstance
+	sourcesByName      map[string]*projectScriptSourceInstance
 }
 
-func makeProjectScriptSourceContainer(context *appContext, entity *projectSetting, option *projectOption) (container *projectScriptSourceContainer, err error) {
-	container = &projectScriptSourceContainer{
+func newProjectScriptSourceInstanceContainer(context *appContext, settings *projectSetting, option *projectOptionInstance) (*projectScriptSourceInstanceContainer, error) {
+	container := &projectScriptSourceInstanceContainer{
 		context:       context,
-		ProjectName:   entity.Name,
-		sourcesByName: map[string]*projectScriptSource{},
+		ProjectName:   settings.Name,
+		sourcesByName: map[string]*projectScriptSourceInstance{},
 	}
-	sources := entity.ScriptSourceSettings
-	for i := 0; i < len(sources); i++ {
-		source := sources[i]
+	for i := 0; i < len(settings.ScriptSourceSettings); i++ {
+		source := settings.ScriptSourceSettings[i]
 		matched, err := option.evaluator.EvalBoolExpr(source.match)
 		if err != nil {
 			return nil, err
@@ -68,14 +67,14 @@ func makeProjectScriptSourceContainer(context *appContext, entity *projectSettin
 		if !matched {
 			continue
 		}
-		if err = container.scanSources(filepath.Join(entity.Path, source.Dir), source.Files); err != nil {
+		if err = container.scanSources(filepath.Join(settings.Path, source.Dir), source.Files); err != nil {
 			return nil, err
 		}
 	}
 	return container, nil
 }
 
-func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFiles []string) error {
+func (c *projectScriptSourceInstanceContainer) scanSources(sourceDir string, includeFiles []string) error {
 	files, err := dsh_utils.ScanFiles(sourceDir, includeFiles, []dsh_utils.FileType{
 		dsh_utils.FileTypePlain,
 		dsh_utils.FileTypeTemplate,
@@ -86,7 +85,7 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 	}
 	for j := 0; j < len(files); j++ {
 		file := files[j]
-		source := &projectScriptSource{
+		source := &projectScriptSourceInstance{
 			SourcePath: file.Path,
 			SourceName: file.RelPath,
 		}
@@ -118,7 +117,7 @@ func (c *projectScriptSourceContainer) scanSources(sourceDir string, includeFile
 	return nil
 }
 
-func (c *projectScriptSourceContainer) makeSources(evaluator *Evaluator, outputPath string, useHardLink bool) (targetNames []string, err error) {
+func (c *projectScriptSourceInstanceContainer) makeSources(evaluator *Evaluator, outputPath string, useHardLink bool) (targetNames []string, err error) {
 	for i := 0; i < len(c.PlainSources); i++ {
 		startTime := time.Now()
 		source := c.PlainSources[i]

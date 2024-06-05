@@ -8,10 +8,10 @@ import (
 
 type App struct {
 	context                *appContext
-	mainProject            *appProject
-	extraProjects          []*appProject
-	scriptProjectContainer *appProjectContainer
-	configProjectContainer *appProjectContainer
+	mainProject            *projectInstance
+	extraProjects          []*projectInstance
+	scriptProjectContainer *projectInstanceContainer
+	configProjectContainer *projectInstanceContainer
 	configs                map[string]any
 	configsMade            bool
 }
@@ -28,9 +28,9 @@ func makeApp(context *appContext, mainProjectEntity *projectSetting, extraProjec
 		return nil, err
 	}
 
-	var extraProjects []*appProject
+	var extraProjects []*projectInstance
 	for i := 0; i < len(extraProjectEntities); i++ {
-		extraProject, err := makeAppProject(context, extraProjectEntities[i])
+		extraProject, err := newProjectInstance(context, extraProjectEntities[i])
 		if err != nil {
 			return nil, err
 		}
@@ -41,8 +41,8 @@ func makeApp(context *appContext, mainProjectEntity *projectSetting, extraProjec
 		context:                context,
 		mainProject:            mainProject,
 		extraProjects:          extraProjects,
-		scriptProjectContainer: newAppProjectContainer(mainProject, extraProjects, projectImportScopeScript),
-		configProjectContainer: newAppProjectContainer(mainProject, extraProjects, projectImportScopeConfig),
+		scriptProjectContainer: newProjectInstanceContainer(mainProject, extraProjects, projectImportScopeScript),
+		configProjectContainer: newProjectInstanceContainer(mainProject, extraProjects, projectImportScopeConfig),
 	}
 	return app, nil
 }

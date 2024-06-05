@@ -1,12 +1,12 @@
 package dsh_core
 
-// region import
+// region projectImportInstance
 
-type projectEntityImport struct {
+type projectImportInstance struct {
 	context *appContext
-	Entity  *projectImportSetting
+	Setting *projectImportSetting
 	Target  *projectLinkTarget
-	project *appProject
+	project *projectInstance
 }
 
 type projectImportScope string
@@ -16,15 +16,15 @@ const (
 	projectImportScopeConfig projectImportScope = "config"
 )
 
-func newProjectImport(context *appContext, entity *projectImportSetting, target *projectLinkTarget) *projectEntityImport {
-	return &projectEntityImport{
+func newProjectImportInstance(context *appContext, setting *projectImportSetting, target *projectLinkTarget) *projectImportInstance {
+	return &projectImportInstance{
 		context: context,
-		Entity:  entity,
+		Setting: setting,
 		Target:  target,
 	}
 }
 
-func (i *projectEntityImport) loadProject() error {
+func (i *projectImportInstance) loadProject() error {
 	if i.project == nil {
 		if project, err := i.context.loadProjectByTarget(i.Target); err != nil {
 			return err
@@ -37,44 +37,44 @@ func (i *projectEntityImport) loadProject() error {
 
 // endregion
 
-// region container
+// region projectImportInstanceContainer
 
 type projectImportInstanceContainer struct {
 	context       *appContext
 	scope         projectImportScope
 	ProjectName   string
 	ProjectPath   string
-	Imports       []*projectEntityImport
-	importsByPath map[string]*projectEntityImport
+	Imports       []*projectImportInstance
+	importsByPath map[string]*projectImportInstance
 	importsLoaded bool
 }
 
-func makeProjectImportContainer(context *appContext, entity *projectSetting, option *projectOption, scope projectImportScope) (container *projectImportInstanceContainer, err error) {
-	var imports []*projectImportSetting
+func newProjectImportInstanceContainer(context *appContext, setting *projectSetting, option *projectOptionInstance, scope projectImportScope) (*projectImportInstanceContainer, error) {
+	var importSettings []*projectImportSetting
 	if scope == projectImportScopeScript {
-		imports = entity.ScriptImportSettings
+		importSettings = setting.ScriptImportSettings
 	} else if scope == projectImportScopeConfig {
-		imports = entity.ConfigImportSettings
+		importSettings = setting.ConfigImportSettings
 	} else {
 		impossible()
 	}
-	container = &projectImportInstanceContainer{
+	container := &projectImportInstanceContainer{
 		context:       context,
 		scope:         scope,
-		ProjectName:   entity.Name,
-		ProjectPath:   entity.Path,
-		importsByPath: map[string]*projectEntityImport{},
+		ProjectName:   setting.Name,
+		ProjectPath:   setting.Path,
+		importsByPath: map[string]*projectImportInstance{},
 	}
-	for i := 0; i < len(imports); i++ {
-		entity := imports[i]
-		matched, err := option.evaluator.EvalBoolExpr(entity.match)
+	for i := 0; i < len(importSettings); i++ {
+		importSetting := importSettings[i]
+		matched, err := option.evaluator.EvalBoolExpr(importSetting.match)
 		if err != nil {
 			return nil, err
 		}
 		if !matched {
 			continue
 		}
-		if err = container.addImport(entity); err != nil {
+		if err = container.addImport(importSetting); err != nil {
 			return nil, err
 		}
 	}
@@ -93,7 +93,7 @@ func (c *projectImportInstanceContainer) addImport(entity *projectImportSetting)
 	if target.Path == c.ProjectPath {
 		return nil
 	}
-	imp := newProjectImport(c.context, entity, target)
+	imp := newProjectImportInstance(c.context, entity, target)
 	if _, exist := c.importsByPath[target.Path]; !exist {
 		c.Imports = append(c.Imports, imp)
 		c.importsByPath[target.Path] = imp

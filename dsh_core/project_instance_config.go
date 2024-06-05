@@ -13,12 +13,12 @@ type projectConfigInstance struct {
 	ImportContainer *projectImportInstanceContainer
 }
 
-func newProjectConfigInstance(context *appContext, setting *projectSetting, option *projectOption) (instance *projectConfigInstance, err error) {
+func newProjectConfigInstance(context *appContext, setting *projectSetting, option *projectOptionInstance) (instance *projectConfigInstance, err error) {
 	sc, err := newProjectConfigSourceInstanceContainer(context, setting, option)
 	if err != nil {
 		return nil, err
 	}
-	ic, err := makeProjectImportContainer(context, setting, option, projectImportScopeConfig)
+	ic, err := newProjectImportInstanceContainer(context, setting, option, projectImportScopeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -42,14 +42,13 @@ type projectConfigSourceInstance struct {
 type projectConfigSourceFormat = dsh_utils.SerializationFormat
 
 func (i *projectConfigSourceInstance) loadContent() error {
-	if i.content != nil {
-		return nil
+	if i.content == nil {
+		if content, err := newProjectConfigContentInstance(i.SourcePath, i.SourceFormat); err != nil {
+			return err
+		} else {
+			i.content = content
+		}
 	}
-	content, err := newProjectConfigContentInstance(i.SourcePath, i.SourceFormat)
-	if err != nil {
-		return err
-	}
-	i.content = content
 	return nil
 }
 
@@ -115,7 +114,7 @@ type projectConfigSourceInstanceContainer struct {
 	sourcePathsDict map[string]bool
 }
 
-func newProjectConfigSourceInstanceContainer(context *appContext, setting *projectSetting, option *projectOption) (*projectConfigSourceInstanceContainer, error) {
+func newProjectConfigSourceInstanceContainer(context *appContext, setting *projectSetting, option *projectOptionInstance) (*projectConfigSourceInstanceContainer, error) {
 	container := &projectConfigSourceInstanceContainer{
 		context:         context,
 		sourcePathsDict: map[string]bool{},
