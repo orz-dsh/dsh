@@ -39,7 +39,7 @@ func (i *projectEntityImport) loadProject() error {
 
 // region container
 
-type projectImportContainer struct {
+type projectImportInstanceContainer struct {
 	context       *appContext
 	scope         projectImportScope
 	ProjectName   string
@@ -49,7 +49,7 @@ type projectImportContainer struct {
 	importsLoaded bool
 }
 
-func makeProjectImportContainer(context *appContext, entity *projectSetting, option *projectOption, scope projectImportScope) (container *projectImportContainer, err error) {
+func makeProjectImportContainer(context *appContext, entity *projectSetting, option *projectOption, scope projectImportScope) (container *projectImportInstanceContainer, err error) {
 	var imports []*projectImportSetting
 	if scope == projectImportScopeScript {
 		imports = entity.ScriptImportSettings
@@ -58,7 +58,7 @@ func makeProjectImportContainer(context *appContext, entity *projectSetting, opt
 	} else {
 		impossible()
 	}
-	container = &projectImportContainer{
+	container = &projectImportInstanceContainer{
 		context:       context,
 		scope:         scope,
 		ProjectName:   entity.Name,
@@ -81,7 +81,7 @@ func makeProjectImportContainer(context *appContext, entity *projectSetting, opt
 	return container, nil
 }
 
-func (c *projectImportContainer) addImport(entity *projectImportSetting) (err error) {
+func (c *projectImportInstanceContainer) addImport(entity *projectImportSetting) (err error) {
 	target, err := c.context.profile.getProjectLinkTarget(entity.link)
 	if err != nil {
 		return errW(err, "add import error",
@@ -101,7 +101,7 @@ func (c *projectImportContainer) addImport(entity *projectImportSetting) (err er
 	return nil
 }
 
-func (c *projectImportContainer) loadImports() (err error) {
+func (c *projectImportInstanceContainer) loadImports() (err error) {
 	if c.importsLoaded {
 		return nil
 	}

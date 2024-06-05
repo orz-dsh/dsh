@@ -193,6 +193,14 @@ type DescExtraKeyValuesFunc interface {
 }
 
 func NewDescKeyValue(key string, value any) DescKeyValue {
+	switch value.(type) {
+	case reflect.Type:
+		return NewDescKeyValue(key, value.(reflect.Type).String())
+	case reflect.Value:
+		return NewDescKeyValue(key, value.(reflect.Value).String())
+	case reflect.Kind:
+		return NewDescKeyValue(key, value.(reflect.Kind).String())
+	}
 	valueReflect := reflect.ValueOf(value)
 	valueIsNil := value == nil
 	switch valueReflect.Kind() {

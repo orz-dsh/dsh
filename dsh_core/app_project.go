@@ -12,7 +12,7 @@ type appProject struct {
 	context *appContext
 	option  *projectOption
 	script  *projectScript
-	config  *projectConfig
+	config  *projectConfigInstance
 }
 
 func makeAppProject(context *appContext, entity *projectSetting) (project *appProject, err error) {
@@ -33,7 +33,7 @@ func makeAppProject(context *appContext, entity *projectSetting) (project *appPr
 			kv("projectPath", entity.Path),
 		)
 	}
-	config, err := makeProjectConfig(context, entity, option)
+	config, err := newProjectConfigInstance(context, entity, option)
 	if err != nil {
 		return nil, errW(err, "load project error",
 			reason("load project config error"),
@@ -52,7 +52,7 @@ func makeAppProject(context *appContext, entity *projectSetting) (project *appPr
 	return project, nil
 }
 
-func (p *appProject) getImportContainer(scope projectImportScope) *projectImportContainer {
+func (p *appProject) getImportContainer(scope projectImportScope) *projectImportInstanceContainer {
 	if scope == projectImportScopeScript {
 		return p.script.ImportContainer
 	} else if scope == projectImportScopeConfig {
@@ -67,8 +67,8 @@ func (p *appProject) loadImports(scope projectImportScope) error {
 	return p.getImportContainer(scope).loadImports()
 }
 
-func (p *appProject) loadConfigSources() error {
-	return p.config.SourceContainer.loadSources()
+func (p *appProject) loadConfigContents() ([]*projectConfigContentInstance, error) {
+	return p.config.SourceContainer.loadContents()
 }
 
 func (p *appProject) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
@@ -168,39 +168,31 @@ func (c *appProjectContainer) makeConfigs() (configs map[string]any, err error) 
 			kv("project", c.mainProject),
 		)
 	}
+
+	var contents []*projectConfigContentInstance
 	for i := 0; i < len(c.Imports); i++ {
-		if err = c.Imports[i].project.loadConfigSources(); err != nil {
+		iContents, err := c.Imports[i].project.loadConfigContents()
+		if err != nil {
 			return nil, errW(err, "make configs error",
-				reason("load config sources error"),
+				reason("load config contents error"),
 				kv("project", c.Imports[i].project),
 			)
 		}
+		contents = append(contents, iContents...)
 	}
 	for i := 0; i < len(c.projects); i++ {
-		if err = c.projects[i].loadConfigSources(); err != nil {
+		pContents, err := c.projects[i].loadConfigContents()
+		if err != nil {
 			return nil, errW(err, "make configs error",
-				reason("load config sources error"),
+				reason("load config contents error"),
 				kv("project", c.projects[i]),
 			)
 		}
+		contents = append(contents, pContents...)
 	}
 
-	var sources []*projectConfigSource
-	for i := 0; i < len(c.Imports); i++ {
-		for j := 0; j < len(c.Imports[i].project.config.SourceContainer.Sources); j++ {
-			source := c.Imports[i].project.config.SourceContainer.Sources[j]
-			sources = append(sources, source)
-		}
-	}
-	for i := 0; i < len(c.projects); i++ {
-		for j := 0; j < len(c.projects[i].config.SourceContainer.Sources); j++ {
-			source := c.projects[i].config.SourceContainer.Sources[j]
-			sources = append(sources, source)
-		}
-	}
-
-	slices.SortStableFunc(sources, func(l, r *projectConfigSource) int {
-		n := l.content.Order - r.content.Order
+	slices.SortStableFunc(contents, func(l, r *projectConfigContentInstance) int {
+		n := l.Order - r.Order
 		if n < 0 {
 			return 1
 		} else if n > 0 {
@@ -211,12 +203,12 @@ func (c *appProjectContainer) makeConfigs() (configs map[string]any, err error) 
 	})
 
 	configs = map[string]any{}
-	for i := 0; i < len(sources); i++ {
-		source := sources[i]
-		if err = source.mergeConfigs(configs); err != nil {
+	for i := 0; i < len(contents); i++ {
+		content := contents[i]
+		if err = content.merge(configs); err != nil {
 			return nil, errW(err, "make configs error",
 				reason("merge configs error"),
-				kv("sourcePath", source.SourcePath),
+				kv("sourcePath", content.sourcePath),
 			)
 		}
 	}

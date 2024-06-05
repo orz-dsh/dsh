@@ -2,41 +2,41 @@ package dsh_core
 
 // region project
 
-type projectEntity struct {
+type projectInstance struct {
 	Name    string
 	Path    string
 	context *appContext
 	option  *projectOption
 	script  *projectScript
-	config  *projectConfig
+	config  *projectConfigInstance
 }
 
-func createProjectEntity(context *appContext, schema *projectSetting) (project *projectEntity, err error) {
-	context.logger.InfoDesc("create project instance", kv("name", schema.Name))
-	option, err := makeProjectOption(context, schema)
+func createProjectInstance(context *appContext, setting *projectSetting) (instance *projectInstance, err error) {
+	context.logger.InfoDesc("create project instance", kv("name", setting.Name))
+	option, err := makeProjectOption(context, setting)
 	if err != nil {
 		return nil, err
 	}
-	script, err := makeProjectScript(context, schema, option)
+	script, err := makeProjectScript(context, setting, option)
 	if err != nil {
 		return nil, err
 	}
-	config, err := makeProjectConfig(context, schema, option)
+	config, err := newProjectConfigInstance(context, setting, option)
 	if err != nil {
 		return nil, err
 	}
-	project = &projectEntity{
-		Name:    schema.Name,
-		Path:    schema.Path,
+	instance = &projectInstance{
+		Name:    setting.Name,
+		Path:    setting.Path,
 		context: context,
 		option:  option,
 		script:  script,
 		config:  config,
 	}
-	return project, nil
+	return instance, nil
 }
 
-func (p *projectEntity) getImportContainer(scope projectImportScope) *projectImportContainer {
+func (p *projectInstance) getImportContainer(scope projectImportScope) *projectImportInstanceContainer {
 	if scope == projectImportScopeScript {
 		return p.script.ImportContainer
 	} else if scope == projectImportScopeConfig {
@@ -47,15 +47,11 @@ func (p *projectEntity) getImportContainer(scope projectImportScope) *projectImp
 	return nil
 }
 
-func (p *projectEntity) loadImports(scope projectImportScope) error {
+func (p *projectInstance) loadImports(scope projectImportScope) error {
 	return p.getImportContainer(scope).loadImports()
 }
 
-func (p *projectEntity) loadConfigSources() error {
-	return p.config.SourceContainer.loadSources()
-}
-
-func (p *projectEntity) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
+func (p *projectInstance) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
 	evaluator = evaluator.SetData("options", p.option.Items)
 	targetNames, err := p.script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
 	if err != nil {

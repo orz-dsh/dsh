@@ -11,7 +11,7 @@ import (
 
 type projectScript struct {
 	SourceContainer *projectScriptSourceContainer
-	ImportContainer *projectImportContainer
+	ImportContainer *projectImportInstanceContainer
 }
 
 func makeProjectScript(context *appContext, entity *projectSetting, option *projectOption) (script *projectScript, err error) {
