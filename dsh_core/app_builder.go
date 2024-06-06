@@ -53,33 +53,29 @@ func (b *AppBuilder) Build(link string) (*App, error) {
 
 	profile := newAppProfile(b.workspace, b.profileSettings)
 
-	entity, err := profile.getProjectEntityByRawLink(link)
+	mainProjectSetting, err := profile.getProjectEntityByRawLink(link)
 	if err != nil {
 		return nil, err
 	}
 
 	evaluator := b.workspace.evaluator.SetData("main_project", map[string]any{
-		"name": entity.Name,
-		"path": entity.Path,
+		"name": mainProjectSetting.Name,
+		"path": mainProjectSetting.Path,
 	})
 
-	option, err := profile.getAppOption(entity, evaluator)
+	option, err := profile.getAppOption(mainProjectSetting, evaluator)
 	if err != nil {
 		return nil, err
 	}
 
-	extraProjectEntities, err := profile.getExtraProjectEntities(evaluator)
+	extraProjectSettings, err := profile.getExtraProjectEntities(evaluator)
 	if err != nil {
 		return nil, err
 	}
 
 	context := newAppContext(b.workspace, evaluator, profile, option)
 
-	app, err := makeApp(context, entity, extraProjectEntities)
-	if err != nil {
-		return nil, err
-	}
-	return app, nil
+	return newApp(context, mainProjectSetting, extraProjectSettings), nil
 }
 
 func (b *AppBuilder) addProfileSetting(position int, setting *profileSetting, err error) *AppBuilder {

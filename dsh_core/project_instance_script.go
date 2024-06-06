@@ -30,6 +30,12 @@ func newProjectScriptInstance(context *appContext, setting *projectSetting, opti
 	return script, nil
 }
 
+func (i *projectScriptInstance) inspect() *ProjectScriptInspection {
+	plainSources, templateSources, templateLibSources := i.SourceContainer.inspect()
+	imports := i.ImportContainer.inspect()
+	return newProjectScriptInspection(plainSources, templateSources, templateLibSources, imports)
+}
+
 // endregion
 
 // region projectScriptSourceInstance
@@ -39,9 +45,13 @@ type projectScriptSourceInstance struct {
 	SourceName string
 }
 
+func (i *projectScriptSourceInstance) inspect() *ProjectScriptSourceInspection {
+	return newProjectScriptSourceInspection(i.SourcePath, i.SourceName)
+}
+
 // endregion
 
-// region container
+// region projectScriptSourceInstanceContainer
 
 type projectScriptSourceInstanceContainer struct {
 	context            *appContext
@@ -182,6 +192,19 @@ func (c *projectScriptSourceInstanceContainer) makeSources(evaluator *Evaluator,
 		)
 	}
 	return targetNames, nil
+}
+
+func (c *projectScriptSourceInstanceContainer) inspect() (plainSources []*ProjectScriptSourceInspection, templateSources []*ProjectScriptSourceInspection, templateLibSources []*ProjectScriptSourceInspection) {
+	for i := 0; i < len(c.PlainSources); i++ {
+		plainSources = append(plainSources, c.PlainSources[i].inspect())
+	}
+	for i := 0; i < len(c.TemplateSources); i++ {
+		templateSources = append(templateSources, c.TemplateSources[i].inspect())
+	}
+	for i := 0; i < len(c.TemplateLibSources); i++ {
+		templateLibSources = append(templateLibSources, c.TemplateLibSources[i].inspect())
+	}
+	return plainSources, templateSources, templateLibSources
 }
 
 // endregion

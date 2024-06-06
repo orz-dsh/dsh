@@ -8,14 +8,12 @@ import (
 )
 
 type App struct {
-	context                *appContext
-	mainProject            *projectInstance
-	extraProjects          []*projectInstance
-	scriptProjectContainer *projectInstanceContainer
-	configProjectContainer *projectInstanceContainer
-	configs                map[string]any
-	configTraces           map[string]any
-	configsMade            bool
+	context          *appContext
+	mainProjectName  string
+	projectContainer *projectInstanceContainer
+	configs          map[string]any
+	configsTraces    map[string]any
+	configsMade      bool
 }
 
 type AppMakeScriptsSettings struct {
@@ -25,64 +23,45 @@ type AppMakeScriptsSettings struct {
 	Inspection      bool
 }
 
-func makeApp(context *appContext, mainProjectEntity *projectSetting, extraProjectEntities []*projectSetting) (*App, error) {
-	mainProject, err := context.loadProject(mainProjectEntity)
-	if err != nil {
-		return nil, err
+func newApp(context *appContext, mainSetting *projectSetting, extraSettings []*projectSetting) *App {
+	return &App{
+		context:          context,
+		mainProjectName:  mainSetting.Name,
+		projectContainer: newProjectInstanceContainerTest(context, mainSetting, extraSettings),
 	}
-
-	var extraProjects []*projectInstance
-	for i := 0; i < len(extraProjectEntities); i++ {
-		extraProject, err := newProjectInstance(context, extraProjectEntities[i])
-		if err != nil {
-			return nil, err
-		}
-		extraProjects = append(extraProjects, extraProject)
-	}
-
-	app := &App{
-		context:                context,
-		mainProject:            mainProject,
-		extraProjects:          extraProjects,
-		scriptProjectContainer: newProjectInstanceContainer(mainProject, extraProjects, projectImportScopeScript),
-		configProjectContainer: newProjectInstanceContainer(mainProject, extraProjects, projectImportScopeConfig),
-	}
-	return app, nil
 }
 
 func (a *App) DescExtraKeyValues() KVS {
 	return KVS{
 		kv("context", a.context),
-		kv("mainProject", a.mainProject),
-		kv("extraProjects", a.extraProjects),
-		kv("scriptProjectContainer", a.scriptProjectContainer),
-		kv("configProjectContainer", a.configProjectContainer),
+		kv("mainProjectName", a.mainProjectName),
+		kv("projectContainer", a.projectContainer),
 	}
 }
 
 func (a *App) MakeConfigs() (map[string]any, map[string]any, error) {
 	if a.configsMade {
-		return a.configs, a.configTraces, nil
+		return a.configs, a.configsTraces, nil
 	}
 
 	startTime := time.Now()
 	a.context.logger.Info("make configs start")
 
-	configs, configTraces, err := a.configProjectContainer.makeConfigs()
+	configs, configsTraces, err := a.projectContainer.makeConfigs()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	a.configs = configs
-	a.configTraces = configTraces
+	a.configsTraces = configsTraces
 	a.configsMade = true
 
 	a.context.logger.InfoDesc("make configs finish", kv("elapsed", time.Since(startTime)))
-	return a.configs, a.configTraces, nil
+	return a.configs, a.configsTraces, nil
 }
 
 func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifact, err error) {
-	configs, configTraces, err := a.MakeConfigs()
+	configs, configsTraces, err := a.MakeConfigs()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +70,7 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 	a.context.logger.Info("make scripts start")
 	outputPath := settings.OutputPath
 	if outputPath == "" {
-		outputPath, err = a.context.workspace.makeOutputDir(a.mainProject.Name)
+		outputPath, err = a.context.workspace.makeOutputDir(a.mainProjectName)
 		if err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("make output path error"),
@@ -116,32 +95,34 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 		}
 	}
 
+	evaluator := a.context.evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
+
+	inspectionPath := ""
 	if settings.Inspection {
-		inspectionPath := filepath.Join(outputPath, "@inspection")
+		inspectionPath = filepath.Join(outputPath, "@inspection")
 		if err = os.MkdirAll(inspectionPath, os.ModePerm); err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("make inspection dir error"),
 				kv("path", inspectionPath),
 			)
 		}
-		configsInspectionPath := filepath.Join(inspectionPath, "configs.yml")
-		if err = dsh_utils.WriteYamlFile(configsInspectionPath, configs); err != nil {
+		configsTracesInspectionPath := filepath.Join(inspectionPath, "configs-traces.yml")
+		if err = dsh_utils.WriteYamlFile(configsTracesInspectionPath, configsTraces); err != nil {
 			return nil, errW(err, "make scripts error",
-				reason("write configs inspection file error"),
-				kv("path", configsInspectionPath),
+				reason("write configs traces inspection file error"),
+				kv("path", configsTracesInspectionPath),
 			)
 		}
-		configTracesInspectionPath := filepath.Join(inspectionPath, "config-traces.yml")
-		if err = dsh_utils.WriteYamlFile(configTracesInspectionPath, configTraces); err != nil {
+		dataInspectionPath := filepath.Join(inspectionPath, "data.yml")
+		if err = dsh_utils.WriteYamlFile(dataInspectionPath, evaluator.ToMap(false)); err != nil {
 			return nil, errW(err, "make scripts error",
-				reason("write config traces inspection file error"),
-				kv("path", configTracesInspectionPath),
+				reason("write data inspection file error"),
+				kv("path", dataInspectionPath),
 			)
 		}
 	}
 
-	evaluator := a.context.evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
-	targetNames, err := a.scriptProjectContainer.makeScripts(evaluator, outputPath, settings.UseHardLink)
+	targetNames, err := a.projectContainer.makeScripts(evaluator, outputPath, settings.UseHardLink, inspectionPath)
 	if err != nil {
 		return nil, err
 	}

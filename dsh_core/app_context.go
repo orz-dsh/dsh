@@ -47,3 +47,7 @@ func (c *appContext) loadProjectByTarget(target *projectLinkTarget) (project *pr
 	}
 	return project, nil
 }
+
+func (c *appContext) getProject(name string) *projectInstance {
+	return c.projectsByName[name]
+}

@@ -29,6 +29,12 @@ func newProjectConfigInstance(context *appContext, setting *projectSetting, opti
 	return instance, nil
 }
 
+func (i *projectConfigInstance) inspect() *ProjectConfigInspection {
+	sources := i.SourceContainer.inspect()
+	imports := i.ImportContainer.inspect()
+	return newProjectConfigInspection(sources, imports)
+}
+
 // endregion
 
 // region projectConfigSourceInstance
@@ -50,6 +56,10 @@ func (i *projectConfigSourceInstance) loadContent() error {
 		}
 	}
 	return nil
+}
+
+func (i *projectConfigSourceInstance) inspect() *ProjectConfigSourceInspection {
+	return newProjectConfigSourceInspection(i.SourcePath)
 }
 
 // endregion
@@ -95,8 +105,8 @@ func newProjectConfigContentInstance(sourcePath string, sourceFormat projectConf
 	return content, nil
 }
 
-func (i *projectConfigContentInstance) merge(configs map[string]any, configTraces map[string]any) error {
-	if _, _, err := dsh_utils.MapMerge(configs, i.Configs, i.Merges, i.sourcePath, configTraces); err != nil {
+func (i *projectConfigContentInstance) merge(configs map[string]any, configsTraces map[string]any) error {
+	if _, _, err := dsh_utils.MapMerge(configs, i.Configs, i.Merges, i.sourcePath, configsTraces); err != nil {
 		return errW(err, "merge config content error",
 			kv("sourcePath", i.sourcePath),
 		)
@@ -169,6 +179,13 @@ func (c *projectConfigSourceInstanceContainer) loadContents() (contents []*proje
 		contents = append(contents, source.content)
 	}
 	return contents, nil
+}
+
+func (c *projectConfigSourceInstanceContainer) inspect() (sources []*ProjectConfigSourceInspection) {
+	for i := 0; i < len(c.Sources); i++ {
+		sources = append(sources, c.Sources[i].inspect())
+	}
+	return sources
 }
 
 // endregion

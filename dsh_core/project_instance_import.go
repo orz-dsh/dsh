@@ -4,7 +4,6 @@ package dsh_core
 
 type projectImportInstance struct {
 	context *appContext
-	Setting *projectImportSetting
 	Target  *projectLinkTarget
 	project *projectInstance
 }
@@ -16,10 +15,9 @@ const (
 	projectImportScopeConfig projectImportScope = "config"
 )
 
-func newProjectImportInstance(context *appContext, setting *projectImportSetting, target *projectLinkTarget) *projectImportInstance {
+func newProjectImportInstance(context *appContext, target *projectLinkTarget) *projectImportInstance {
 	return &projectImportInstance{
 		context: context,
-		Setting: setting,
 		Target:  target,
 	}
 }
@@ -33,6 +31,15 @@ func (i *projectImportInstance) loadProject() error {
 		}
 	}
 	return nil
+}
+
+func (i *projectImportInstance) inspect() *ProjectImportInspection {
+	var gitUrl, gitRef string
+	if i.Target.Git != nil {
+		gitUrl = i.Target.Git.Url
+		gitRef = i.Target.Git.Ref
+	}
+	return newProjectImportInspection(i.Target.Link.Normalized, i.Target.Path, gitUrl, gitRef)
 }
 
 // endregion
@@ -93,7 +100,7 @@ func (c *projectImportInstanceContainer) addImport(entity *projectImportSetting)
 	if target.Path == c.ProjectPath {
 		return nil
 	}
-	imp := newProjectImportInstance(c.context, entity, target)
+	imp := newProjectImportInstance(c.context, target)
 	if _, exist := c.importsByPath[target.Path]; !exist {
 		c.Imports = append(c.Imports, imp)
 		c.importsByPath[target.Path] = imp
@@ -115,6 +122,13 @@ func (c *projectImportInstanceContainer) loadImports() (err error) {
 	}
 	c.importsLoaded = true
 	return nil
+}
+
+func (c *projectImportInstanceContainer) inspect() (imports []*ProjectImportInspection) {
+	for i := 0; i < len(c.Imports); i++ {
+		imports = append(imports, c.Imports[i].inspect())
+	}
+	return imports
 }
 
 // endregion

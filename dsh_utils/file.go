@@ -211,6 +211,34 @@ func WriteYamlFile(file string, model any) error {
 	return os.WriteFile(file, data, os.ModePerm)
 }
 
+func WriteTomlFile(file string, model any) error {
+	data, err := toml.Marshal(model)
+	if err != nil {
+		return errW(err, "write toml file error",
+			reason("toml marshal error"),
+			kv("file", file),
+		)
+	}
+	return os.WriteFile(file, data, os.ModePerm)
+}
+
+func WriteJsonFile(file string, model any, indent bool) error {
+	var data []byte
+	var err error
+	if indent {
+		data, err = json.MarshalIndent(model, "", "    ")
+	} else {
+		data, err = json.Marshal(model)
+	}
+	if err != nil {
+		return errW(err, "write json file error",
+			reason("json marshal error"),
+			kv("file", file),
+		)
+	}
+	return os.WriteFile(file, data, os.ModePerm)
+}
+
 func IsYamlFile(file string) bool {
 	return strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml")
 }

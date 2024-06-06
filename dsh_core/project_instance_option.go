@@ -69,4 +69,8 @@ func makeProjectOption(context *appContext, setting *projectSetting) (*projectOp
 	return option, nil
 }
 
+func (i *projectOptionInstance) inspect() *ProjectOptionInspection {
+	return newProjectOptionInspection(i.Items)
+}
+
 // endregion

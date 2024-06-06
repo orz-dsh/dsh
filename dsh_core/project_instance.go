@@ -1,16 +1,23 @@
 package dsh_core
 
-import "slices"
+import (
+	"dsh/dsh_utils"
+	"fmt"
+	"path/filepath"
+	"slices"
+)
 
 // region projectInstance
 
 type projectInstance struct {
-	Name    string
-	Path    string
-	context *appContext
-	option  *projectOptionInstance
-	script  *projectScriptInstance
-	config  *projectConfigInstance
+	Name       string
+	Path       string
+	context    *appContext
+	option     *projectOptionInstance
+	script     *projectScriptInstance
+	config     *projectConfigInstance
+	extra      bool
+	extraIndex int
 }
 
 func newProjectInstance(context *appContext, setting *projectSetting) (instance *projectInstance, err error) {
@@ -50,35 +57,95 @@ func newProjectInstance(context *appContext, setting *projectSetting) (instance 
 	return instance, nil
 }
 
-func (p *projectInstance) getImportContainer(scope projectImportScope) *projectImportInstanceContainer {
+func newProjectInstanceFromExtraSetting(context *appContext, setting *projectSetting, option *projectOptionInstance, extraIndex int) (instance *projectInstance, err error) {
+	if option == nil {
+		option, err = makeProjectOption(context, setting)
+		if err != nil {
+			return nil, errW(err, "load project error",
+				reason("make project option error"),
+				kv("projectName", setting.Name),
+				kv("projectPath", setting.Path),
+			)
+		}
+	}
+	script, err := newProjectScriptInstance(context, setting, option)
+	if err != nil {
+		return nil, errW(err, "load project error",
+			reason("load project script error"),
+			kv("projectName", setting.Name),
+			kv("projectPath", setting.Path),
+		)
+	}
+	config, err := newProjectConfigInstance(context, setting, option)
+	if err != nil {
+		return nil, errW(err, "load project error",
+			reason("load project config error"),
+			kv("projectName", setting.Name),
+			kv("projectPath", setting.Path),
+		)
+	}
+	instance = &projectInstance{
+		Name:       setting.Name,
+		Path:       setting.Path,
+		context:    context,
+		option:     option,
+		script:     script,
+		config:     config,
+		extra:      true,
+		extraIndex: extraIndex,
+	}
+	return instance, nil
+}
+
+func (i *projectInstance) getImportContainer(scope projectImportScope) *projectImportInstanceContainer {
 	if scope == projectImportScopeScript {
-		return p.script.ImportContainer
+		return i.script.ImportContainer
 	} else if scope == projectImportScopeConfig {
-		return p.config.ImportContainer
+		return i.config.ImportContainer
 	} else {
 		impossible()
 	}
 	return nil
 }
 
-func (p *projectInstance) loadImports(scope projectImportScope) error {
-	return p.getImportContainer(scope).loadImports()
+func (i *projectInstance) loadImports(scope projectImportScope) error {
+	return i.getImportContainer(scope).loadImports()
 }
 
-func (p *projectInstance) loadConfigContents() ([]*projectConfigContentInstance, error) {
-	return p.config.SourceContainer.loadContents()
+func (i *projectInstance) loadConfigContents() ([]*projectConfigContentInstance, error) {
+	return i.config.SourceContainer.loadContents()
 }
 
-func (p *projectInstance) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
-	evaluator = evaluator.SetData("options", p.option.Items)
-	targetNames, err := p.script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
+func (i *projectInstance) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool, inspectionPath string) ([]string, error) {
+	if inspectionPath != "" {
+		projectInspectionPath := ""
+		if i.extra {
+			projectInspectionPath = filepath.Join(inspectionPath, fmt.Sprintf("extra-project-%d-%s.yml", i.extraIndex, i.Name))
+		} else {
+			projectInspectionPath = filepath.Join(inspectionPath, fmt.Sprintf("project-%s.yml", i.Name))
+		}
+		projectInspection := i.inspect()
+		if err := dsh_utils.WriteYamlFile(projectInspectionPath, projectInspection); err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("write project inspection error"),
+				kv("project", i),
+			)
+		}
+	}
+
+	evaluator = evaluator.SetData("options", i.option.Items)
+	targetNames, err := i.script.SourceContainer.makeSources(evaluator, outputPath, useHardLink)
 	if err != nil {
 		return nil, errW(err, "make scripts error",
 			reason("make sources error"),
-			kv("project", p),
+			kv("project", i),
 		)
 	}
 	return targetNames, nil
+}
+
+func (i *projectInstance) inspect() *ProjectInspection {
+	return newProjectInspection(i.Name, i.Path, i.option.inspect(), i.script.inspect(), i.config.inspect())
 }
 
 // endregion
@@ -86,107 +153,141 @@ func (p *projectInstance) makeScripts(evaluator *Evaluator, outputPath string, u
 // region projectInstanceContainer
 
 type projectInstanceContainer struct {
-	context       *appContext
-	mainProject   *projectInstance
-	extraProjects []*projectInstance
-	projects      []*projectInstance
-	scope         projectImportScope
-	Imports       []*projectImportInstance
-	importsLoaded bool
+	context        *appContext
+	mainSetting    *projectSetting
+	extraSettings  []*projectSetting
+	mainProject    *projectInstance
+	extraProjects  []*projectInstance
+	scriptProjects []*projectInstance
+	configProjects []*projectInstance
 }
 
-func newProjectInstanceContainer(mainProject *projectInstance, extraProjects []*projectInstance, scope projectImportScope) *projectInstanceContainer {
+func newProjectInstanceContainerTest(context *appContext, mainSetting *projectSetting, extraSettings []*projectSetting) *projectInstanceContainer {
 	return &projectInstanceContainer{
-		context:       mainProject.context,
-		mainProject:   mainProject,
-		extraProjects: extraProjects,
-		projects:      append([]*projectInstance{mainProject}, extraProjects...),
-		scope:         scope,
+		context:       context,
+		mainSetting:   mainSetting,
+		extraSettings: extraSettings,
 	}
 }
 
-func (c *projectInstanceContainer) loadImports() (err error) {
-	if c.importsLoaded {
+func (c *projectInstanceContainer) loadImportProjects(scope projectImportScope, project *projectInstance, projectsDict map[string]bool) (projects []*projectInstance, err error) {
+	if err = project.loadImports(scope); err != nil {
+		return nil, err
+	}
+
+	pic := project.getImportContainer(scope)
+	for i := 0; i < len(pic.Imports); i++ {
+		p := pic.Imports[i].project
+		if !projectsDict[p.Path] {
+			projects = append(projects, p)
+			projectsDict[p.Path] = true
+		}
+	}
+
+	for i := 0; i < len(projects); i++ {
+		p1 := projects[i]
+		if err = p1.loadImports(scope); err != nil {
+			return nil, err
+		}
+		pic1 := p1.getImportContainer(scope)
+		for j := 0; j < len(pic1.Imports); j++ {
+			p2 := pic1.Imports[j].project
+			if !projectsDict[p2.Path] {
+				projects = append(projects, p2)
+				projectsDict[p2.Path] = true
+			}
+		}
+	}
+
+	return projects, nil
+}
+
+func (c *projectInstanceContainer) loadProjects() (err error) {
+	if c.mainProject != nil {
 		return nil
 	}
-	for i := 0; i < len(c.projects); i++ {
-		if err = c.projects[i].loadImports(c.scope); err != nil {
+
+	// load main project
+	var mainProject *projectInstance
+	if mainProject, err = c.context.loadProject(c.mainSetting); err != nil {
+		return err
+	}
+
+	// load main project script import projects
+	scriptProjects := []*projectInstance{mainProject}
+	scriptProjectsDict := map[string]bool{mainProject.Path: true}
+	if projects, err := c.loadImportProjects(projectImportScopeScript, mainProject, scriptProjectsDict); err != nil {
+		return err
+	} else {
+		scriptProjects = append(scriptProjects, projects...)
+	}
+
+	// load main project config import projects
+	configProjects := []*projectInstance{mainProject}
+	configProjectsDict := map[string]bool{mainProject.Path: true}
+	if projects, err := c.loadImportProjects(projectImportScopeConfig, mainProject, configProjectsDict); err != nil {
+		return err
+	} else {
+		configProjects = append(configProjects, projects...)
+	}
+
+	// load extra projects
+	var extraProjects []*projectInstance
+	for i := 0; i < len(c.extraSettings); i++ {
+		existProject := c.context.getProject(c.extraSettings[i].Name)
+		var option *projectOptionInstance
+		if existProject != nil {
+			option = existProject.option
+		}
+		extraProject, err := newProjectInstanceFromExtraSetting(c.context, c.extraSettings[i], option, i)
+		if err != nil {
 			return err
 		}
-	}
+		extraProjects = append(extraProjects, extraProject)
+		scriptProjects = append(scriptProjects, extraProject)
+		configProjects = append(configProjects, extraProject)
 
-	var imports []*projectImportInstance
-	var importsByPath = map[string]*projectImportInstance{}
-
-	for i := 0; i < len(c.projects); i++ {
-		pic := c.projects[i].getImportContainer(c.scope)
-		for j := 0; j < len(pic.Imports); j++ {
-			imp := pic.Imports[j]
-			imports = append(imports, imp)
-			importsByPath[imp.Target.Path] = imp
+		// load extra project script import projects
+		if projects, err := c.loadImportProjects(projectImportScopeScript, extraProject, scriptProjectsDict); err != nil {
+			return err
+		} else {
+			scriptProjects = append(scriptProjects, projects...)
 		}
 
-		projectImports := pic.Imports
-		for j := 0; j < len(projectImports); j++ {
-			imp1 := projectImports[j]
-			if err = imp1.project.loadImports(pic.scope); err != nil {
-				return err
-			}
-			pic1 := imp1.project.getImportContainer(pic.scope)
-			for k := 0; k < len(pic1.Imports); k++ {
-				imp2 := pic1.Imports[k]
-				if imp2.Target.Path == c.mainProject.Path {
-					// TODO: import extra project ?
-					continue
-				}
-				if _, exist := importsByPath[imp2.Target.Path]; !exist {
-					imports = append(imports, imp2)
-					importsByPath[imp2.Target.Path] = imp2
-					projectImports = append(projectImports, imp2)
-				}
-			}
+		// load extra project config import projects
+		if projects, err := c.loadImportProjects(projectImportScopeConfig, extraProject, configProjectsDict); err != nil {
+			return err
+		} else {
+			configProjects = append(configProjects, projects...)
 		}
 	}
 
-	c.Imports = imports
-	c.importsLoaded = true
+	c.mainProject = mainProject
+	c.extraProjects = extraProjects
+	c.scriptProjects = scriptProjects
+	c.configProjects = configProjects
 	return nil
 }
 
-func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, configTraces map[string]any, err error) {
-	if c.scope != projectImportScopeConfig {
-		panic(desc("make configs only support scope config",
-			kv("scope", c.scope),
-		))
-	}
-	if err = c.loadImports(); err != nil {
+func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, configsTraces map[string]any, err error) {
+	if err = c.loadProjects(); err != nil {
 		return nil, nil, errW(err, "make configs error",
-			reason("load imports error"),
+			reason("load projects error"),
 			// TODO: error
-			kv("project", c.mainProject),
 		)
 	}
 
 	var contents []*projectConfigContentInstance
-	for i := 0; i < len(c.Imports); i++ {
-		iContents, err := c.Imports[i].project.loadConfigContents()
+	for i := 0; i < len(c.configProjects); i++ {
+		iContents, err := c.configProjects[i].loadConfigContents()
 		if err != nil {
 			return nil, nil, errW(err, "make configs error",
 				reason("load config contents error"),
-				kv("project", c.Imports[i].project),
+				// TODO: error
+				kv("project", c.configProjects[i]),
 			)
 		}
 		contents = append(contents, iContents...)
-	}
-	for i := 0; i < len(c.projects); i++ {
-		pContents, err := c.projects[i].loadConfigContents()
-		if err != nil {
-			return nil, nil, errW(err, "make configs error",
-				reason("load config contents error"),
-				kv("project", c.projects[i]),
-			)
-		}
-		contents = append(contents, pContents...)
 	}
 
 	slices.SortStableFunc(contents, func(l, r *projectConfigContentInstance) int {
@@ -201,48 +302,42 @@ func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, config
 	})
 
 	configs = map[string]any{}
-	configTraces = map[string]any{}
+	configsTraces = map[string]any{}
 	for i := 0; i < len(contents); i++ {
 		content := contents[i]
-		if err = content.merge(configs, configTraces); err != nil {
+		if err = content.merge(configs, configsTraces); err != nil {
 			return nil, nil, errW(err, "make configs error",
 				reason("merge configs error"),
 				kv("sourcePath", content.sourcePath),
 			)
 		}
 	}
-	return configs, configTraces, nil
+	return configs, configsTraces, nil
 }
 
-func (c *projectInstanceContainer) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {
-	if c.scope != projectImportScopeScript {
-		panic(desc("make scripts only support scope script",
-			kv("scope", c.scope),
-		))
-	}
-	if err := c.loadImports(); err != nil {
+func (c *projectInstanceContainer) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool, inspectionPath string) ([]string, error) {
+	if err := c.loadProjects(); err != nil {
 		return nil, errW(err, "make scripts error",
-			reason("load imports error"),
+			reason("load projects error"),
 			// TODO: error
-			kv("project", c.mainProject),
 		)
 	}
+
 	var targetNames []string
-	for i := 0; i < len(c.Imports); i++ {
-		iTargetNames, err := c.Imports[i].project.makeScripts(evaluator, outputPath, useHardLink)
+	var targetDict = map[string]bool{}
+	for i := 0; i < len(c.scriptProjects); i++ {
+		names, err := c.scriptProjects[i].makeScripts(evaluator, outputPath, useHardLink, inspectionPath)
 		if err != nil {
 			return nil, err
 		}
-		targetNames = append(targetNames, iTargetNames...)
-	}
-	for i := 0; i < len(c.projects); i++ {
-		pTargetNames, err := c.projects[i].makeScripts(evaluator, outputPath, useHardLink)
-		if err != nil {
-			return nil, err
+		for j := 0; j < len(names); j++ {
+			if !targetDict[names[j]] {
+				targetNames = append(targetNames, names[j])
+				targetDict[names[j]] = true
+			}
 		}
-		// TODO: duplicate target names
-		targetNames = append(targetNames, pTargetNames...)
 	}
+
 	return targetNames, nil
 }
 

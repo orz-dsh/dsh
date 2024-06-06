@@ -122,7 +122,7 @@ func (a *AppArtifact) getTargetName(entity *workspaceShellSetting, targetGlob st
 	targetGlob = strings.ReplaceAll(targetGlob, "\\", "/")
 	slashCount := strings.Count(targetGlob, "/")
 	if slashCount == 0 {
-		targetGlob = a.app.mainProject.Name + "/" + targetGlob
+		targetGlob = a.app.mainProjectName + "/" + targetGlob
 	} else if slashCount > 1 {
 		return "", errN("get target name error",
 			reason("target glob invalid"),
