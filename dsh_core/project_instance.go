@@ -1,8 +1,6 @@
 package dsh_core
 
-import (
-	"slices"
-)
+import "slices"
 
 // region projectInstance
 
@@ -155,14 +153,14 @@ func (c *projectInstanceContainer) loadImports() (err error) {
 	return nil
 }
 
-func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, err error) {
+func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, configTraces map[string]any, err error) {
 	if c.scope != projectImportScopeConfig {
 		panic(desc("make configs only support scope config",
 			kv("scope", c.scope),
 		))
 	}
 	if err = c.loadImports(); err != nil {
-		return nil, errW(err, "make configs error",
+		return nil, nil, errW(err, "make configs error",
 			reason("load imports error"),
 			// TODO: error
 			kv("project", c.mainProject),
@@ -173,7 +171,7 @@ func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, err er
 	for i := 0; i < len(c.Imports); i++ {
 		iContents, err := c.Imports[i].project.loadConfigContents()
 		if err != nil {
-			return nil, errW(err, "make configs error",
+			return nil, nil, errW(err, "make configs error",
 				reason("load config contents error"),
 				kv("project", c.Imports[i].project),
 			)
@@ -183,7 +181,7 @@ func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, err er
 	for i := 0; i < len(c.projects); i++ {
 		pContents, err := c.projects[i].loadConfigContents()
 		if err != nil {
-			return nil, errW(err, "make configs error",
+			return nil, nil, errW(err, "make configs error",
 				reason("load config contents error"),
 				kv("project", c.projects[i]),
 			)
@@ -203,16 +201,17 @@ func (c *projectInstanceContainer) makeConfigs() (configs map[string]any, err er
 	})
 
 	configs = map[string]any{}
+	configTraces = map[string]any{}
 	for i := 0; i < len(contents); i++ {
 		content := contents[i]
-		if err = content.merge(configs); err != nil {
-			return nil, errW(err, "make configs error",
+		if err = content.merge(configs, configTraces); err != nil {
+			return nil, nil, errW(err, "make configs error",
 				reason("merge configs error"),
 				kv("sourcePath", content.sourcePath),
 			)
 		}
 	}
-	return configs, nil
+	return configs, configTraces, nil
 }
 
 func (c *projectInstanceContainer) makeScripts(evaluator *Evaluator, outputPath string, useHardLink bool) ([]string, error) {

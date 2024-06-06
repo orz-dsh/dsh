@@ -200,6 +200,17 @@ func ReadJsonFile(file string, model any) error {
 	return nil
 }
 
+func WriteYamlFile(file string, model any) error {
+	data, err := yaml.Marshal(model)
+	if err != nil {
+		return errW(err, "write yaml file error",
+			reason("yaml marshal error"),
+			kv("file", file),
+		)
+	}
+	return os.WriteFile(file, data, os.ModePerm)
+}
+
 func IsYamlFile(file string) bool {
 	return strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml")
 }

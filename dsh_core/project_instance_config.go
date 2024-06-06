@@ -95,8 +95,8 @@ func newProjectConfigContentInstance(sourcePath string, sourceFormat projectConf
 	return content, nil
 }
 
-func (i *projectConfigContentInstance) merge(target map[string]any) error {
-	if _, err := dsh_utils.MergeMap(target, i.Configs, i.Merges); err != nil {
+func (i *projectConfigContentInstance) merge(configs map[string]any, configTraces map[string]any) error {
+	if _, _, err := dsh_utils.MapMerge(configs, i.Configs, i.Merges, i.sourcePath, configTraces); err != nil {
 		return errW(err, "merge config content error",
 			kv("sourcePath", i.sourcePath),
 		)

@@ -41,38 +41,40 @@ func TestMergeMap1(t *testing.T) {
 		"subMap1": []any{},
 	}
 
-	result1, err := MergeMap(nil, map1, nil)
+	result1, trace1, err := MapMerge(nil, map1, nil, "map1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = MergeMap(result1, map2, nil)
+	_, _, err = MapMerge(result1, map2, nil, "map2", trace1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result2, err := MergeMap(nil, map1, nil)
+	result2, trace2, err := MapMerge(nil, map1, nil, "map1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = MergeMap(result2, map2, map[string]MapMergeMode{
+	_, _, err = MapMerge(result2, map2, map[string]MapMergeMode{
 		"subMap1":  MapMergeModeReplace,
 		"subList1": MapMergeModeReplace,
 		"subList2": MapMergeModeInsert,
-	})
+	}, "map2", trace2)
 
 	t.Log(desc("test merge map 1",
 		kv("result1", result1),
+		kv("trace1", trace1),
 		kv("result2", result2),
+		kv("trace2", trace2),
 	))
 
-	_, err = MergeMap(result2, map3, nil)
+	_, _, err = MapMerge(result2, map3, nil, "map3", nil)
 	if err != nil {
 		t.Log(err)
 	}
 
-	_, err = MergeMap(result2, map2, map[string]MapMergeMode{
+	_, _, err = MapMerge(result2, map2, map[string]MapMergeMode{
 		"subMap1": MapMergeModeInsert,
-	})
+	}, "map2", trace2)
 	if err != nil {
 		t.Log(err)
 	}

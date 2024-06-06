@@ -2,6 +2,7 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -13,6 +14,7 @@ type App struct {
 	scriptProjectContainer *projectInstanceContainer
 	configProjectContainer *projectInstanceContainer
 	configs                map[string]any
+	configTraces           map[string]any
 	configsMade            bool
 }
 
@@ -20,6 +22,7 @@ type AppMakeScriptsSettings struct {
 	OutputPath      string
 	OutputPathClear bool
 	UseHardLink     bool
+	Inspection      bool
 }
 
 func makeApp(context *appContext, mainProjectEntity *projectSetting, extraProjectEntities []*projectSetting) (*App, error) {
@@ -57,28 +60,29 @@ func (a *App) DescExtraKeyValues() KVS {
 	}
 }
 
-func (a *App) MakeConfigs() (map[string]any, error) {
+func (a *App) MakeConfigs() (map[string]any, map[string]any, error) {
 	if a.configsMade {
-		return a.configs, nil
+		return a.configs, a.configTraces, nil
 	}
 
 	startTime := time.Now()
 	a.context.logger.Info("make configs start")
 
-	configs, err := a.configProjectContainer.makeConfigs()
+	configs, configTraces, err := a.configProjectContainer.makeConfigs()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	a.configs = configs
+	a.configTraces = configTraces
 	a.configsMade = true
 
 	a.context.logger.InfoDesc("make configs finish", kv("elapsed", time.Since(startTime)))
-	return a.configs, nil
+	return a.configs, a.configTraces, nil
 }
 
 func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifact, err error) {
-	configs, err := a.MakeConfigs()
+	configs, configTraces, err := a.MakeConfigs()
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +113,30 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 					kv("path", outputPath),
 				)
 			}
+		}
+	}
+
+	if settings.Inspection {
+		inspectionPath := filepath.Join(outputPath, "@inspection")
+		if err = os.MkdirAll(inspectionPath, os.ModePerm); err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("make inspection dir error"),
+				kv("path", inspectionPath),
+			)
+		}
+		configsInspectionPath := filepath.Join(inspectionPath, "configs.yml")
+		if err = dsh_utils.WriteYamlFile(configsInspectionPath, configs); err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("write configs inspection file error"),
+				kv("path", configsInspectionPath),
+			)
+		}
+		configTracesInspectionPath := filepath.Join(inspectionPath, "config-traces.yml")
+		if err = dsh_utils.WriteYamlFile(configTracesInspectionPath, configTraces); err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("write config traces inspection file error"),
+				kv("path", configTracesInspectionPath),
+			)
 		}
 	}
 

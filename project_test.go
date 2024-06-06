@@ -45,6 +45,7 @@ func TestProject1(t *testing.T) {
 		OutputPath:      "./.test1/app1/output",
 		OutputPathClear: true,
 		UseHardLink:     true,
+		Inspection:      true,
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
