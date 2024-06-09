@@ -46,6 +46,10 @@ func newWorkspaceImportRegistrySetting(name string, link string, match string, m
 	}
 }
 
+func (s *workspaceImportRegistrySetting) inspect() *WorkspaceImportRegistrySettingInspection {
+	return newWorkspaceImportRegistrySettingInspection(s.Name, s.Link, s.Match)
+}
+
 func (s workspaceImportRegistrySettingSet) merge(models workspaceImportRegistrySettingSet) {
 	for name, list := range models {
 		s[name] = append(s[name], list...)
@@ -88,6 +92,16 @@ func (s workspaceImportRegistrySettingSet) getLink(name string, evaluator *Evalu
 		}
 	}
 	return nil, nil
+}
+
+func (s workspaceImportRegistrySettingSet) inspect() []*WorkspaceImportRegistrySettingInspection {
+	var inspections []*WorkspaceImportRegistrySettingInspection
+	for _, list := range s {
+		for i := 0; i < len(list); i++ {
+			inspections = append(inspections, list[i].inspect())
+		}
+	}
+	return inspections
 }
 
 // endregion
@@ -153,6 +167,24 @@ func (m *workspaceImportRegistryItemSettingModel) convert(ctx *modelConvertConte
 	}
 
 	return newWorkspaceImportRegistrySetting(m.Name, m.Link, m.Match, matchObj), nil
+}
+
+// endregion
+
+// region WorkspaceImportRegistrySettingInspection
+
+type WorkspaceImportRegistrySettingInspection struct {
+	Name  string `yaml:"name" toml:"name" json:"name"`
+	Link  string `yaml:"link,omitempty" toml:"link,omitempty" json:"link,omitempty"`
+	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func newWorkspaceImportRegistrySettingInspection(name, link, match string) *WorkspaceImportRegistrySettingInspection {
+	return &WorkspaceImportRegistrySettingInspection{
+		Name:  name,
+		Link:  link,
+		Match: match,
+	}
 }
 
 // endregion

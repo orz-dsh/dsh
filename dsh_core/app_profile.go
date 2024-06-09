@@ -6,54 +6,56 @@ import (
 	"path/filepath"
 )
 
+// region appProfile
+
 type appProfile struct {
 	logger                          *Logger
 	workspace                       *Workspace
-	profileOptionSpecifyEntities    profileOptionSettingSet
-	profileProjectEntities          profileProjectSettingSet
-	workspaceShellEntities          workspaceShellSettingSet
-	workspaceImportRegistryEntities workspaceImportRegistrySettingSet
-	workspaceImportRedirectEntities workspaceImportRedirectSettingSet
-	projectEntitiesByPath           map[string]*projectSetting
-	projectEntitiesByName           map[string]*projectSetting
+	ProfileOptionSettings           profileOptionSettingSet
+	ProfileProjectSettings          profileProjectSettingSet
+	WorkspaceExecutorSettings       workspaceExecutorSettingSet
+	WorkspaceImportRegistrySettings workspaceImportRegistrySettingSet
+	WorkspaceImportRedirectSettings workspaceImportRedirectSettingSet
+	projectSettingsByPath           map[string]*projectSetting
+	projectSettingsByName           map[string]*projectSetting
 }
 
-func newAppProfile(workspace *Workspace, settings profileSettingSet) *appProfile {
-	profileOptionSpecifyEntities := profileOptionSettingSet{}
-	profileProjectEntities := profileProjectSettingSet{}
-	workspaceShellEntities := workspaceShellSettingSet{}
-	workspaceImportRegistryEntities := workspaceImportRegistrySettingSet{}
-	workspaceImportRedirectEntities := workspaceImportRedirectSettingSet{}
+func newProfileInstance(workspace *Workspace, settings profileSettingSet) *appProfile {
+	profileOptionSettings := profileOptionSettingSet{}
+	profileProjectSettings := profileProjectSettingSet{}
+	workspaceExecutorSettings := workspaceExecutorSettingSet{}
+	workspaceImportRegistrySettings := workspaceImportRegistrySettingSet{}
+	workspaceImportRedirectSettings := workspaceImportRedirectSettingSet{}
 	for i := 0; i < len(settings); i++ {
 		setting := settings[i]
-		profileOptionSpecifyEntities = append(profileOptionSpecifyEntities, setting.optionSettings...)
-		profileProjectEntities = append(profileProjectEntities, setting.projectSettings...)
-		workspaceShellEntities.merge(setting.workspaceShellSettings)
-		workspaceImportRegistryEntities.merge(setting.workspaceImportRegistrySettings)
-		workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, setting.workspaceImportRedirectSettings...)
+		profileOptionSettings = append(profileOptionSettings, setting.optionSettings...)
+		profileProjectSettings = append(profileProjectSettings, setting.projectSettings...)
+		workspaceExecutorSettings.merge(setting.workspaceExecutorSettings)
+		workspaceImportRegistrySettings.merge(setting.workspaceImportRegistrySettings)
+		workspaceImportRedirectSettings = append(workspaceImportRedirectSettings, setting.workspaceImportRedirectSettings...)
 	}
-	workspaceShellEntities.merge(workspace.setting.ShellSettings)
-	workspaceShellEntities.mergeDefault()
-	workspaceImportRegistryEntities.merge(workspace.setting.ImportRegistrySettings)
-	workspaceImportRegistryEntities.mergeDefault()
-	workspaceImportRedirectEntities = append(workspaceImportRedirectEntities, workspace.setting.ImportRedirectSettings...)
+	workspaceExecutorSettings.merge(workspace.setting.ExecutorSettings)
+	workspaceExecutorSettings.mergeDefault()
+	workspaceImportRegistrySettings.merge(workspace.setting.ImportRegistrySettings)
+	workspaceImportRegistrySettings.mergeDefault()
+	workspaceImportRedirectSettings = append(workspaceImportRedirectSettings, workspace.setting.ImportRedirectSettings...)
 
 	profile := &appProfile{
 		logger:                          workspace.logger,
 		workspace:                       workspace,
-		profileOptionSpecifyEntities:    profileOptionSpecifyEntities,
-		profileProjectEntities:          profileProjectEntities,
-		workspaceShellEntities:          workspaceShellEntities,
-		workspaceImportRegistryEntities: workspaceImportRegistryEntities,
-		workspaceImportRedirectEntities: workspaceImportRedirectEntities,
-		projectEntitiesByPath:           map[string]*projectSetting{},
-		projectEntitiesByName:           map[string]*projectSetting{},
+		ProfileOptionSettings:           profileOptionSettings,
+		ProfileProjectSettings:          profileProjectSettings,
+		WorkspaceExecutorSettings:       workspaceExecutorSettings,
+		WorkspaceImportRegistrySettings: workspaceImportRegistrySettings,
+		WorkspaceImportRedirectSettings: workspaceImportRedirectSettings,
+		projectSettingsByPath:           map[string]*projectSetting{},
+		projectSettingsByName:           map[string]*projectSetting{},
 	}
 	return profile
 }
 
 func (p *appProfile) getAppOption(entity *projectSetting, evaluator *Evaluator) (*appOption, error) {
-	specifyItems, err := p.profileOptionSpecifyEntities.getItems(evaluator)
+	specifyItems, err := p.ProfileOptionSettings.getItems(evaluator)
 	if err != nil {
 		return nil, err
 	}
@@ -61,16 +63,16 @@ func (p *appProfile) getAppOption(entity *projectSetting, evaluator *Evaluator) 
 	return option, nil
 }
 
-func (p *appProfile) getExtraProjectEntities(evaluator *Evaluator) (projectSettingSet, error) {
-	projectEntities, err := p.profileProjectEntities.getProjectSettings(evaluator)
+func (p *appProfile) getExtraProjectSettings(evaluator *Evaluator) (projectSettingSet, error) {
+	projectEntities, err := p.ProfileProjectSettings.getProjectSettings(evaluator)
 	if err != nil {
 		return nil, err
 	}
 	return projectEntities, nil
 }
 
-func (p *appProfile) getWorkspaceShellEntity(name string) (*workspaceShellSetting, error) {
-	return p.workspaceShellEntities.getSetting(name, p.workspace.evaluator)
+func (p *appProfile) getWorkspaceExecutorSetting(name string) (*workspaceExecutorSetting, error) {
+	return p.WorkspaceExecutorSettings.getSetting(name, p.workspace.evaluator)
 }
 
 func (p *appProfile) getWorkspaceImportRegistryLink(registry *projectLinkRegistry) (*projectLink, error) {
@@ -81,11 +83,11 @@ func (p *appProfile) getWorkspaceImportRegistryLink(registry *projectLinkRegistr
 		"refType": registry.ref.Type,
 		"refName": registry.ref.Name,
 	})
-	return p.workspaceImportRegistryEntities.getLink(registry.Name, evaluator)
+	return p.WorkspaceImportRegistrySettings.getLink(registry.Name, evaluator)
 }
 
 func (p *appProfile) getWorkspaceImportRedirectLink(resources []string) (*projectLink, string, error) {
-	return p.workspaceImportRedirectEntities.getLink(resources, p.workspace.evaluator)
+	return p.WorkspaceImportRedirectSettings.getLink(resources, p.workspace.evaluator)
 }
 
 func (p *appProfile) getProjectLinkTarget(link *projectLink) (target *projectLinkTarget, err error) {
@@ -172,7 +174,7 @@ func (p *appProfile) getProjectEntityByDir(path string) (*projectSetting, error)
 		)
 	}
 	path = absPath
-	if setting, exist := p.projectEntitiesByPath[path]; exist {
+	if setting, exist := p.projectSettingsByPath[path]; exist {
 		return setting, nil
 	}
 
@@ -181,7 +183,7 @@ func (p *appProfile) getProjectEntityByDir(path string) (*projectSetting, error)
 	if setting, err = loadProjectSetting(path); err != nil {
 		return nil, err
 	}
-	if existSetting, exist := p.projectEntitiesByName[setting.Name]; exist {
+	if existSetting, exist := p.projectSettingsByName[setting.Name]; exist {
 		if existSetting.Path != setting.Path {
 			return nil, errN("get project setting error",
 				reason("project name duplicated"),
@@ -191,8 +193,8 @@ func (p *appProfile) getProjectEntityByDir(path string) (*projectSetting, error)
 			)
 		}
 	}
-	p.projectEntitiesByPath[setting.Path] = setting
-	p.projectEntitiesByName[setting.Name] = setting
+	p.projectSettingsByPath[setting.Path] = setting
+	p.projectSettingsByName[setting.Name] = setting
 	return setting, nil
 }
 
@@ -235,3 +237,43 @@ func (p *appProfile) getProjectEntityByGit(path string, rawUrl string, parsedUrl
 	}
 	return entity, nil
 }
+
+func (p *appProfile) inspect() *AppProfileInspection {
+	return newAppProfileInspection(
+		p.ProfileOptionSettings.inspect(),
+		p.ProfileProjectSettings.inspect(),
+		p.WorkspaceExecutorSettings.inspect(),
+		p.WorkspaceImportRegistrySettings.inspect(),
+		p.WorkspaceImportRedirectSettings.inspect(),
+	)
+}
+
+// endregion
+
+// region AppProfileInspection
+
+type AppProfileInspection struct {
+	Options   []*ProfileOptionSettingInspection     `yaml:"options,omitempty" toml:"options,omitempty" json:"options,omitempty"`
+	Projects  []*ProfileProjectSettingInspection    `yaml:"projects,omitempty" toml:"projects,omitempty" json:"projects,omitempty"`
+	Workspace *AppProfileWorkspaceSettingInspection `yaml:"workspace,omitempty" toml:"workspace,omitempty" json:"workspace,omitempty"`
+}
+
+type AppProfileWorkspaceSettingInspection struct {
+	Executors        []*WorkspaceExecutorSettingInspection       `yaml:"executors,omitempty" toml:"executors,omitempty" json:"executors,omitempty"`
+	ImportRegistries []*WorkspaceImportRegistrySettingInspection `yaml:"importRegistries,omitempty" toml:"importRegistries,omitempty" json:"importRegistries,omitempty"`
+	ImportRedirects  []*WorkspaceImportRedirectSettingInspection `yaml:"importRedirects,omitempty" toml:"importRedirects,omitempty" json:"importRedirects,omitempty"`
+}
+
+func newAppProfileInspection(options []*ProfileOptionSettingInspection, projects []*ProfileProjectSettingInspection, executors []*WorkspaceExecutorSettingInspection, importRegistries []*WorkspaceImportRegistrySettingInspection, importRedirects []*WorkspaceImportRedirectSettingInspection) *AppProfileInspection {
+	return &AppProfileInspection{
+		Options:  options,
+		Projects: projects,
+		Workspace: &AppProfileWorkspaceSettingInspection{
+			Executors:        executors,
+			ImportRegistries: importRegistries,
+			ImportRedirects:  importRedirects,
+		},
+	}
+}
+
+// endregion

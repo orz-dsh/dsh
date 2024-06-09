@@ -9,22 +9,22 @@ import (
 type profileSetting struct {
 	optionSettings                  profileOptionSettingSet
 	projectSettings                 profileProjectSettingSet
-	workspaceShellSettings          workspaceShellSettingSet
+	workspaceExecutorSettings       workspaceExecutorSettingSet
 	workspaceImportRegistrySettings workspaceImportRegistrySettingSet
 	workspaceImportRedirectSettings workspaceImportRedirectSettingSet
 }
 
 type profileSettingSet []*profileSetting
 
-func newProfileSetting(optionSettings profileOptionSettingSet, projectSettings profileProjectSettingSet, workspaceShellSettings workspaceShellSettingSet, workspaceImportRegistrySettings workspaceImportRegistrySettingSet, workspaceImportRedirectSettings workspaceImportRedirectSettingSet) *profileSetting {
+func newProfileSetting(optionSettings profileOptionSettingSet, projectSettings profileProjectSettingSet, workspaceExecutorSettings workspaceExecutorSettingSet, workspaceImportRegistrySettings workspaceImportRegistrySettingSet, workspaceImportRedirectSettings workspaceImportRedirectSettingSet) *profileSetting {
 	if optionSettings == nil {
 		optionSettings = profileOptionSettingSet{}
 	}
 	if projectSettings == nil {
 		projectSettings = profileProjectSettingSet{}
 	}
-	if workspaceShellSettings == nil {
-		workspaceShellSettings = workspaceShellSettingSet{}
+	if workspaceExecutorSettings == nil {
+		workspaceExecutorSettings = workspaceExecutorSettingSet{}
 	}
 	if workspaceImportRegistrySettings == nil {
 		workspaceImportRegistrySettings = workspaceImportRegistrySettingSet{}
@@ -35,7 +35,7 @@ func newProfileSetting(optionSettings profileOptionSettingSet, projectSettings p
 	return &profileSetting{
 		optionSettings:                  optionSettings,
 		projectSettings:                 projectSettings,
-		workspaceShellSettings:          workspaceShellSettings,
+		workspaceExecutorSettings:       workspaceExecutorSettings,
 		workspaceImportRegistrySettings: workspaceImportRegistrySettings,
 		workspaceImportRedirectSettings: workspaceImportRedirectSettings,
 	}
@@ -97,16 +97,16 @@ func (m *profileSettingModel) convert(ctx *modelConvertContext) (setting *profil
 		}
 	}
 
-	var workspaceShellSettings workspaceShellSettingSet
+	var workspaceExecutorSettings workspaceExecutorSettingSet
 	var workspaceImportRegistrySettings workspaceImportRegistrySettingSet
 	var workspaceImportRedirectSettings workspaceImportRedirectSettingSet
 	if m.Workspace != nil {
-		if workspaceShellSettings, workspaceImportRegistrySettings, workspaceImportRedirectSettings, err = m.Workspace.convert(ctx.Child("workspace")); err != nil {
+		if workspaceExecutorSettings, workspaceImportRegistrySettings, workspaceImportRedirectSettings, err = m.Workspace.convert(ctx.Child("workspace")); err != nil {
 			return nil, err
 		}
 	}
 
-	return newProfileSetting(optionSettings, projectSettings, workspaceShellSettings, workspaceImportRegistrySettings, workspaceImportRedirectSettings), nil
+	return newProfileSetting(optionSettings, projectSettings, workspaceExecutorSettings, workspaceImportRegistrySettings, workspaceImportRedirectSettings), nil
 }
 
 // endregion

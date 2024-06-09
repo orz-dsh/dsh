@@ -30,10 +30,10 @@ func newProjectScriptInstance(context *appContext, setting *projectSetting, opti
 	return script, nil
 }
 
-func (i *projectScriptInstance) inspect() *ProjectScriptInspection {
+func (i *projectScriptInstance) inspect() *ProjectScriptInstanceInspection {
 	plainSources, templateSources, templateLibSources := i.SourceContainer.inspect()
 	imports := i.ImportContainer.inspect()
-	return newProjectScriptInspection(plainSources, templateSources, templateLibSources, imports)
+	return newProjectScriptInstanceInspection(plainSources, templateSources, templateLibSources, imports)
 }
 
 // endregion
@@ -45,8 +45,8 @@ type projectScriptSourceInstance struct {
 	SourceName string
 }
 
-func (i *projectScriptSourceInstance) inspect() *ProjectScriptSourceInspection {
-	return newProjectScriptSourceInspection(i.SourcePath, i.SourceName)
+func (i *projectScriptSourceInstance) inspect() *ProjectScriptSourceInstanceInspection {
+	return newProjectScriptSourceInstanceInspection(i.SourcePath, i.SourceName)
 }
 
 // endregion
@@ -194,7 +194,7 @@ func (c *projectScriptSourceInstanceContainer) makeSources(evaluator *Evaluator,
 	return targetNames, nil
 }
 
-func (c *projectScriptSourceInstanceContainer) inspect() (plainSources []*ProjectScriptSourceInspection, templateSources []*ProjectScriptSourceInspection, templateLibSources []*ProjectScriptSourceInspection) {
+func (c *projectScriptSourceInstanceContainer) inspect() (plainSources []*ProjectScriptSourceInstanceInspection, templateSources []*ProjectScriptSourceInstanceInspection, templateLibSources []*ProjectScriptSourceInstanceInspection) {
 	for i := 0; i < len(c.PlainSources); i++ {
 		plainSources = append(plainSources, c.PlainSources[i].inspect())
 	}
@@ -205,6 +205,42 @@ func (c *projectScriptSourceInstanceContainer) inspect() (plainSources []*Projec
 		templateLibSources = append(templateLibSources, c.TemplateLibSources[i].inspect())
 	}
 	return plainSources, templateSources, templateLibSources
+}
+
+// endregion
+
+// region ProjectScriptInstanceInspection
+
+type ProjectScriptInstanceInspection struct {
+	PlainSources       []*ProjectScriptSourceInstanceInspection `yaml:"plainSources,omitempty" toml:"plainSources,omitempty" json:"plainSources,omitempty"`
+	TemplateSources    []*ProjectScriptSourceInstanceInspection `yaml:"templateSources,omitempty" toml:"templateSources,omitempty" json:"templateSources,omitempty"`
+	TemplateLibSources []*ProjectScriptSourceInstanceInspection `yaml:"templateLibSources,omitempty" toml:"templateLibSources,omitempty" json:"templateLibSources,omitempty"`
+	Imports            []*ProjectImportInstanceInspection       `yaml:"imports,omitempty" toml:"imports,omitempty" json:"imports,omitempty"`
+}
+
+func newProjectScriptInstanceInspection(plainSources []*ProjectScriptSourceInstanceInspection, templateSources []*ProjectScriptSourceInstanceInspection, templateLibSources []*ProjectScriptSourceInstanceInspection, imports []*ProjectImportInstanceInspection) *ProjectScriptInstanceInspection {
+	return &ProjectScriptInstanceInspection{
+		PlainSources:       plainSources,
+		TemplateSources:    templateSources,
+		TemplateLibSources: templateLibSources,
+		Imports:            imports,
+	}
+}
+
+// endregion
+
+// region ProjectScriptSourceInstanceInspection
+
+type ProjectScriptSourceInstanceInspection struct {
+	SourcePath string `yaml:"sourcePath" toml:"sourcePath" json:"sourcePath"`
+	SourceName string `yaml:"sourceName" toml:"sourceName" json:"sourceName"`
+}
+
+func newProjectScriptSourceInstanceInspection(sourcePath string, sourceName string) *ProjectScriptSourceInstanceInspection {
+	return &ProjectScriptSourceInstanceInspection{
+		SourcePath: sourcePath,
+		SourceName: sourceName,
+	}
 }
 
 // endregion

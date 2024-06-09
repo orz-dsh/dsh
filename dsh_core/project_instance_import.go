@@ -33,13 +33,13 @@ func (i *projectImportInstance) loadProject() error {
 	return nil
 }
 
-func (i *projectImportInstance) inspect() *ProjectImportInspection {
+func (i *projectImportInstance) inspect() *ProjectImportInstanceInspection {
 	var gitUrl, gitRef string
 	if i.Target.Git != nil {
 		gitUrl = i.Target.Git.Url
 		gitRef = i.Target.Git.Ref
 	}
-	return newProjectImportInspection(i.Target.Link.Normalized, i.Target.Path, gitUrl, gitRef)
+	return newProjectImportInstanceInspection(i.Target.Link.Normalized, i.Target.Path, gitUrl, gitRef)
 }
 
 // endregion
@@ -124,11 +124,31 @@ func (c *projectImportInstanceContainer) loadImports() (err error) {
 	return nil
 }
 
-func (c *projectImportInstanceContainer) inspect() (imports []*ProjectImportInspection) {
+func (c *projectImportInstanceContainer) inspect() (imports []*ProjectImportInstanceInspection) {
 	for i := 0; i < len(c.Imports); i++ {
 		imports = append(imports, c.Imports[i].inspect())
 	}
 	return imports
+}
+
+// endregion
+
+// region ProjectImportInstanceInspection
+
+type ProjectImportInstanceInspection struct {
+	Link   string `yaml:"link" toml:"link" json:"link"`
+	Path   string `yaml:"path" toml:"path" json:"path"`
+	GitUrl string `yaml:"gitUrl,omitempty" toml:"gitUrl,omitempty" json:"gitUrl,omitempty"`
+	GitRef string `yaml:"gitRef,omitempty" toml:"gitRef,omitempty" json:"gitRef,omitempty"`
+}
+
+func newProjectImportInstanceInspection(link string, path string, gitUrl string, gitRef string) *ProjectImportInstanceInspection {
+	return &ProjectImportInstanceInspection{
+		Link:   link,
+		Path:   path,
+		GitUrl: gitUrl,
+		GitRef: gitRef,
+	}
 }
 
 // endregion

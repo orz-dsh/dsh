@@ -144,8 +144,8 @@ func (i *projectInstance) makeScripts(evaluator *Evaluator, outputPath string, u
 	return targetNames, nil
 }
 
-func (i *projectInstance) inspect() *ProjectInspection {
-	return newProjectInspection(i.Name, i.Path, i.option.inspect(), i.script.inspect(), i.config.inspect())
+func (i *projectInstance) inspect() *ProjectInstanceInspection {
+	return newProjectInstanceInspection(i.Name, i.Path, i.option.inspect(), i.script.inspect(), i.config.inspect())
 }
 
 // endregion
@@ -339,6 +339,28 @@ func (c *projectInstanceContainer) makeScripts(evaluator *Evaluator, outputPath 
 	}
 
 	return targetNames, nil
+}
+
+// endregion
+
+// region ProjectInstanceInspection
+
+type ProjectInstanceInspection struct {
+	Name   string                           `yaml:"name" toml:"name" json:"name"`
+	Path   string                           `yaml:"path" toml:"path" json:"path"`
+	Option *ProjectOptionInstanceInspection `yaml:"option,omitempty" toml:"option,omitempty" json:"option,omitempty"`
+	Script *ProjectScriptInstanceInspection `yaml:"script,omitempty" toml:"script,omitempty" json:"script,omitempty"`
+	Config *ProjectConfigInstanceInspection `yaml:"config,omitempty" toml:"config,omitempty" json:"config,omitempty"`
+}
+
+func newProjectInstanceInspection(name string, path string, option *ProjectOptionInstanceInspection, script *ProjectScriptInstanceInspection, config *ProjectConfigInstanceInspection) *ProjectInstanceInspection {
+	return &ProjectInstanceInspection{
+		Name:   name,
+		Path:   path,
+		Option: option,
+		Script: script,
+		Config: config,
+	}
 }
 
 // endregion

@@ -27,7 +27,7 @@ echo "get configs test2: not set"
 
 echo "get options['_os']: {{ .options._os }}"
 echo "get options['_arch']: {{ .options._arch }}"
-echo "get options['_shell']: {{ .options._shell }}"
+echo "get options['_executor']: {{ .options._executor }}"
 echo "get options['_hostname']: {{ .options._hostname }}"
 echo "get options['_username']: {{ .options._username }}"
 echo "get options['test']: {{ .options.test }}"

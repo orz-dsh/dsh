@@ -45,6 +45,10 @@ func newProfileProjectSetting(name string, path string, match string, scriptSour
 	}
 }
 
+func (s *profileProjectSetting) inspect() *ProfileProjectSettingInspection {
+	return newProfileProjectSettingInspection(s.Name, s.Path, s.Match, s.ScriptSourceSettings.inspect(), s.ScriptImportSettings.inspect(), s.ConfigSourceSettings.inspect(), s.ConfigImportSettings.inspect())
+}
+
 func (s profileProjectSettingSet) getProjectSettings(evaluator *Evaluator) (projectSettingSet, error) {
 	result := projectSettingSet{}
 	for i := len(s) - 1; i >= 0; i-- {
@@ -79,6 +83,14 @@ func (s profileProjectSettingSet) getProjectSettings(evaluator *Evaluator) (proj
 		result = append(result, newProjectSetting(setting.Name, path, nil, nil, nil, setting.ScriptSourceSettings, setting.ScriptImportSettings, setting.ConfigSourceSettings, setting.ConfigImportSettings))
 	}
 	return result, nil
+}
+
+func (s profileProjectSettingSet) inspect() []*ProfileProjectSettingInspection {
+	var inspections []*ProfileProjectSettingInspection
+	for i := 0; i < len(s); i++ {
+		inspections = append(inspections, s[i].inspect())
+	}
+	return inspections
 }
 
 // endregion
@@ -166,6 +178,32 @@ func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (sett
 	}
 
 	return newProfileProjectSetting(m.Name, m.Path, m.Match, scriptSourceSettings, scriptImportSettings, configSourceSettings, configImportSettings, matchObj), nil
+}
+
+// endregion
+
+// region ProfileProjectSettingInspection
+
+type ProfileProjectSettingInspection struct {
+	Name          string                            `yaml:"name" toml:"name" json:"name"`
+	Path          string                            `yaml:"path" toml:"path" json:"path"`
+	Match         string                            `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+	ScriptSources []*ProjectSourceSettingInspection `yaml:"scriptSources,omitempty" toml:"scriptSources,omitempty" json:"scriptSources,omitempty"`
+	ScriptImports []*ProjectImportSettingInspection `yaml:"scriptImports,omitempty" toml:"scriptImports,omitempty" json:"scriptImports,omitempty"`
+	ConfigSources []*ProjectSourceSettingInspection `yaml:"configSources,omitempty" toml:"configSources,omitempty" json:"configSources,omitempty"`
+	ConfigImports []*ProjectImportSettingInspection `yaml:"configImports,omitempty" toml:"configImports,omitempty" json:"configImports,omitempty"`
+}
+
+func newProfileProjectSettingInspection(name string, path string, match string, scriptSources []*ProjectSourceSettingInspection, scriptImports []*ProjectImportSettingInspection, configSources []*ProjectSourceSettingInspection, configImports []*ProjectImportSettingInspection) *ProfileProjectSettingInspection {
+	return &ProfileProjectSettingInspection{
+		Name:          name,
+		Path:          path,
+		Match:         match,
+		ScriptSources: scriptSources,
+		ScriptImports: scriptImports,
+		ConfigSources: configSources,
+		ConfigImports: configImports,
+	}
 }
 
 // endregion

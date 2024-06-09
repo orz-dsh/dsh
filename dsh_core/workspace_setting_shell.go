@@ -7,7 +7,7 @@ import (
 
 // region default
 
-var workspaceShellSettingsDefault = workspaceShellSettingSet{
+var workspaceExecutorSettingsDefault = workspaceExecutorSettingSet{
 	"cmd": {{
 		Name: "cmd",
 		Exts: []string{".cmd", ".bat"},
@@ -24,6 +24,7 @@ var workspaceShellSettingsDefault = workspaceShellSettingSet{
 		Args: []string{"-NoProfile", "-File", "{{.target.path}}"},
 	}},
 	"*": {{
+		Name: "*",
 		Exts: []string{".sh"},
 		Args: []string{},
 	}},
@@ -31,9 +32,9 @@ var workspaceShellSettingsDefault = workspaceShellSettingSet{
 
 // endregion
 
-// region workspaceShellSetting
+// region workspaceExecutorSetting
 
-type workspaceShellSetting struct {
+type workspaceExecutorSetting struct {
 	Name  string
 	Path  string
 	Exts  []string
@@ -42,10 +43,10 @@ type workspaceShellSetting struct {
 	match *EvalExpr
 }
 
-type workspaceShellSettingSet map[string][]*workspaceShellSetting
+type workspaceExecutorSettingSet map[string][]*workspaceExecutorSetting
 
-func newWorkspaceShellSetting(name string, path string, exts []string, args []string, match string, matchObj *EvalExpr) *workspaceShellSetting {
-	return &workspaceShellSetting{
+func newWorkspaceExecutorSetting(name string, path string, exts []string, args []string, match string, matchObj *EvalExpr) *workspaceExecutorSetting {
+	return &workspaceExecutorSetting{
 		Name:  name,
 		Path:  path,
 		Exts:  exts,
@@ -55,13 +56,13 @@ func newWorkspaceShellSetting(name string, path string, exts []string, args []st
 	}
 }
 
-func (s *workspaceShellSetting) getArgs(evaluator *Evaluator) ([]string, error) {
+func (s *workspaceExecutorSetting) getArgs(evaluator *Evaluator) ([]string, error) {
 	var args []string
 	for i := 0; i < len(s.Args); i++ {
 		rawArg := s.Args[i]
 		arg, err := evaluator.EvalStringTemplate(rawArg)
 		if err != nil {
-			return nil, errW(err, "get workspace shell setting args error",
+			return nil, errW(err, "get workspace executor setting args error",
 				reason("eval template error"),
 				kv("args", s.Args),
 				kv("index", i),
@@ -72,18 +73,22 @@ func (s *workspaceShellSetting) getArgs(evaluator *Evaluator) ([]string, error) 
 	return args, nil
 }
 
-func (s workspaceShellSettingSet) merge(settings workspaceShellSettingSet) {
+func (s *workspaceExecutorSetting) inspect() *WorkspaceExecutorSettingInspection {
+	return newWorkspaceExecutorSettingInspection(s.Name, s.Path, s.Exts, s.Args, s.Match)
+}
+
+func (s workspaceExecutorSettingSet) merge(settings workspaceExecutorSettingSet) {
 	for name, list := range settings {
 		s[name] = append(s[name], list...)
 	}
 }
 
-func (s workspaceShellSettingSet) mergeDefault() {
-	s.merge(workspaceShellSettingsDefault)
+func (s workspaceExecutorSettingSet) mergeDefault() {
+	s.merge(workspaceExecutorSettingsDefault)
 }
 
-func (s workspaceShellSettingSet) getSetting(name string, evaluator *Evaluator) (*workspaceShellSetting, error) {
-	result := &workspaceShellSetting{Name: name}
+func (s workspaceExecutorSettingSet) getSetting(name string, evaluator *Evaluator) (*workspaceExecutorSetting, error) {
+	result := &workspaceExecutorSetting{Name: name}
 	settings := s[name]
 	if wildcardSettings, exist := s["*"]; exist {
 		settings = append(settings, wildcardSettings...)
@@ -92,7 +97,7 @@ func (s workspaceShellSettingSet) getSetting(name string, evaluator *Evaluator) 
 		setting := settings[i]
 		matched, err := evaluator.EvalBoolExpr(setting.match)
 		if err != nil {
-			return nil, errW(err, "get workspace shell setting error",
+			return nil, errW(err, "get workspace executor setting error",
 				reason("eval expr error"),
 				kv("setting", setting),
 			)
@@ -112,7 +117,7 @@ func (s workspaceShellSettingSet) getSetting(name string, evaluator *Evaluator) 
 	if result.Path == "" {
 		path, err := exec.LookPath(result.Name)
 		if err != nil {
-			return nil, errW(err, "get workspace shell setting error",
+			return nil, errW(err, "get workspace executor setting error",
 				reason("look path error"),
 				kv("result", result),
 			)
@@ -120,13 +125,13 @@ func (s workspaceShellSettingSet) getSetting(name string, evaluator *Evaluator) 
 		result.Path = path
 	}
 	if result.Exts == nil {
-		return nil, errN("get workspace shell setting error",
+		return nil, errN("get workspace executor setting error",
 			reason("exts not set"),
 			kv("result", result),
 		)
 	}
 	if result.Args == nil {
-		return nil, errN("get workspace shell setting error",
+		return nil, errN("get workspace executor setting error",
 			reason("args not set"),
 			kv("result", result),
 		)
@@ -134,22 +139,32 @@ func (s workspaceShellSettingSet) getSetting(name string, evaluator *Evaluator) 
 	return result, nil
 }
 
-// endregion
-
-// region workspaceShellSettingModel
-
-type workspaceShellSettingModel struct {
-	Items []*workspaceShellItemSettingModel
+func (s workspaceExecutorSettingSet) inspect() []*WorkspaceExecutorSettingInspection {
+	var inspections []*WorkspaceExecutorSettingInspection
+	for _, list := range s {
+		for i := 0; i < len(list); i++ {
+			inspections = append(inspections, list[i].inspect())
+		}
+	}
+	return inspections
 }
 
-func newWorkspaceShellSettingModel(items []*workspaceShellItemSettingModel) *workspaceShellSettingModel {
-	return &workspaceShellSettingModel{
+// endregion
+
+// region workspaceExecutorSettingModel
+
+type workspaceExecutorSettingModel struct {
+	Items []*workspaceExecutorItemSettingModel `yaml:"items" toml:"items" json:"items"`
+}
+
+func newWorkspaceExecutorSettingModel(items []*workspaceExecutorItemSettingModel) *workspaceExecutorSettingModel {
+	return &workspaceExecutorSettingModel{
 		Items: items,
 	}
 }
 
-func (m *workspaceShellSettingModel) convert(ctx *modelConvertContext) (workspaceShellSettingSet, error) {
-	settings := workspaceShellSettingSet{}
+func (m *workspaceExecutorSettingModel) convert(ctx *modelConvertContext) (workspaceExecutorSettingSet, error) {
+	settings := workspaceExecutorSettingSet{}
 	for i := 0; i < len(m.Items); i++ {
 		item := m.Items[i]
 		if setting, err := item.convert(ctx.ChildItem("items", i)); err != nil {
@@ -164,18 +179,18 @@ func (m *workspaceShellSettingModel) convert(ctx *modelConvertContext) (workspac
 
 // endregion
 
-// region workspaceShellItemSettingModel
+// region workspaceExecutorItemSettingModel
 
-type workspaceShellItemSettingModel struct {
-	Name  string
-	Path  string
-	Exts  []string
-	Args  []string
-	Match string
+type workspaceExecutorItemSettingModel struct {
+	Name  string   `yaml:"name" toml:"name" json:"name"`
+	Path  string   `yaml:"path" toml:"path" json:"path"`
+	Exts  []string `yaml:"exts" toml:"exts" json:"exts"`
+	Args  []string `yaml:"args" toml:"args" json:"args"`
+	Match string   `yaml:"match" toml:"match" json:"match"`
 }
 
-func newWorkspaceShellItemSettingModel(name, path string, exts, args []string, match string) *workspaceShellItemSettingModel {
-	return &workspaceShellItemSettingModel{
+func newWorkspaceExecutorItemSettingModel(name, path string, exts, args []string, match string) *workspaceExecutorItemSettingModel {
+	return &workspaceExecutorItemSettingModel{
 		Name:  name,
 		Path:  path,
 		Exts:  exts,
@@ -184,7 +199,7 @@ func newWorkspaceShellItemSettingModel(name, path string, exts, args []string, m
 	}
 }
 
-func (m *workspaceShellItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceShellSetting, err error) {
+func (m *workspaceExecutorItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceExecutorSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
@@ -213,7 +228,29 @@ func (m *workspaceShellItemSettingModel) convert(ctx *modelConvertContext) (sett
 		}
 	}
 
-	return newWorkspaceShellSetting(m.Name, m.Path, m.Exts, m.Args, m.Match, matchObj), nil
+	return newWorkspaceExecutorSetting(m.Name, m.Path, m.Exts, m.Args, m.Match, matchObj), nil
+}
+
+// endregion
+
+// region WorkspaceExecutorSettingInspection
+
+type WorkspaceExecutorSettingInspection struct {
+	Name  string   `yaml:"name" toml:"name" json:"name"`
+	Path  string   `yaml:"path,omitempty" toml:"path,omitempty" json:"path,omitempty"`
+	Exts  []string `yaml:"exts,omitempty" toml:"exts,omitempty" json:"exts,omitempty"`
+	Args  []string `yaml:"args,omitempty" toml:"args,omitempty" json:"args,omitempty"`
+	Match string   `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func newWorkspaceExecutorSettingInspection(name, path string, exts, args []string, match string) *WorkspaceExecutorSettingInspection {
+	return &WorkspaceExecutorSettingInspection{
+		Name:  name,
+		Path:  path,
+		Exts:  exts,
+		Args:  args,
+		Match: match,
+	}
 }
 
 // endregion

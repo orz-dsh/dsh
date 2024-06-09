@@ -106,18 +106,32 @@ func (a *App) MakeScripts(settings AppMakeScriptsSettings) (artifact *AppArtifac
 				kv("path", inspectionPath),
 			)
 		}
-		configsTracesInspectionPath := filepath.Join(inspectionPath, "configs-traces.yml")
+		configsTracesInspectionPath := filepath.Join(inspectionPath, "app-configs-traces.yml")
 		if err = dsh_utils.WriteYamlFile(configsTracesInspectionPath, configsTraces); err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("write configs traces inspection file error"),
 				kv("path", configsTracesInspectionPath),
 			)
 		}
-		dataInspectionPath := filepath.Join(inspectionPath, "data.yml")
+		dataInspectionPath := filepath.Join(inspectionPath, "app-data.yml")
 		if err = dsh_utils.WriteYamlFile(dataInspectionPath, evaluator.ToMap(false)); err != nil {
 			return nil, errW(err, "make scripts error",
 				reason("write data inspection file error"),
 				kv("path", dataInspectionPath),
+			)
+		}
+		optionInspectionPath := filepath.Join(inspectionPath, "app-option.yml")
+		if err = dsh_utils.WriteYamlFile(optionInspectionPath, a.context.option.inspect()); err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("write option inspection file error"),
+				kv("path", optionInspectionPath),
+			)
+		}
+		profileInspectionPath := filepath.Join(inspectionPath, "app-profile.yml")
+		if err = dsh_utils.WriteYamlFile(profileInspectionPath, a.context.profile.inspect()); err != nil {
+			return nil, errW(err, "make scripts error",
+				reason("write profile inspection file error"),
+				kv("path", profileInspectionPath),
 			)
 		}
 	}

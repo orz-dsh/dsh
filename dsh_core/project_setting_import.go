@@ -24,6 +24,18 @@ func newProjectImportSetting(link string, match string, linkObj *projectLink, ma
 	}
 }
 
+func (s *projectImportSetting) inspect() *ProjectImportSettingInspection {
+	return newProjectImportSettingInspection(s.Link, s.Match)
+}
+
+func (s projectImportSettingSet) inspect() []*ProjectImportSettingInspection {
+	var inspections []*ProjectImportSettingInspection
+	for i := 0; i < len(s); i++ {
+		inspections = append(inspections, s[i].inspect())
+	}
+	return inspections
+}
+
 // endregion
 
 // region projectImportSettingModel
@@ -58,6 +70,22 @@ func (m *projectImportSettingModel) convert(ctx *modelConvertContext) (setting *
 	}
 
 	return newProjectImportSetting(m.Link, m.Match, linkObj, matchObj), nil
+}
+
+// endregion
+
+// region ProjectImportSettingInspection
+
+type ProjectImportSettingInspection struct {
+	Link  string `yaml:"link" toml:"link" json:"link"`
+	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func newProjectImportSettingInspection(link, match string) *ProjectImportSettingInspection {
+	return &ProjectImportSettingInspection{
+		Link:  link,
+		Match: match,
+	}
 }
 
 // endregion

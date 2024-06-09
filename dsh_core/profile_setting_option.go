@@ -31,6 +31,10 @@ func newProfileOptionSetting(name string, value string, match string, matchObj *
 	}
 }
 
+func (s *profileOptionSetting) inspect() *ProfileOptionSettingInspection {
+	return newProfileOptionInspection(s.Name, s.Value, s.Match)
+}
+
 func (s profileOptionSettingSet) getItems(evaluator *Evaluator) (map[string]string, error) {
 	items := map[string]string{}
 	for i := 0; i < len(s); i++ {
@@ -50,6 +54,14 @@ func (s profileOptionSettingSet) getItems(evaluator *Evaluator) (map[string]stri
 		}
 	}
 	return items, nil
+}
+
+func (s profileOptionSettingSet) inspect() []*ProfileOptionSettingInspection {
+	var inspections []*ProfileOptionSettingInspection
+	for i := 0; i < len(s); i++ {
+		inspections = append(inspections, s[i].inspect())
+	}
+	return inspections
 }
 
 // endregion
@@ -105,6 +117,24 @@ func (m *profileOptionItemSettingModel) convert(ctx *modelConvertContext) (setti
 	}
 
 	return newProfileOptionSetting(m.Name, m.Value, m.Match, matchObj), nil
+}
+
+// endregion
+
+// region ProfileOptionSettingInspection
+
+type ProfileOptionSettingInspection struct {
+	Name  string `yaml:"name" toml:"name" json:"name"`
+	Value string `yaml:"value" toml:"value" json:"value"`
+	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func newProfileOptionInspection(name, value, match string) *ProfileOptionSettingInspection {
+	return &ProfileOptionSettingInspection{
+		Name:  name,
+		Value: value,
+		Match: match,
+	}
 }
 
 // endregion

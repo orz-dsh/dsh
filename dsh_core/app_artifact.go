@@ -71,30 +71,30 @@ func (a *AppArtifact) ExecuteInThisProcess(targetGlob string) (err error) {
 }
 
 func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactExecutor, err error) {
-	shellName := a.app.context.option.GenericItems.getShell()
-	entity, err := a.context.profile.getWorkspaceShellEntity(shellName)
+	name := a.app.context.option.GenericItems.getExecutor()
+	setting, err := a.context.profile.getWorkspaceExecutorSetting(name)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
-			reason("get workspace shell entity error"),
-			kv("shellName", shellName),
+			reason("get workspace executor setting error"),
+			kv("name", name),
 		)
 	}
 
-	targetName, err := a.getTargetName(entity, targetGlob)
+	targetName, err := a.getTargetName(setting, targetGlob)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
 			reason("get target name error"),
-			kv("shellName", shellName),
+			kv("name", name),
 			kv("targetGlob", targetGlob),
 		)
 	}
 	targetPath := filepath.Join(a.OutputPath, targetName)
 
-	shellArgs, err := a.getShellArgs(entity, targetGlob, targetName, targetPath)
+	args, err := a.getExecutorArgs(setting, targetGlob, targetName, targetPath)
 	if err != nil {
 		return nil, errW(err, "create artifact executor error",
-			reason("get shell args error"),
-			kv("entity", entity),
+			reason("get executor args error"),
+			kv("setting", setting),
 			kv("targetGlob", targetGlob),
 			kv("targetName", targetName),
 			kv("targetPath", targetPath),
@@ -103,9 +103,9 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 
 	executor = &appArtifactExecutor{
 		context:    a.context,
-		ShellName:  entity.Name,
-		ShellPath:  entity.Path,
-		ShellArgs:  shellArgs,
+		Name:       setting.Name,
+		Path:       setting.Path,
+		Args:       args,
 		TargetGlob: targetGlob,
 		TargetName: targetName,
 		TargetPath: targetPath,
@@ -113,7 +113,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	return executor, nil
 }
 
-func (a *AppArtifact) getTargetName(entity *workspaceShellSetting, targetGlob string) (targetName string, err error) {
+func (a *AppArtifact) getTargetName(entity *workspaceExecutorSetting, targetGlob string) (targetName string, err error) {
 	if targetGlob == "" {
 		return "", errN("get target name error",
 			reason("target glob empty"),
@@ -150,34 +150,32 @@ func (a *AppArtifact) getTargetName(entity *workspaceShellSetting, targetGlob st
 	)
 }
 
-func (a *AppArtifact) getShellArgs(entity *workspaceShellSetting, targetGlob string, targetName string, targetPath string) (shellArgs []string, err error) {
-	args := entity.Args
+func (a *AppArtifact) getExecutorArgs(setting *workspaceExecutorSetting, targetGlob string, targetName string, targetPath string) (executorArgs []string, err error) {
+	args := setting.Args
 	if len(args) == 0 {
-		shellArgs = []string{targetPath}
+		executorArgs = []string{targetPath}
 	} else {
 		evaluator := a.context.evaluator.SetRootData("executor", map[string]any{
-			"shell": map[string]any{
-				"name": entity.Name,
-				"path": entity.Path,
-			},
+			"name": setting.Name,
+			"path": setting.Path,
 			"target": map[string]any{
 				"glob": targetGlob,
 				"name": targetName,
 				"path": targetPath,
 			},
 		})
-		shellArgs, err = entity.getArgs(evaluator)
+		executorArgs, err = setting.getArgs(evaluator)
 		if err != nil {
-			return nil, errW(err, "get shell args error",
-				reason("eval shell args error"),
-				kv("entity", entity),
+			return nil, errW(err, "get executor args error",
+				reason("eval executor args error"),
+				kv("setting", setting),
 				kv("targetGlob", targetGlob),
 				kv("targetName", targetName),
 				kv("targetPath", targetPath),
 			)
 		}
 	}
-	return shellArgs, nil
+	return executorArgs, nil
 }
 
 // endregion
@@ -186,9 +184,9 @@ func (a *AppArtifact) getShellArgs(entity *workspaceShellSetting, targetGlob str
 
 type appArtifactExecutor struct {
 	context    *appContext
-	ShellName  string
-	ShellPath  string
-	ShellArgs  []string
+	Name       string
+	Path       string
+	Args       []string
 	TargetGlob string
 	TargetName string
 	TargetPath string
@@ -196,7 +194,7 @@ type appArtifactExecutor struct {
 
 func (e *appArtifactExecutor) executeInChildProcess() (exitCode int, err error) {
 	startTime := time.Now()
-	cmd := exec.Command(e.ShellPath, e.ShellArgs...)
+	cmd := exec.Command(e.Path, e.Args...)
 	cmd.Stdout = e.context.logger.GetInfoWriter()
 	cmd.Stderr = e.context.logger.GetErrorWriter()
 	err = cmd.Start()
@@ -233,12 +231,12 @@ func (e *appArtifactExecutor) executeInChildProcess() (exitCode int, err error) 
 }
 
 func (e *appArtifactExecutor) executeInThisProcess() (err error) {
-	execArgs := append([]string{e.ShellName}, e.ShellArgs...)
+	execArgs := append([]string{e.Name}, e.Args...)
 	e.context.logger.InfoDesc("execute artifact in this process start",
 		kv("executor", e),
 		kv("execArgs", execArgs),
 	)
-	err = syscall.Exec(e.ShellPath, execArgs, os.Environ())
+	err = syscall.Exec(e.Path, execArgs, os.Environ())
 	if err != nil {
 		return errW(err, "execute artifact in this process error",
 			reason("system exec error"),

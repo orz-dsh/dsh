@@ -24,6 +24,18 @@ func newProjectSourceSetting(dir string, files []string, match string, matchObj 
 	}
 }
 
+func (s *projectSourceSetting) inspect() *ProjectSourceSettingInspection {
+	return newProjectSourceSettingInspection(s.Dir, s.Files, s.Match)
+}
+
+func (s projectSourceSettingSet) inspect() []*ProjectSourceSettingInspection {
+	var inspections []*ProjectSourceSettingInspection
+	for i := 0; i < len(s); i++ {
+		inspections = append(inspections, s[i].inspect())
+	}
+	return inspections
+}
+
 // endregion
 
 // region projectSourceSettingModel
@@ -62,6 +74,24 @@ func (m *projectSourceSettingModel) convert(ctx *modelConvertContext) (setting *
 	}
 
 	return newProjectSourceSetting(m.Dir, m.Files, m.Match, matchObj), nil
+}
+
+// endregion
+
+// region ProjectSourceSettingInspection
+
+type ProjectSourceSettingInspection struct {
+	Dir   string   `yaml:"dir" toml:"dir" json:"dir"`
+	Files []string `yaml:"files,omitempty" toml:"files,omitempty" json:"files,omitempty"`
+	Match string   `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func newProjectSourceSettingInspection(dir string, files []string, match string) *ProjectSourceSettingInspection {
+	return &ProjectSourceSettingInspection{
+		Dir:   dir,
+		Files: files,
+		Match: match,
+	}
 }
 
 // endregion

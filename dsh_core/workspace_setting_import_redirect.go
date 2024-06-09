@@ -33,6 +33,10 @@ func newWorkspaceImportRedirectSetting(regexStr string, link string, match strin
 	}
 }
 
+func (s *workspaceImportRedirectSetting) inspect() *WorkspaceImportRedirectSettingInspection {
+	return newWorkspaceImportRedirectSettingInspection(s.Regex, s.Link, s.Match)
+}
+
 func (s workspaceImportRedirectSettingSet) getLink(originals []string, evaluator *Evaluator) (*projectLink, string, error) {
 	for i := 0; i < len(originals); i++ {
 		original := originals[i]
@@ -72,6 +76,14 @@ func (s workspaceImportRedirectSettingSet) getLink(originals []string, evaluator
 		}
 	}
 	return nil, "", nil
+}
+
+func (s workspaceImportRedirectSettingSet) inspect() []*WorkspaceImportRedirectSettingInspection {
+	var inspections []*WorkspaceImportRedirectSettingInspection
+	for i := 0; i < len(s); i++ {
+		inspections = append(inspections, s[i].inspect())
+	}
+	return inspections
 }
 
 // endregion
@@ -137,6 +149,24 @@ func (m *workspaceImportRedirectItemSettingModel) convert(ctx *modelConvertConte
 	}
 
 	return newWorkspaceImportRedirectSetting(m.Regex, m.Link, m.Match, regexObj, matchObj), nil
+}
+
+// endregion
+
+// region WorkspaceImportRedirectSettingInspection
+
+type WorkspaceImportRedirectSettingInspection struct {
+	Regex string `yaml:"regex" toml:"regex" json:"regex"`
+	Link  string `yaml:"link" toml:"link" json:"link"`
+	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func newWorkspaceImportRedirectSettingInspection(regex, link, match string) *WorkspaceImportRedirectSettingInspection {
+	return &WorkspaceImportRedirectSettingInspection{
+		Regex: regex,
+		Link:  link,
+		Match: match,
+	}
 }
 
 // endregion

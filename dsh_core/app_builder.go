@@ -51,7 +51,7 @@ func (b *AppBuilder) Build(link string) (*App, error) {
 		return nil, b.err
 	}
 
-	profile := newAppProfile(b.workspace, b.profileSettings)
+	profile := newProfileInstance(b.workspace, b.profileSettings)
 
 	mainProjectSetting, err := profile.getProjectEntityByRawLink(link)
 	if err != nil {
@@ -68,7 +68,7 @@ func (b *AppBuilder) Build(link string) (*App, error) {
 		return nil, err
 	}
 
-	extraProjectSettings, err := profile.getExtraProjectEntities(evaluator)
+	extraProjectSettings, err := profile.getExtraProjectSettings(evaluator)
 	if err != nil {
 		return nil, err
 	}

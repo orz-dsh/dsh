@@ -167,9 +167,9 @@ func (b *ProfileProjectItemSettingBuilder[P]) CommitItemSetting() P {
 // region ProfileWorkspaceSettingBuilder
 
 type ProfileWorkspaceSettingBuilder[P any] struct {
-	commit  func(*profileWorkspaceSettingModel) P
-	shell   *workspaceShellSettingModel
-	import_ *workspaceImportSettingModel
+	commit   func(*profileWorkspaceSettingModel) P
+	executor *workspaceExecutorSettingModel
+	import_  *workspaceImportSettingModel
 }
 
 func newProfileWorkspaceSettingBuilder[P any](commit func(*profileWorkspaceSettingModel) P) *ProfileWorkspaceSettingBuilder[P] {
@@ -178,8 +178,8 @@ func newProfileWorkspaceSettingBuilder[P any](commit func(*profileWorkspaceSetti
 	}
 }
 
-func (b *ProfileWorkspaceSettingBuilder[P]) SetShellSetting() *ProfileWorkspaceShellSettingBuilder[*ProfileWorkspaceSettingBuilder[P]] {
-	return newProfileWorkspaceShellSettingBuilder(b.setShellSettingModel)
+func (b *ProfileWorkspaceSettingBuilder[P]) SetExecutorSetting() *ProfileWorkspaceExecutorSettingBuilder[*ProfileWorkspaceSettingBuilder[P]] {
+	return newProfileWorkspaceExecutorSettingBuilder(b.setExecutorSettingModel)
 }
 
 func (b *ProfileWorkspaceSettingBuilder[P]) SetImportSetting() *ProfileWorkspaceImportSettingBuilder[*ProfileWorkspaceSettingBuilder[P]] {
@@ -187,11 +187,11 @@ func (b *ProfileWorkspaceSettingBuilder[P]) SetImportSetting() *ProfileWorkspace
 }
 
 func (b *ProfileWorkspaceSettingBuilder[P]) CommitWorkspaceSetting() P {
-	return b.commit(newProfileWorkspaceSettingModel(b.shell, b.import_))
+	return b.commit(newProfileWorkspaceSettingModel(b.executor, b.import_))
 }
 
-func (b *ProfileWorkspaceSettingBuilder[P]) setShellSettingModel(shell *workspaceShellSettingModel) *ProfileWorkspaceSettingBuilder[P] {
-	b.shell = shell
+func (b *ProfileWorkspaceSettingBuilder[P]) setExecutorSettingModel(executor *workspaceExecutorSettingModel) *ProfileWorkspaceSettingBuilder[P] {
+	b.executor = executor
 	return b
 }
 
@@ -202,26 +202,26 @@ func (b *ProfileWorkspaceSettingBuilder[P]) setImportSettingModel(import_ *works
 
 // endregion
 
-// region ProfileWorkspaceShellSettingBuilder
+// region ProfileWorkspaceExecutorSettingBuilder
 
-type ProfileWorkspaceShellSettingBuilder[P any] struct {
-	commit func(*workspaceShellSettingModel) P
-	items  []*workspaceShellItemSettingModel
+type ProfileWorkspaceExecutorSettingBuilder[P any] struct {
+	commit func(*workspaceExecutorSettingModel) P
+	items  []*workspaceExecutorItemSettingModel
 }
 
-func newProfileWorkspaceShellSettingBuilder[P any](commit func(*workspaceShellSettingModel) P) *ProfileWorkspaceShellSettingBuilder[P] {
-	return &ProfileWorkspaceShellSettingBuilder[P]{
+func newProfileWorkspaceExecutorSettingBuilder[P any](commit func(*workspaceExecutorSettingModel) P) *ProfileWorkspaceExecutorSettingBuilder[P] {
+	return &ProfileWorkspaceExecutorSettingBuilder[P]{
 		commit: commit,
 	}
 }
 
-func (b *ProfileWorkspaceShellSettingBuilder[P]) AddItem(name, path string, exts, args []string, match string) *ProfileWorkspaceShellSettingBuilder[P] {
-	b.items = append(b.items, newWorkspaceShellItemSettingModel(name, path, exts, args, match))
+func (b *ProfileWorkspaceExecutorSettingBuilder[P]) AddItem(name, path string, exts, args []string, match string) *ProfileWorkspaceExecutorSettingBuilder[P] {
+	b.items = append(b.items, newWorkspaceExecutorItemSettingModel(name, path, exts, args, match))
 	return b
 }
 
-func (b *ProfileWorkspaceShellSettingBuilder[P]) CommitShellSetting() P {
-	return b.commit(newWorkspaceShellSettingModel(b.items))
+func (b *ProfileWorkspaceExecutorSettingBuilder[P]) CommitExecutorSetting() P {
+	return b.commit(newWorkspaceExecutorSettingModel(b.items))
 }
 
 // endregion

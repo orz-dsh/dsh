@@ -9,20 +9,20 @@ import (
 type workspaceSetting struct {
 	CleanSetting           *workspaceCleanSetting
 	ProfileSettings        workspaceProfileSettingSet
-	ShellSettings          workspaceShellSettingSet
+	ExecutorSettings       workspaceExecutorSettingSet
 	ImportRegistrySettings workspaceImportRegistrySettingSet
 	ImportRedirectSettings workspaceImportRedirectSettingSet
 }
 
-func newWorkspaceSetting(cleanSetting *workspaceCleanSetting, profileSettings workspaceProfileSettingSet, shellSettings workspaceShellSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet) *workspaceSetting {
+func newWorkspaceSetting(cleanSetting *workspaceCleanSetting, profileSettings workspaceProfileSettingSet, executorSettings workspaceExecutorSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet) *workspaceSetting {
 	if cleanSetting == nil {
 		cleanSetting = workspaceCleanSettingDefault
 	}
 	if profileSettings == nil {
 		profileSettings = workspaceProfileSettingSet{}
 	}
-	if shellSettings == nil {
-		shellSettings = workspaceShellSettingSet{}
+	if executorSettings == nil {
+		executorSettings = workspaceExecutorSettingSet{}
 	}
 	if importRegistrySettings == nil {
 		importRegistrySettings = workspaceImportRegistrySettingSet{}
@@ -33,7 +33,7 @@ func newWorkspaceSetting(cleanSetting *workspaceCleanSetting, profileSettings wo
 	return &workspaceSetting{
 		CleanSetting:           cleanSetting,
 		ProfileSettings:        profileSettings,
-		ShellSettings:          shellSettings,
+		ExecutorSettings:       executorSettings,
 		ImportRegistrySettings: importRegistrySettings,
 		ImportRedirectSettings: importRedirectSettings,
 	}
@@ -63,10 +63,10 @@ func loadWorkspaceSetting(path string) (setting *workspaceSetting, err error) {
 // region workspaceSettingModel
 
 type workspaceSettingModel struct {
-	Clean   *workspaceCleanSettingModel
-	Profile *workspaceProfileSettingModel
-	Shell   *workspaceShellSettingModel
-	Import  *workspaceImportSettingModel
+	Clean    *workspaceCleanSettingModel
+	Profile  *workspaceProfileSettingModel
+	Executor *workspaceExecutorSettingModel
+	Import   *workspaceImportSettingModel
 }
 
 func (s *workspaceSettingModel) convert(ctx *modelConvertContext) (setting *workspaceSetting, err error) {
@@ -84,9 +84,9 @@ func (s *workspaceSettingModel) convert(ctx *modelConvertContext) (setting *work
 		}
 	}
 
-	var shellSettings workspaceShellSettingSet
-	if s.Shell != nil {
-		if shellSettings, err = s.Shell.convert(ctx.Child("shell")); err != nil {
+	var executorSettings workspaceExecutorSettingSet
+	if s.Executor != nil {
+		if executorSettings, err = s.Executor.convert(ctx.Child("executor")); err != nil {
 			return nil, err
 		}
 	}
@@ -99,7 +99,7 @@ func (s *workspaceSettingModel) convert(ctx *modelConvertContext) (setting *work
 		}
 	}
 
-	return newWorkspaceSetting(cleanSetting, profileSettings, shellSettings, importRegistrySettings, importRedirectSettings), nil
+	return newWorkspaceSetting(cleanSetting, profileSettings, executorSettings, importRegistrySettings, importRedirectSettings), nil
 }
 
 // endregion

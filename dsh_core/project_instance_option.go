@@ -46,17 +46,17 @@ func makeProjectOption(context *appContext, setting *projectSetting) (*projectOp
 	}
 
 	for i := 0; i < len(setting.OptionSettings); i++ {
-		declare := setting.OptionSettings[i]
-		for j := 0; j < len(declare.AssignSettings); j++ {
-			assign := declare.AssignSettings[j]
-			if err := context.option.addAssign(setting.Name, declare.Name, assign.Project, assign.Option, assign.mapping); err != nil {
+		optionSetting := setting.OptionSettings[i]
+		for j := 0; j < len(optionSetting.AssignSettings); j++ {
+			assignSetting := optionSetting.AssignSettings[j]
+			if err := context.option.addAssign(setting.Name, optionSetting.Name, assignSetting); err != nil {
 				return nil, errW(err, "load project options error",
 					reason("add option assign error"),
 					kv("projectName", setting.Name),
 					kv("projectPath", setting.Path),
-					kv("optionName", declare.Name),
-					kv("assignProject", assign.Project),
-					kv("assignOption", assign.Option),
+					kv("optionName", optionSetting.Name),
+					kv("assignProject", assignSetting.Project),
+					kv("assignOption", assignSetting.Option),
 				)
 			}
 		}
@@ -69,8 +69,22 @@ func makeProjectOption(context *appContext, setting *projectSetting) (*projectOp
 	return option, nil
 }
 
-func (i *projectOptionInstance) inspect() *ProjectOptionInspection {
-	return newProjectOptionInspection(i.Items)
+func (i *projectOptionInstance) inspect() *ProjectOptionInstanceInspection {
+	return newProjectOptionInstanceInspection(i.Items)
+}
+
+// endregion
+
+// region ProjectOptionInstanceInspection
+
+type ProjectOptionInstanceInspection struct {
+	Items map[string]any `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+}
+
+func newProjectOptionInstanceInspection(items map[string]any) *ProjectOptionInstanceInspection {
+	return &ProjectOptionInstanceInspection{
+		Items: items,
+	}
 }
 
 // endregion

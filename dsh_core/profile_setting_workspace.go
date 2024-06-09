@@ -3,20 +3,20 @@ package dsh_core
 // region profileWorkspaceSettingModel
 
 type profileWorkspaceSettingModel struct {
-	Shell  *workspaceShellSettingModel
-	Import *workspaceImportSettingModel
+	Executor *workspaceExecutorSettingModel
+	Import   *workspaceImportSettingModel
 }
 
-func newProfileWorkspaceSettingModel(shell *workspaceShellSettingModel, import_ *workspaceImportSettingModel) *profileWorkspaceSettingModel {
+func newProfileWorkspaceSettingModel(executor *workspaceExecutorSettingModel, import_ *workspaceImportSettingModel) *profileWorkspaceSettingModel {
 	return &profileWorkspaceSettingModel{
-		Shell:  shell,
-		Import: import_,
+		Executor: executor,
+		Import:   import_,
 	}
 }
 
-func (m *profileWorkspaceSettingModel) convert(ctx *modelConvertContext) (shellSettings workspaceShellSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet, err error) {
-	if m.Shell != nil {
-		if shellSettings, err = m.Shell.convert(ctx.Child("shell")); err != nil {
+func (m *profileWorkspaceSettingModel) convert(ctx *modelConvertContext) (executorSettings workspaceExecutorSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet, err error) {
+	if m.Executor != nil {
+		if executorSettings, err = m.Executor.convert(ctx.Child("executor")); err != nil {
 			return nil, nil, nil, err
 		}
 	}
@@ -27,7 +27,7 @@ func (m *profileWorkspaceSettingModel) convert(ctx *modelConvertContext) (shellS
 		}
 	}
 
-	return shellSettings, importRegistrySettings, importRedirectSettings, nil
+	return executorSettings, importRegistrySettings, importRedirectSettings, nil
 }
 
 // endregion

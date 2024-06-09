@@ -29,10 +29,10 @@ func newProjectConfigInstance(context *appContext, setting *projectSetting, opti
 	return instance, nil
 }
 
-func (i *projectConfigInstance) inspect() *ProjectConfigInspection {
+func (i *projectConfigInstance) inspect() *ProjectConfigInstanceInspection {
 	sources := i.SourceContainer.inspect()
 	imports := i.ImportContainer.inspect()
-	return newProjectConfigInspection(sources, imports)
+	return newProjectConfigInstanceInspection(sources, imports)
 }
 
 // endregion
@@ -58,8 +58,8 @@ func (i *projectConfigSourceInstance) loadContent() error {
 	return nil
 }
 
-func (i *projectConfigSourceInstance) inspect() *ProjectConfigSourceInspection {
-	return newProjectConfigSourceInspection(i.SourcePath)
+func (i *projectConfigSourceInstance) inspect() *ProjectConfigSourceInstanceInspection {
+	return newProjectConfigSourceInstanceInspection(i.SourcePath)
 }
 
 // endregion
@@ -181,11 +181,41 @@ func (c *projectConfigSourceInstanceContainer) loadContents() (contents []*proje
 	return contents, nil
 }
 
-func (c *projectConfigSourceInstanceContainer) inspect() (sources []*ProjectConfigSourceInspection) {
+func (c *projectConfigSourceInstanceContainer) inspect() (sources []*ProjectConfigSourceInstanceInspection) {
 	for i := 0; i < len(c.Sources); i++ {
 		sources = append(sources, c.Sources[i].inspect())
 	}
 	return sources
+}
+
+// endregion
+
+// region ProjectConfigInstanceInspection
+
+type ProjectConfigInstanceInspection struct {
+	Sources []*ProjectConfigSourceInstanceInspection `yaml:"sources,omitempty" toml:"sources,omitempty" json:"sources,omitempty"`
+	Imports []*ProjectImportInstanceInspection       `yaml:"imports,omitempty" toml:"imports,omitempty" json:"imports,omitempty"`
+}
+
+func newProjectConfigInstanceInspection(sources []*ProjectConfigSourceInstanceInspection, imports []*ProjectImportInstanceInspection) *ProjectConfigInstanceInspection {
+	return &ProjectConfigInstanceInspection{
+		Sources: sources,
+		Imports: imports,
+	}
+}
+
+// endregion
+
+// region ProjectConfigSourceInstanceInspection
+
+type ProjectConfigSourceInstanceInspection struct {
+	SourcePath string `yaml:"sourcePath" toml:"sourcePath" json:"sourcePath"`
+}
+
+func newProjectConfigSourceInstanceInspection(sourcePath string) *ProjectConfigSourceInstanceInspection {
+	return &ProjectConfigSourceInstanceInspection{
+		SourcePath: sourcePath,
+	}
 }
 
 // endregion

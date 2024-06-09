@@ -4,7 +4,7 @@ lib1_test() {
   echo "lib1 test"
   echo "lib1 get options['_os']: {{ .options._os }}"
   echo "lib1 get options['_arch']: {{ .options._arch }}"
-  echo "lib1 get options['_shell']: {{ .options._shell }}"
+  echo "lib1 get options['_executor']: {{ .options._executor }}"
   echo "lib1 get options['_hostname']: {{ .options._hostname }}"
   echo "lib1 get options['_username']: {{ .options._username }}"
   echo "lib1 get options['test']: {{ .options.test }}"

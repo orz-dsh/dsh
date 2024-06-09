@@ -94,7 +94,7 @@ func TestProject3(t *testing.T) {
 	}
 	options := map[string]string{}
 	if runtime.GOOS == "windows" {
-		options["_shell"] = "powershell"
+		options[dsh_core.GenericOptionNameExecutor] = "powershell"
 	}
 	app, err := workspace.NewAppBuilder().
 		AddProfileSetting(0).
