@@ -19,9 +19,25 @@ option:
         - project: lib2
           option: test
           mapping: upper(value)
+    - name: test_object
+      type: object
+      default: '{"a": 1, "b": 2}'
+      assigns:
+        - project: lib3
+          option: test
+          mapping: value.b
+    - name: test_array
+      type: array
+      default: '[1, 2, 3]'
+      assigns:
+        - project: lib4
+          option: test
+          mapping: value[1]
   verifies:
     - _os == 'linux'
     - test != 'd'
+    - test_object.a == 1
+    - test_array[0] == 1
 script:
   sources:
     - dir: script

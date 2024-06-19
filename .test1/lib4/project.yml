@@ -1,4 +1,7 @@
 name: lib4
+option:
+  items:
+    - name: test
 script:
   sources:
     - dir: script

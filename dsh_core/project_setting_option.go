@@ -2,6 +2,7 @@ package dsh_core
 
 import (
 	"dsh/dsh_utils"
+	"encoding/json"
 	"regexp"
 	"slices"
 )
@@ -15,6 +16,8 @@ const (
 	projectOptionValueTypeBool    projectOptionValueType = "bool"
 	projectOptionValueTypeInteger projectOptionValueType = "integer"
 	projectOptionValueTypeDecimal projectOptionValueType = "decimal"
+	projectOptionValueTypeObject  projectOptionValueType = "object"
+	projectOptionValueTypeArray   projectOptionValueType = "array"
 )
 
 var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$")
@@ -96,6 +99,26 @@ func (s *projectOptionSetting) parseValue(rawValue string) (any, error) {
 			)
 		}
 		parsedValue = decimal
+	case projectOptionValueTypeObject:
+		var object map[string]any
+		if err := json.Unmarshal([]byte(rawValue), &object); err != nil {
+			return nil, errW(err, "option parse value error",
+				reason("parse object error"),
+				kv("name", s.Name),
+				kv("value", rawValue),
+			)
+		}
+		parsedValue = object
+	case projectOptionValueTypeArray:
+		var array []any
+		if err := json.Unmarshal([]byte(rawValue), &array); err != nil {
+			return nil, errW(err, "option parse value error",
+				reason("parse array error"),
+				kv("name", s.Name),
+				kv("value", rawValue),
+			)
+		}
+		parsedValue = array
 	default:
 		impossible()
 	}
@@ -212,6 +235,8 @@ func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNa
 	case projectOptionValueTypeBool:
 	case projectOptionValueTypeInteger:
 	case projectOptionValueTypeDecimal:
+	case projectOptionValueTypeObject:
+	case projectOptionValueTypeArray:
 	default:
 		return nil, ctx.Child("type").NewValueInvalidError(m.Type)
 	}
