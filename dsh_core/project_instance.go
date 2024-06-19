@@ -120,9 +120,9 @@ func (i *projectInstance) makeScripts(evaluator *Evaluator, outputPath string, u
 	if inspectionPath != "" {
 		projectInspectionPath := ""
 		if i.extra {
-			projectInspectionPath = filepath.Join(inspectionPath, fmt.Sprintf("extra-project-%d-%s.yml", i.extraIndex, i.Name))
+			projectInspectionPath = filepath.Join(inspectionPath, fmt.Sprintf("extra-project-%d.%s.yml", i.extraIndex, i.Name))
 		} else {
-			projectInspectionPath = filepath.Join(inspectionPath, fmt.Sprintf("project-%s.yml", i.Name))
+			projectInspectionPath = filepath.Join(inspectionPath, fmt.Sprintf("project.%s.yml", i.Name))
 		}
 		projectInspection := i.inspect()
 		if err := dsh_utils.WriteYamlFile(projectInspectionPath, projectInspection); err != nil {
