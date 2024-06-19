@@ -13,11 +13,10 @@ fi`
 }
 
 func projectScriptTemplateFuncShImport(importName string) string {
-	importEnvVar := "DSH_IMPORT_" + strings.ToUpper(importName)
-	return `if [ -z "${DSH_IMPORT_` + strings.ToUpper(importName) + `}" ]; then
+	importEnvVar := "DSH_IMPORT_" + strings.ReplaceAll(strings.ToUpper(importName), "-", "_")
+	return `if [ -z "${` + importEnvVar + `}" ]; then
   . "${DSH_APP_DIR}/` + importName + `/lib.sh"
-  ` + importEnvVar + `="true"
-  export ` + importEnvVar + `
+  export ` + importEnvVar + `="true"
 fi`
 }
 

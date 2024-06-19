@@ -1,8 +1,6 @@
 name: app1
 script:
-  source:
-    items:
-      - dir: script
-  import:
-    items:
-      - link: "@orz-dsh/shell-lib"
+  sources:
+    - dir: script
+  imports:
+    - link: "@orz-dsh/shell-lib"

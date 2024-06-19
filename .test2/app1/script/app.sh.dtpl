@@ -3,7 +3,7 @@ set -o errexit
 
 {{ SH_INIT_APP }}
 
-{{ SH_IMPORT "dsh_shell_lib" }}
+{{ SH_IMPORT "dsh-shell-lib" }}
 
 app_main_task() {
   dsh_exec_cmd app_test_args -a "a a a" -b "b b b" -c "c = c" --test1="\"t e s t 1\"" --test2 "t e s t 2" --test3 "test = 3" --test4 "\$(echo \"\$(echo \"t e s t 4\")\")"

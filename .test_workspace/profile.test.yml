@@ -15,7 +15,7 @@ workspace:
           - "{{.target.path}}"
 project:
   items:
-    - name: extra_project
+    - name: extra-project
       path: .test2/app1
       script:
         sources:

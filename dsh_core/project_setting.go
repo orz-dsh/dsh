@@ -7,7 +7,7 @@ import (
 
 // region base
 
-var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$")
+var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9-]*[a-z0-9]$")
 
 // endregion
 
