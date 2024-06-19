@@ -58,7 +58,7 @@ func (b *AppBuilder) Build(link string) (*App, error) {
 		return nil, err
 	}
 
-	evaluator := b.workspace.evaluator.SetData("project", map[string]any{
+	evaluator := b.workspace.evaluator.SetData("main_project", map[string]any{
 		"name": mainProjectSetting.Name,
 		"path": mainProjectSetting.Path,
 	})
