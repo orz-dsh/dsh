@@ -24,23 +24,23 @@ func makeProjectOption(context *appContext, setting *projectSetting) (*projectOp
 	}
 
 	evaluator := context.evaluator.SetRootData("options", items)
-	for i := 0; i < len(setting.OptionVerifySettings); i++ {
-		verify := setting.OptionVerifySettings[i]
-		result, err := evaluator.EvalBoolExpr(verify.expr)
+	for i := 0; i < len(setting.OptionCheckSettings); i++ {
+		check := setting.OptionCheckSettings[i]
+		result, err := evaluator.EvalBoolExpr(check.expr)
 		if err != nil {
 			return nil, errW(err, "load project options error",
-				reason("eval verify error"),
+				reason("eval check error"),
 				kv("projectName", setting.Name),
 				kv("projectPath", setting.Path),
-				kv("verify", verify),
+				kv("check", check),
 			)
 		}
 		if !result {
 			return nil, errN("load project options error",
-				reason("verify options error"),
+				reason("check options error"),
 				kv("projectName", setting.Name),
 				kv("projectPath", setting.Path),
-				kv("verify", verify),
+				kv("check", check),
 			)
 		}
 	}

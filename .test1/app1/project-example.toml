@@ -20,7 +20,7 @@ option = "test"
 mapping = "upper(value)"
 
 [option]
-verifies = [
+checks = [
     "test != 'd'"
 ]
 

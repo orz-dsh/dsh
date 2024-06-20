@@ -33,7 +33,7 @@ option:
         - project: lib4
           option: test
           mapping: value[1]
-  verifies:
+  checks:
     - _os == 'linux'
     - test != 'd'
     - test_object.a == 1

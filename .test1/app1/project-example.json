@@ -29,7 +29,7 @@
         ]
       }
     ],
-    "verifies": [
+    "checks": [
       "test != 'd'"
     ]
   },

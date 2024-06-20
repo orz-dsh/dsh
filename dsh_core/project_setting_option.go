@@ -149,17 +149,17 @@ func newProjectOptionAssignSetting(project string, option string, mapping string
 
 // endregion
 
-// region projectOptionVerifySetting
+// region projectOptionCheckSetting
 
-type projectOptionVerifySetting struct {
+type projectOptionCheckSetting struct {
 	Expr string
 	expr *EvalExpr
 }
 
-type projectOptionVerifySettingSet []*projectOptionVerifySetting
+type projectOptionCheckSettingSet []*projectOptionCheckSetting
 
-func newProjectOptionVerifySetting(expr string, exprObj *EvalExpr) *projectOptionVerifySetting {
-	return &projectOptionVerifySetting{
+func newProjectOptionCheckSetting(expr string, exprObj *EvalExpr) *projectOptionCheckSetting {
+	return &projectOptionCheckSetting{
 		Expr: expr,
 		expr: exprObj,
 	}
@@ -170,11 +170,11 @@ func newProjectOptionVerifySetting(expr string, exprObj *EvalExpr) *projectOptio
 // region projectOptionSettingModel
 
 type projectOptionSettingModel struct {
-	Items    []*projectOptionItemSettingModel
-	Verifies []string
+	Items  []*projectOptionItemSettingModel
+	Checks []string
 }
 
-func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (projectOptionSettingSet, projectOptionVerifySettingSet, error) {
+func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (projectOptionSettingSet, projectOptionCheckSettingSet, error) {
 	optionSettings := projectOptionSettingSet{}
 	optionNamesDict := map[string]bool{}
 	assignTargetsDict := map[string]bool{}
@@ -186,20 +186,20 @@ func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (projectOp
 		}
 	}
 
-	optionVerifySettings := projectOptionVerifySettingSet{}
-	for i := 0; i < len(m.Verifies); i++ {
-		expr := m.Verifies[i]
+	optionCheckSettings := projectOptionCheckSettingSet{}
+	for i := 0; i < len(m.Checks); i++ {
+		expr := m.Checks[i]
 		if expr == "" {
-			return nil, nil, ctx.ChildItem("verifies", i).NewValueEmptyError()
+			return nil, nil, ctx.ChildItem("checks", i).NewValueEmptyError()
 		}
 		exprObj, err := dsh_utils.CompileExpr(expr)
 		if err != nil {
-			return nil, nil, ctx.ChildItem("verifies", i).WrapValueInvalidError(err, expr)
+			return nil, nil, ctx.ChildItem("checks", i).WrapValueInvalidError(err, expr)
 		}
-		optionVerifySettings = append(optionVerifySettings, newProjectOptionVerifySetting(expr, exprObj))
+		optionCheckSettings = append(optionCheckSettings, newProjectOptionCheckSetting(expr, exprObj))
 	}
 
-	return optionSettings, optionVerifySettings, nil
+	return optionSettings, optionCheckSettings, nil
 }
 
 // endregion

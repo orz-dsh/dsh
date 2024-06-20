@@ -18,7 +18,7 @@ type projectSetting struct {
 	Path                 string
 	RuntimeSetting       *projectRuntimeSetting
 	OptionSettings       projectOptionSettingSet
-	OptionVerifySettings projectOptionVerifySettingSet
+	OptionCheckSettings  projectOptionCheckSettingSet
 	ScriptSourceSettings projectSourceSettingSet
 	ScriptImportSettings projectImportSettingSet
 	ConfigSourceSettings projectSourceSettingSet
@@ -27,15 +27,15 @@ type projectSetting struct {
 
 type projectSettingSet []*projectSetting
 
-func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeSetting, optionSettings projectOptionSettingSet, optionVerifySettings projectOptionVerifySettingSet, scriptSourceSettings projectSourceSettingSet, scriptImportSettings projectImportSettingSet, configSourceSettings projectSourceSettingSet, configImportSettings projectImportSettingSet) *projectSetting {
+func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeSetting, optionSettings projectOptionSettingSet, optionCheckSettings projectOptionCheckSettingSet, scriptSourceSettings projectSourceSettingSet, scriptImportSettings projectImportSettingSet, configSourceSettings projectSourceSettingSet, configImportSettings projectImportSettingSet) *projectSetting {
 	if runtimeSetting == nil {
 		runtimeSetting = newProjectRuntimeSetting("", "")
 	}
 	if optionSettings == nil {
 		optionSettings = projectOptionSettingSet{}
 	}
-	if optionVerifySettings == nil {
-		optionVerifySettings = projectOptionVerifySettingSet{}
+	if optionCheckSettings == nil {
+		optionCheckSettings = projectOptionCheckSettingSet{}
 	}
 	if scriptSourceSettings == nil {
 		scriptSourceSettings = projectSourceSettingSet{}
@@ -54,7 +54,7 @@ func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeS
 		Path:                 path,
 		RuntimeSetting:       runtimeSetting,
 		OptionSettings:       optionSettings,
-		OptionVerifySettings: optionVerifySettings,
+		OptionCheckSettings:  optionCheckSettings,
 		ScriptSourceSettings: scriptSourceSettings,
 		ScriptImportSettings: scriptImportSettings,
 		ConfigSourceSettings: configSourceSettings,
@@ -106,9 +106,9 @@ func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath stri
 	}
 
 	var optionSettings projectOptionSettingSet
-	var optionVerifySettings projectOptionVerifySettingSet
+	var optionCheckSettings projectOptionCheckSettingSet
 	if m.Option != nil {
-		if optionSettings, optionVerifySettings, err = m.Option.convert(ctx.Child("option")); err != nil {
+		if optionSettings, optionCheckSettings, err = m.Option.convert(ctx.Child("option")); err != nil {
 			return nil, err
 		}
 	}
@@ -129,7 +129,7 @@ func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath stri
 		}
 	}
 
-	return newProjectSetting(m.Name, projectPath, runtimeSetting, optionSettings, optionVerifySettings, scriptSourceSettings, scriptImportSettings, configSourceSettings, configImportSettings), nil
+	return newProjectSetting(m.Name, projectPath, runtimeSetting, optionSettings, optionCheckSettings, scriptSourceSettings, scriptImportSettings, configSourceSettings, configImportSettings), nil
 }
 
 // endregion
