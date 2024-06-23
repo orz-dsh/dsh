@@ -78,6 +78,23 @@ func (m *projectSourceSettingModel) convert(ctx *modelConvertContext) (setting *
 
 // endregion
 
+// region projectImportSettingModelSet
+
+type projectSourceSettingModelSet []*projectSourceSettingModel
+
+func (s projectSourceSettingModelSet) convert(ctx *modelConvertContext) (settings projectSourceSettingSet, _ error) {
+	for i := 0; i < len(s); i++ {
+		setting, err := s[i].convert(ctx.Item(i))
+		if err != nil {
+			return nil, err
+		}
+		settings = append(settings, setting)
+	}
+	return settings, nil
+}
+
+// endregion
+
 // region ProjectSourceSettingInspection
 
 type ProjectSourceSettingInspection struct {

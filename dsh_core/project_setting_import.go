@@ -74,6 +74,23 @@ func (m *projectImportSettingModel) convert(ctx *modelConvertContext) (setting *
 
 // endregion
 
+// region projectImportSettingModelSet
+
+type projectImportSettingModelSet []*projectImportSettingModel
+
+func (s projectImportSettingModelSet) convert(ctx *modelConvertContext) (settings projectImportSettingSet, _ error) {
+	for i := 0; i < len(s); i++ {
+		setting, err := s[i].convert(ctx.Item(i))
+		if err != nil {
+			return nil, err
+		}
+		settings = append(settings, setting)
+	}
+	return settings, nil
+}
+
+// endregion
+
 // region ProjectImportSettingInspection
 
 type ProjectImportSettingInspection struct {

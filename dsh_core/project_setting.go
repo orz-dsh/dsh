@@ -14,20 +14,18 @@ var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9-]*[a-z0-9]$")
 // region projectSetting
 
 type projectSetting struct {
-	Name                 string
-	Path                 string
-	RuntimeSetting       *projectRuntimeSetting
-	OptionSettings       projectOptionSettingSet
-	OptionCheckSettings  projectOptionCheckSettingSet
-	ScriptSourceSettings projectSourceSettingSet
-	ScriptImportSettings projectImportSettingSet
-	ConfigSourceSettings projectSourceSettingSet
-	ConfigImportSettings projectImportSettingSet
+	Name                string
+	Path                string
+	RuntimeSetting      *projectRuntimeSetting
+	OptionSettings      projectOptionSettingSet
+	OptionCheckSettings projectOptionCheckSettingSet
+	SourceSettings      projectSourceSettingSet
+	ImportSettings      projectImportSettingSet
 }
 
 type projectSettingSet []*projectSetting
 
-func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeSetting, optionSettings projectOptionSettingSet, optionCheckSettings projectOptionCheckSettingSet, scriptSourceSettings projectSourceSettingSet, scriptImportSettings projectImportSettingSet, configSourceSettings projectSourceSettingSet, configImportSettings projectImportSettingSet) *projectSetting {
+func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeSetting, optionSettings projectOptionSettingSet, optionCheckSettings projectOptionCheckSettingSet, importSettings projectImportSettingSet, sourceSettings projectSourceSettingSet) *projectSetting {
 	if runtimeSetting == nil {
 		runtimeSetting = newProjectRuntimeSetting("", "")
 	}
@@ -37,28 +35,20 @@ func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeS
 	if optionCheckSettings == nil {
 		optionCheckSettings = projectOptionCheckSettingSet{}
 	}
-	if scriptSourceSettings == nil {
-		scriptSourceSettings = projectSourceSettingSet{}
+	if importSettings == nil {
+		importSettings = projectImportSettingSet{}
 	}
-	if scriptImportSettings == nil {
-		scriptImportSettings = projectImportSettingSet{}
-	}
-	if configSourceSettings == nil {
-		configSourceSettings = projectSourceSettingSet{}
-	}
-	if configImportSettings == nil {
-		configImportSettings = projectImportSettingSet{}
+	if sourceSettings == nil {
+		sourceSettings = projectSourceSettingSet{}
 	}
 	return &projectSetting{
-		Name:                 name,
-		Path:                 path,
-		RuntimeSetting:       runtimeSetting,
-		OptionSettings:       optionSettings,
-		OptionCheckSettings:  optionCheckSettings,
-		ScriptSourceSettings: scriptSourceSettings,
-		ScriptImportSettings: scriptImportSettings,
-		ConfigSourceSettings: configSourceSettings,
-		ConfigImportSettings: configImportSettings,
+		Name:                name,
+		Path:                path,
+		RuntimeSetting:      runtimeSetting,
+		OptionSettings:      optionSettings,
+		OptionCheckSettings: optionCheckSettings,
+		ImportSettings:      importSettings,
+		SourceSettings:      sourceSettings,
 	}
 }
 
@@ -85,8 +75,8 @@ type projectSettingModel struct {
 	Name    string
 	Runtime *projectRuntimeSettingModel
 	Option  *projectOptionSettingModel
-	Script  *projectScriptSettingModel
-	Config  *projectConfigSettingModel
+	Imports projectImportSettingModelSet
+	Sources projectSourceSettingModelSet
 }
 
 func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath string) (setting *projectSetting, err error) {
@@ -113,23 +103,21 @@ func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath stri
 		}
 	}
 
-	var scriptSourceSettings projectSourceSettingSet
-	var scriptImportSettings projectImportSettingSet
-	if m.Script != nil {
-		if scriptSourceSettings, scriptImportSettings, err = m.Script.convert(ctx.Child("script")); err != nil {
+	var importSettings projectImportSettingSet
+	if m.Imports != nil {
+		if importSettings, err = m.Imports.convert(ctx.Child("imports")); err != nil {
 			return nil, err
 		}
 	}
 
-	var configSourceSettings projectSourceSettingSet
-	var configImportSettings projectImportSettingSet
-	if m.Config != nil {
-		if configSourceSettings, configImportSettings, err = m.Config.convert(ctx.Child("config")); err != nil {
+	var sourceSettings projectSourceSettingSet
+	if m.Sources != nil {
+		if sourceSettings, err = m.Sources.convert(ctx.Child("sources")); err != nil {
 			return nil, err
 		}
 	}
 
-	return newProjectSetting(m.Name, projectPath, runtimeSetting, optionSettings, optionCheckSettings, scriptSourceSettings, scriptImportSettings, configSourceSettings, configImportSettings), nil
+	return newProjectSetting(m.Name, projectPath, runtimeSetting, optionSettings, optionCheckSettings, importSettings, sourceSettings), nil
 }
 
 // endregion

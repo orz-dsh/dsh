@@ -115,12 +115,12 @@ func (b *ProfileProjectSettingBuilder[P]) addItemSettingModel(item *profileProje
 // region ProfileProjectItemSettingBuilder
 
 type ProfileProjectItemSettingBuilder[P any] struct {
-	commit func(*profileProjectItemSettingModel) P
-	name   string
-	path   string
-	match  string
-	script *projectScriptSettingModel
-	config *projectConfigSettingModel
+	commit  func(*profileProjectItemSettingModel) P
+	name    string
+	path    string
+	match   string
+	imports projectImportSettingModelSet
+	sources projectSourceSettingModelSet
 }
 
 func newProfileProjectItemSettingBuilder[P any](commit func(*profileProjectItemSettingModel) P, name, path string) *ProfileProjectItemSettingBuilder[P] {
@@ -128,8 +128,6 @@ func newProfileProjectItemSettingBuilder[P any](commit func(*profileProjectItemS
 		commit: commit,
 		name:   name,
 		path:   path,
-		script: &projectScriptSettingModel{},
-		config: &projectConfigSettingModel{},
 	}
 }
 
@@ -138,28 +136,18 @@ func (b *ProfileProjectItemSettingBuilder[P]) SetMatch(match string) *ProfilePro
 	return b
 }
 
-func (b *ProfileProjectItemSettingBuilder[P]) AddScriptSource(dir string, files []string, match string) *ProfileProjectItemSettingBuilder[P] {
-	b.script.Sources = append(b.script.Sources, newProjectSourceSettingModel(dir, files, match))
+func (b *ProfileProjectItemSettingBuilder[P]) AddImport(link, match string) *ProfileProjectItemSettingBuilder[P] {
+	b.imports = append(b.imports, newProjectImportSettingModel(link, match))
 	return b
 }
 
-func (b *ProfileProjectItemSettingBuilder[P]) AddScriptImport(link, match string) *ProfileProjectItemSettingBuilder[P] {
-	b.script.Imports = append(b.script.Imports, newProjectImportSettingModel(link, match))
-	return b
-}
-
-func (b *ProfileProjectItemSettingBuilder[P]) AddConfigSource(dir string, files []string, match string) *ProfileProjectItemSettingBuilder[P] {
-	b.config.Sources = append(b.config.Sources, newProjectSourceSettingModel(dir, files, match))
-	return b
-}
-
-func (b *ProfileProjectItemSettingBuilder[P]) AddConfigImport(link, match string) *ProfileProjectItemSettingBuilder[P] {
-	b.config.Imports = append(b.config.Imports, newProjectImportSettingModel(link, match))
+func (b *ProfileProjectItemSettingBuilder[P]) AddSource(dir string, files []string, match string) *ProfileProjectItemSettingBuilder[P] {
+	b.sources = append(b.sources, newProjectSourceSettingModel(dir, files, match))
 	return b
 }
 
 func (b *ProfileProjectItemSettingBuilder[P]) CommitItemSetting() P {
-	return b.commit(newProfileProjectItemSettingModel(b.name, b.path, b.match, b.script, b.config))
+	return b.commit(newProfileProjectItemSettingModel(b.name, b.path, b.match, b.imports, b.sources))
 }
 
 // endregion

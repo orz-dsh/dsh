@@ -10,7 +10,7 @@ import (
 type App struct {
 	context          *appContext
 	mainProjectName  string
-	projectContainer *projectInstanceContainer
+	projectContainer *projectEntityContainer
 	configs          map[string]any
 	configsTraces    map[string]any
 	configsMade      bool
@@ -27,7 +27,7 @@ func newApp(context *appContext, mainSetting *projectSetting, extraSettings []*p
 	return &App{
 		context:          context,
 		mainProjectName:  mainSetting.Name,
-		projectContainer: newProjectInstanceContainerTest(context, mainSetting, extraSettings),
+		projectContainer: newProjectEntityContainer(context, mainSetting, extraSettings),
 	}
 }
 

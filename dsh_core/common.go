@@ -39,6 +39,15 @@ func (c *modelConvertContext) ChildItem(field string, index int) *modelConvertCo
 	return c.Child(fmt.Sprintf("%s[%d]", field, index))
 }
 
+func (c *modelConvertContext) Item(index int) *modelConvertContext {
+	return &modelConvertContext{
+		Title:     c.Title,
+		File:      c.File,
+		Field:     fmt.Sprintf("%s[%d]", c.Field, index),
+		Variables: c.Variables,
+	}
+}
+
 func (c *modelConvertContext) AddVariable(key string, value any) {
 	c.Variables[key] = value
 }

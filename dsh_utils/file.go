@@ -13,11 +13,14 @@ import (
 type FileType string
 
 const (
+	FileTypeConfigYaml  FileType = "config-yaml"
+	FileTypeConfigToml  FileType = "config-toml"
+	FileTypeConfigJson  FileType = "config-json"
+	FileTypeTemplate    FileType = "template"
+	FileTypeTemplateLib FileType = "template-lib"
 	FileTypeYaml        FileType = "yaml"
 	FileTypeToml        FileType = "toml"
 	FileTypeJson        FileType = "json"
-	FileTypeTemplate    FileType = "template"
-	FileTypeTemplateLib FileType = "template-lib"
 	FileTypePlain       FileType = "plain"
 )
 
@@ -251,6 +254,18 @@ func IsJsonFile(file string) bool {
 	return strings.HasSuffix(file, ".json")
 }
 
+func IsConfigYamlFile(file string) bool {
+	return strings.HasSuffix(file, ".dcfg.yml") || strings.HasSuffix(file, ".dcfg.yaml")
+}
+
+func IsConfigTomlFile(file string) bool {
+	return strings.HasSuffix(file, ".dcfg.toml")
+}
+
+func IsConfigJsonFile(file string) bool {
+	return strings.HasSuffix(file, ".dcfg.json")
+}
+
 func IsTemplateFile(file string) bool {
 	return strings.HasSuffix(file, ".dtpl")
 }
@@ -263,6 +278,26 @@ func GetFileType(file string, types []FileType) FileType {
 	includePlain := false
 	for i := 0; i < len(types); i++ {
 		switch types[i] {
+		case FileTypeConfigYaml:
+			if IsConfigYamlFile(file) {
+				return FileTypeConfigYaml
+			}
+		case FileTypeConfigToml:
+			if IsConfigTomlFile(file) {
+				return FileTypeConfigToml
+			}
+		case FileTypeConfigJson:
+			if IsConfigJsonFile(file) {
+				return FileTypeConfigJson
+			}
+		case FileTypeTemplate:
+			if IsTemplateFile(file) {
+				return FileTypeTemplate
+			}
+		case FileTypeTemplateLib:
+			if IsTemplateLibFile(file) {
+				return FileTypeTemplateLib
+			}
 		case FileTypeYaml:
 			if IsYamlFile(file) {
 				return FileTypeYaml
@@ -274,14 +309,6 @@ func GetFileType(file string, types []FileType) FileType {
 		case FileTypeJson:
 			if IsJsonFile(file) {
 				return FileTypeJson
-			}
-		case FileTypeTemplate:
-			if IsTemplateFile(file) {
-				return FileTypeTemplate
-			}
-		case FileTypeTemplateLib:
-			if IsTemplateLibFile(file) {
-				return FileTypeTemplateLib
 			}
 		case FileTypePlain:
 			includePlain = true
@@ -299,6 +326,17 @@ func GetFileNames(globs []string, types []FileType) []string {
 		fileName := globs[i]
 		for j := 0; j < len(types); j++ {
 			switch types[j] {
+			case FileTypeConfigYaml:
+				fileNames = append(fileNames, fileName+".dcfg.yml")
+				fileNames = append(fileNames, fileName+".dcfg.yaml")
+			case FileTypeConfigToml:
+				fileNames = append(fileNames, fileName+".dcfg.toml")
+			case FileTypeConfigJson:
+				fileNames = append(fileNames, fileName+".dcfg.json")
+			case FileTypeTemplate:
+				fileNames = append(fileNames, fileName+".dtpl")
+			case FileTypeTemplateLib:
+				fileNames = append(fileNames, fileName+".dtpl.lib")
 			case FileTypeYaml:
 				fileNames = append(fileNames, fileName+".yml")
 				fileNames = append(fileNames, fileName+".yaml")
@@ -306,10 +344,6 @@ func GetFileNames(globs []string, types []FileType) []string {
 				fileNames = append(fileNames, fileName+".toml")
 			case FileTypeJson:
 				fileNames = append(fileNames, fileName+".json")
-			case FileTypeTemplate:
-				fileNames = append(fileNames, fileName+".dtpl")
-			case FileTypeTemplateLib:
-				fileNames = append(fileNames, fileName+".dtpl.lib")
 			case FileTypePlain:
 				fileNames = append(fileNames, fileName)
 			default:

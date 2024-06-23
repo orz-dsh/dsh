@@ -2,11 +2,10 @@ name: lib4
 option:
   items:
     - name: test
-script:
-  sources:
-    - dir: script
-  imports:
-    - link: "dir:./.test1/lib2"
-    - link: "dir:./.test1/app1"
+imports:
+  - link: "dir:./.test1/lib2"
+  - link: "dir:./.test1/app1"
+sources:
+  - dir: script
 #    - link: "dir:./.test1/lib-err"
 #    - link: "git:https://github.com/orz-dsh/dsh#ref=main"

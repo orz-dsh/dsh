@@ -1,13 +1,13 @@
 package dsh_core
 
-// region projectOptionInstance
+// region projectOptionEntity
 
-type projectOptionInstance struct {
+type projectOptionEntity struct {
 	Items     map[string]any
 	evaluator *Evaluator
 }
 
-func makeProjectOption(context *appContext, setting *projectSetting) (*projectOptionInstance, error) {
+func newProjectOptionEntity(context *appContext, setting *projectSetting) (*projectOptionEntity, error) {
 	items := context.option.GenericItems.copy()
 	for i := 0; i < len(setting.OptionSettings); i++ {
 		declare := setting.OptionSettings[i]
@@ -62,27 +62,27 @@ func makeProjectOption(context *appContext, setting *projectSetting) (*projectOp
 		}
 	}
 
-	option := &projectOptionInstance{
+	option := &projectOptionEntity{
 		Items:     items,
 		evaluator: evaluator,
 	}
 	return option, nil
 }
 
-func (i *projectOptionInstance) inspect() *ProjectOptionInstanceInspection {
-	return newProjectOptionInstanceInspection(i.Items)
+func (e *projectOptionEntity) inspect() *ProjectOptionEntityInspection {
+	return newProjectOptionEntityInspection(e.Items)
 }
 
 // endregion
 
-// region ProjectOptionInstanceInspection
+// region ProjectOptionEntityInspection
 
-type ProjectOptionInstanceInspection struct {
+type ProjectOptionEntityInspection struct {
 	Items map[string]any `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func newProjectOptionInstanceInspection(items map[string]any) *ProjectOptionInstanceInspection {
-	return &ProjectOptionInstanceInspection{
+func newProjectOptionEntityInspection(items map[string]any) *ProjectOptionEntityInspection {
+	return &ProjectOptionEntityInspection{
 		Items: items,
 	}
 }

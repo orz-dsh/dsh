@@ -17,6 +17,5 @@ project:
   items:
     - name: extra-project
       path: .test2/app1
-      script:
-        sources:
-          - dir: "script"
+      sources:
+        - dir: "script"

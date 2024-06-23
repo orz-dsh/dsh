@@ -6,7 +6,7 @@ type appContext struct {
 	evaluator      *Evaluator
 	profile        *appProfile
 	option         *appOption
-	projectsByName map[string]*projectInstance
+	projectsByName map[string]*projectEntity
 }
 
 func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfile, option *appOption) *appContext {
@@ -16,22 +16,22 @@ func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfi
 		evaluator:      evaluator,
 		profile:        profile,
 		option:         option,
-		projectsByName: map[string]*projectInstance{},
+		projectsByName: map[string]*projectEntity{},
 	}
 }
 
-func (c *appContext) loadProject(setting *projectSetting) (project *projectInstance, err error) {
+func (c *appContext) loadProject(setting *projectSetting) (project *projectEntity, err error) {
 	if existProject, exist := c.projectsByName[setting.Name]; exist {
 		return existProject, nil
 	}
-	if project, err = newProjectInstance(c, setting); err != nil {
+	if project, err = newProjectEntity(c, setting, nil); err != nil {
 		return nil, err
 	}
 	c.projectsByName[setting.Name] = project
 	return project, nil
 }
 
-func (c *appContext) loadProjectByTarget(target *projectLinkTarget) (project *projectInstance, err error) {
+func (c *appContext) loadProjectByTarget(target *projectLinkTarget) (project *projectEntity, err error) {
 	setting, err := c.profile.getProjectSettingByLinkTarget(target)
 	if err != nil {
 		return nil, errW(err, "load project error",
@@ -48,6 +48,6 @@ func (c *appContext) loadProjectByTarget(target *projectLinkTarget) (project *pr
 	return project, nil
 }
 
-func (c *appContext) getProject(name string) *projectInstance {
+func (c *appContext) getProject(name string) *projectEntity {
 	return c.projectsByName[name]
 }

@@ -21,11 +21,11 @@ var serializationSupportedFileTypes = []FileType{
 
 func GetSerializationFormat(fileType FileType) SerializationFormat {
 	switch fileType {
-	case FileTypeYaml:
+	case FileTypeConfigYaml, FileTypeYaml:
 		return SerializationFormatYaml
-	case FileTypeToml:
+	case FileTypeConfigToml, FileTypeToml:
 		return SerializationFormatToml
-	case FileTypeJson:
+	case FileTypeConfigJson, FileTypeJson:
 		return SerializationFormatJson
 	default:
 		impossible()

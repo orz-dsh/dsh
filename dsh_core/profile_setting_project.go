@@ -8,45 +8,35 @@ import (
 // region profileProjectSetting
 
 type profileProjectSetting struct {
-	Name                 string
-	Path                 string
-	Match                string
-	ScriptSourceSettings projectSourceSettingSet
-	ScriptImportSettings projectImportSettingSet
-	ConfigSourceSettings projectSourceSettingSet
-	ConfigImportSettings projectImportSettingSet
-	match                *EvalExpr
+	Name           string
+	Path           string
+	Match          string
+	ImportSettings projectImportSettingSet
+	SourceSettings projectSourceSettingSet
+	match          *EvalExpr
 }
 
 type profileProjectSettingSet []*profileProjectSetting
 
-func newProfileProjectSetting(name string, path string, match string, scriptSourceSettings projectSourceSettingSet, scriptImportSettings projectImportSettingSet, configSourceSettings projectSourceSettingSet, configImportSettings projectImportSettingSet, matchObj *EvalExpr) *profileProjectSetting {
-	if scriptSourceSettings == nil {
-		scriptSourceSettings = projectSourceSettingSet{}
+func newProfileProjectSetting(name string, path string, match string, importSettings projectImportSettingSet, sourceSettings projectSourceSettingSet, matchObj *EvalExpr) *profileProjectSetting {
+	if importSettings == nil {
+		importSettings = projectImportSettingSet{}
 	}
-	if scriptImportSettings == nil {
-		scriptImportSettings = projectImportSettingSet{}
-	}
-	if configSourceSettings == nil {
-		configSourceSettings = projectSourceSettingSet{}
-	}
-	if configImportSettings == nil {
-		configImportSettings = projectImportSettingSet{}
+	if sourceSettings == nil {
+		sourceSettings = projectSourceSettingSet{}
 	}
 	return &profileProjectSetting{
-		Name:                 name,
-		Path:                 path,
-		Match:                match,
-		ScriptSourceSettings: scriptSourceSettings,
-		ScriptImportSettings: scriptImportSettings,
-		ConfigSourceSettings: configSourceSettings,
-		ConfigImportSettings: configImportSettings,
-		match:                matchObj,
+		Name:           name,
+		Path:           path,
+		Match:          match,
+		ImportSettings: importSettings,
+		SourceSettings: sourceSettings,
+		match:          matchObj,
 	}
 }
 
 func (s *profileProjectSetting) inspect() *ProfileProjectSettingInspection {
-	return newProfileProjectSettingInspection(s.Name, s.Path, s.Match, s.ScriptSourceSettings.inspect(), s.ScriptImportSettings.inspect(), s.ConfigSourceSettings.inspect(), s.ConfigImportSettings.inspect())
+	return newProfileProjectSettingInspection(s.Name, s.Path, s.Match, s.ImportSettings.inspect(), s.SourceSettings.inspect())
 }
 
 func (s profileProjectSettingSet) getProjectSettings(evaluator *Evaluator) (projectSettingSet, error) {
@@ -80,7 +70,7 @@ func (s profileProjectSettingSet) getProjectSettings(evaluator *Evaluator) (proj
 			)
 		}
 
-		result = append(result, newProjectSetting(setting.Name, path, nil, nil, nil, setting.ScriptSourceSettings, setting.ScriptImportSettings, setting.ConfigSourceSettings, setting.ConfigImportSettings))
+		result = append(result, newProjectSetting(setting.Name, path, nil, nil, nil, setting.ImportSettings, setting.SourceSettings))
 	}
 	return result, nil
 }
@@ -124,20 +114,20 @@ func (m *profileProjectSettingModel) convert(ctx *modelConvertContext) (profileP
 // region profileProjectItemSettingModel
 
 type profileProjectItemSettingModel struct {
-	Name   string
-	Path   string
-	Match  string
-	Script *projectScriptSettingModel
-	Config *projectConfigSettingModel
+	Name    string
+	Path    string
+	Match   string
+	Imports projectImportSettingModelSet
+	Sources projectSourceSettingModelSet
 }
 
-func newProfileProjectItemSettingModel(name, path, match string, script *projectScriptSettingModel, config *projectConfigSettingModel) *profileProjectItemSettingModel {
+func newProfileProjectItemSettingModel(name, path, match string, imports projectImportSettingModelSet, sources projectSourceSettingModelSet) *profileProjectItemSettingModel {
 	return &profileProjectItemSettingModel{
-		Name:   name,
-		Path:   path,
-		Match:  match,
-		Script: script,
-		Config: config,
+		Name:    name,
+		Path:    path,
+		Match:   match,
+		Imports: imports,
+		Sources: sources,
 	}
 }
 
@@ -153,18 +143,16 @@ func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (sett
 		return nil, ctx.Child("path").NewValueEmptyError()
 	}
 
-	var scriptSourceSettings projectSourceSettingSet
-	var scriptImportSettings projectImportSettingSet
-	if m.Script != nil {
-		if scriptSourceSettings, scriptImportSettings, err = m.Script.convert(ctx.Child("script")); err != nil {
+	var importSettings projectImportSettingSet
+	if m.Imports != nil {
+		if importSettings, err = m.Imports.convert(ctx.Child("imports")); err != nil {
 			return nil, err
 		}
 	}
 
-	var configSourceSettings projectSourceSettingSet
-	var configImportSettings projectImportSettingSet
-	if m.Config != nil {
-		if configSourceSettings, configImportSettings, err = m.Config.convert(ctx.Child("config")); err != nil {
+	var sourceSettings projectSourceSettingSet
+	if m.Sources != nil {
+		if sourceSettings, err = m.Sources.convert(ctx.Child("sources")); err != nil {
 			return nil, err
 		}
 	}
@@ -177,7 +165,7 @@ func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (sett
 		}
 	}
 
-	return newProfileProjectSetting(m.Name, m.Path, m.Match, scriptSourceSettings, scriptImportSettings, configSourceSettings, configImportSettings, matchObj), nil
+	return newProfileProjectSetting(m.Name, m.Path, m.Match, importSettings, sourceSettings, matchObj), nil
 }
 
 // endregion
@@ -185,24 +173,20 @@ func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (sett
 // region ProfileProjectSettingInspection
 
 type ProfileProjectSettingInspection struct {
-	Name          string                            `yaml:"name" toml:"name" json:"name"`
-	Path          string                            `yaml:"path" toml:"path" json:"path"`
-	Match         string                            `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
-	ScriptSources []*ProjectSourceSettingInspection `yaml:"scriptSources,omitempty" toml:"scriptSources,omitempty" json:"scriptSources,omitempty"`
-	ScriptImports []*ProjectImportSettingInspection `yaml:"scriptImports,omitempty" toml:"scriptImports,omitempty" json:"scriptImports,omitempty"`
-	ConfigSources []*ProjectSourceSettingInspection `yaml:"configSources,omitempty" toml:"configSources,omitempty" json:"configSources,omitempty"`
-	ConfigImports []*ProjectImportSettingInspection `yaml:"configImports,omitempty" toml:"configImports,omitempty" json:"configImports,omitempty"`
+	Name    string                            `yaml:"name" toml:"name" json:"name"`
+	Path    string                            `yaml:"path" toml:"path" json:"path"`
+	Match   string                            `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+	Imports []*ProjectImportSettingInspection `yaml:"imports,omitempty" toml:"imports,omitempty" json:"imports,omitempty"`
+	Sources []*ProjectSourceSettingInspection `yaml:"sources,omitempty" toml:"sources,omitempty" json:"sources,omitempty"`
 }
 
-func newProfileProjectSettingInspection(name string, path string, match string, scriptSources []*ProjectSourceSettingInspection, scriptImports []*ProjectImportSettingInspection, configSources []*ProjectSourceSettingInspection, configImports []*ProjectImportSettingInspection) *ProfileProjectSettingInspection {
+func newProfileProjectSettingInspection(name string, path string, match string, imports []*ProjectImportSettingInspection, sources []*ProjectSourceSettingInspection) *ProfileProjectSettingInspection {
 	return &ProfileProjectSettingInspection{
-		Name:          name,
-		Path:          path,
-		Match:         match,
-		ScriptSources: scriptSources,
-		ScriptImports: scriptImports,
-		ConfigSources: configSources,
-		ConfigImports: configImports,
+		Name:    name,
+		Path:    path,
+		Match:   match,
+		Imports: imports,
+		Sources: sources,
 	}
 }
 

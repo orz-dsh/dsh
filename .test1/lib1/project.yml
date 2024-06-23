@@ -16,8 +16,8 @@ option:
           option: test
           mapping: >-
             value == '1234' ? 'a' : (value == '5678' ? 'b' : (value == '0000' ? 'c' : nil))
-script:
-  sources:
-    - dir: script
-  imports:
-    - link: "dir:./.test1/lib2"
+
+imports:
+  - link: "dir:./.test1/lib2"
+sources:
+  - dir: script

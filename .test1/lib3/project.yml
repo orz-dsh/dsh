@@ -2,8 +2,7 @@ name: lib3
 option:
   items:
     - name: test
-script:
-  sources:
-    - dir: script
-  imports:
-    - link: "dir:./.test1/lib4"
+imports:
+  - link: "dir:./.test1/lib4"
+sources:
+  - dir: script
