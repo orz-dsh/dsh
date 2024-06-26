@@ -4,12 +4,12 @@ type appContext struct {
 	logger         *Logger
 	workspace      *Workspace
 	evaluator      *Evaluator
-	profile        *appProfile
+	profile        *appSetting
 	option         *appOption
 	projectsByName map[string]*projectEntity
 }
 
-func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appProfile, option *appOption) *appContext {
+func newAppContext(workspace *Workspace, evaluator *Evaluator, profile *appSetting, option *appOption) *appContext {
 	return &appContext{
 		logger:         workspace.logger,
 		workspace:      workspace,

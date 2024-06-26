@@ -14,16 +14,61 @@ var profileOptionNameCheckRegex = regexp.MustCompile("^_?[a-z][a-z0-9_]*[a-z]$")
 // region profileOptionSetting
 
 type profileOptionSetting struct {
+	Items []*profileOptionItemSetting
+}
+
+func newProfileOptionSetting(items []*profileOptionItemSetting) *profileOptionSetting {
+	return &profileOptionSetting{
+		Items: items,
+	}
+}
+
+func (s *profileOptionSetting) merge(setting *profileOptionSetting) {
+	s.Items = append(s.Items, setting.Items...)
+}
+
+func (s *profileOptionSetting) getItems(evaluator *Evaluator) (map[string]string, error) {
+	items := map[string]string{}
+	for i := 0; i < len(s.Items); i++ {
+		item := s.Items[i]
+		if _, exist := items[item.Name]; exist {
+			continue
+		}
+		matched, err := evaluator.EvalBoolExpr(item.match)
+		if err != nil {
+			return nil, errW(err, "get profile option specify items error",
+				reason("eval expr error"),
+				kv("item", item),
+			)
+		}
+		if matched {
+			items[item.Name] = item.Value
+		}
+	}
+	return items, nil
+}
+
+func (s *profileOptionSetting) inspect() *ProfileOptionSettingInspection {
+	var items []*ProfileOptionItemSettingInspection
+	for i := 0; i < len(s.Items); i++ {
+		items = append(items, s.Items[i].inspect())
+	}
+	return newProfileOptionSettingInspection(items)
+}
+
+// endregion
+
+// region profileOptionItemSetting
+
+type profileOptionItemSetting struct {
 	Name  string
 	Value string
 	Match string
 	match *EvalExpr
 }
 
-type profileOptionSettingSet []*profileOptionSetting
-
-func newProfileOptionSetting(name string, value string, match string, matchObj *EvalExpr) *profileOptionSetting {
-	return &profileOptionSetting{
+func newProfileOptionItemSetting(name, value, match string, matchObj *EvalExpr) *profileOptionItemSetting {
+	return &profileOptionItemSetting{
 		Name:  name,
 		Value: value,
 		Match: match,
@@ -31,37 +76,8 @@ func newProfileOptionSetting(name string, value string, match string, matchObj *
 	}
 }
 
-func (s *profileOptionSetting) inspect() *ProfileOptionSettingInspection {
-	return newProfileOptionInspection(s.Name, s.Value, s.Match)
-}
-
-func (s profileOptionSettingSet) getItems(evaluator *Evaluator) (map[string]string, error) {
-	items := map[string]string{}
-	for i := 0; i < len(s); i++ {
-		entity := s[i]
-		if _, exist := items[entity.Name]; exist {
-			continue
-		}
-		matched, err := evaluator.EvalBoolExpr(entity.match)
-		if err != nil {
-			return nil, errW(err, "get profile option specify items error",
-				reason("eval expr error"),
-				kv("entity", entity),
-			)
-		}
-		if matched {
-			items[entity.Name] = entity.Value
-		}
-	}
-	return items, nil
-}
-
-func (s profileOptionSettingSet) inspect() []*ProfileOptionSettingInspection {
-	var inspections []*ProfileOptionSettingInspection
-	for i := 0; i < len(s); i++ {
-		inspections = append(inspections, s[i].inspect())
-	}
-	return inspections
+func (s *profileOptionItemSetting) inspect() *ProfileOptionItemSettingInspection {
+	return newProfileOptionItemSettingInspection(s.Name, s.Value, s.Match)
 }
 
 // endregion
@@ -69,7 +85,7 @@ func (s profileOptionSettingSet) inspect() []*ProfileOptionSettingInspection {
 // region profileOptionSettingModel
 
 type profileOptionSettingModel struct {
-	Items []*profileOptionItemSettingModel
+	Items []*profileOptionItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
 func newProfileOptionSettingModel(items []*profileOptionItemSettingModel) *profileOptionSettingModel {
@@ -78,16 +94,16 @@ func newProfileOptionSettingModel(items []*profileOptionItemSettingModel) *profi
 	}
 }
 
-func (m *profileOptionSettingModel) convert(ctx *modelConvertContext) (profileOptionSettingSet, error) {
-	settings := profileOptionSettingSet{}
+func (m *profileOptionSettingModel) convert(ctx *modelConvertContext) (*profileOptionSetting, error) {
+	var items []*profileOptionItemSetting
 	for i := 0; i < len(m.Items); i++ {
-		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
+		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
+		if err != nil {
 			return nil, err
-		} else {
-			settings = append(settings, setting)
 		}
+		items = append(items, item)
 	}
-	return settings, nil
+	return newProfileOptionSetting(items), nil
 }
 
 // endregion
@@ -95,12 +111,12 @@ func (m *profileOptionSettingModel) convert(ctx *modelConvertContext) (profileOp
 // region profileOptionItemSettingModel
 
 type profileOptionItemSettingModel struct {
-	Name  string
-	Value string
-	Match string
+	Name  string `yaml:"name" toml:"name" json:"name"`
+	Value string `yaml:"value" toml:"value" json:"value"`
+	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
 }
 
-func (m *profileOptionItemSettingModel) convert(ctx *modelConvertContext) (setting *profileOptionSetting, err error) {
+func (m *profileOptionItemSettingModel) convert(ctx *modelConvertContext) (setting *profileOptionItemSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
@@ -116,25 +132,7 @@ func (m *profileOptionItemSettingModel) convert(ctx *modelConvertContext) (setti
 		}
 	}
 
-	return newProfileOptionSetting(m.Name, m.Value, m.Match, matchObj), nil
-}
-
-// endregion
-
-// region ProfileOptionSettingInspection
-
-type ProfileOptionSettingInspection struct {
-	Name  string `yaml:"name" toml:"name" json:"name"`
-	Value string `yaml:"value" toml:"value" json:"value"`
-	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
-}
-
-func newProfileOptionInspection(name, value, match string) *ProfileOptionSettingInspection {
-	return &ProfileOptionSettingInspection{
-		Name:  name,
-		Value: value,
-		Match: match,
-	}
+	return newProfileOptionItemSetting(m.Name, m.Value, m.Match, matchObj), nil
 }
 
 // endregion

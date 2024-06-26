@@ -27,19 +27,33 @@ var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$"
 // region projectOptionSetting
 
 type projectOptionSetting struct {
+	Items  []*projectOptionItemSetting
+	Checks []*projectOptionCheckSetting
+}
+
+func newProjectOptionSetting(items []*projectOptionItemSetting, checks []*projectOptionCheckSetting) *projectOptionSetting {
+	return &projectOptionSetting{
+		Items:  items,
+		Checks: checks,
+	}
+}
+
+// endregion
+
+// region projectOptionItemSetting
+
+type projectOptionItemSetting struct {
 	Name               string
 	ValueType          projectOptionValueType
 	ValueChoices       []string
 	Optional           bool
 	DefaultRawValue    string
 	DefaultParsedValue any
-	AssignSettings     projectOptionAssignSettingSet
+	Assigns            []*projectOptionItemAssignSetting
 }
 
-type projectOptionSettingSet []*projectOptionSetting
-
-func newProjectOptionSetting(name string, valueType projectOptionValueType, valueChoices []string, optional bool) *projectOptionSetting {
-	return &projectOptionSetting{
+func newProjectOptionItemSetting(name string, valueType projectOptionValueType, valueChoices []string, optional bool) *projectOptionItemSetting {
+	return &projectOptionItemSetting{
 		Name:         name,
 		ValueType:    valueType,
 		ValueChoices: valueChoices,
@@ -47,7 +61,7 @@ func newProjectOptionSetting(name string, valueType projectOptionValueType, valu
 	}
 }
 
-func (s *projectOptionSetting) setDefaultValue(defaultValue *string) error {
+func (s *projectOptionItemSetting) setDefaultValue(defaultValue *string) error {
 	if defaultValue != nil {
 		defaultRawValue := *defaultValue
 		defaultParsedValue, err := s.parseValue(defaultRawValue)
@@ -60,11 +74,11 @@ func (s *projectOptionSetting) setDefaultValue(defaultValue *string) error {
 	return nil
 }
 
-func (s *projectOptionSetting) addAssignSetting(setting *projectOptionAssignSetting) {
-	s.AssignSettings = append(s.AssignSettings, setting)
+func (s *projectOptionItemSetting) addAssign(assign *projectOptionItemAssignSetting) {
+	s.Assigns = append(s.Assigns, assign)
 }
 
-func (s *projectOptionSetting) parseValue(rawValue string) (any, error) {
+func (s *projectOptionItemSetting) parseValue(rawValue string) (any, error) {
 	if len(s.ValueChoices) > 0 && !slices.Contains(s.ValueChoices, rawValue) {
 		return nil, errN("option parse value error",
 			reason("not in choices"),
@@ -127,19 +141,17 @@ func (s *projectOptionSetting) parseValue(rawValue string) (any, error) {
 
 // endregion
 
-// region projectOptionAssignSetting
+// region projectOptionItemAssignSetting
 
-type projectOptionAssignSetting struct {
+type projectOptionItemAssignSetting struct {
 	Project string
 	Option  string
 	Mapping string
 	mapping *EvalExpr
 }
 
-type projectOptionAssignSettingSet []*projectOptionAssignSetting
-
-func newProjectOptionAssignSetting(project string, option string, mapping string, mappingObj *EvalExpr) *projectOptionAssignSetting {
-	return &projectOptionAssignSetting{
+func newProjectOptionItemAssignSetting(project string, option string, mapping string, mappingObj *EvalExpr) *projectOptionItemAssignSetting {
+	return &projectOptionItemAssignSetting{
 		Project: project,
 		Option:  option,
 		Mapping: mapping,
@@ -156,8 +168,6 @@ type projectOptionCheckSetting struct {
 	expr *EvalExpr
 }
 
-type projectOptionCheckSettingSet []*projectOptionCheckSetting
-
 func newProjectOptionCheckSetting(expr string, exprObj *EvalExpr) *projectOptionCheckSetting {
 	return &projectOptionCheckSetting{
 		Expr: expr,
@@ -170,36 +180,36 @@ func newProjectOptionCheckSetting(expr string, exprObj *EvalExpr) *projectOption
 // region projectOptionSettingModel
 
 type projectOptionSettingModel struct {
-	Items  []*projectOptionItemSettingModel
-	Checks []string
+	Items  []*projectOptionItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+	Checks []string                         `yaml:"checks,omitempty" toml:"checks,omitempty" json:"checks,omitempty"`
 }
 
-func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (projectOptionSettingSet, projectOptionCheckSettingSet, error) {
-	optionSettings := projectOptionSettingSet{}
+func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (*projectOptionSetting, error) {
+	var items []*projectOptionItemSetting
 	optionNamesDict := map[string]bool{}
 	assignTargetsDict := map[string]bool{}
 	for i := 0; i < len(m.Items); i++ {
-		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i), optionNamesDict, assignTargetsDict); err != nil {
-			return nil, nil, err
+		if item, err := m.Items[i].convert(ctx.ChildItem("items", i), optionNamesDict, assignTargetsDict); err != nil {
+			return nil, err
 		} else {
-			optionSettings = append(optionSettings, setting)
+			items = append(items, item)
 		}
 	}
 
-	optionCheckSettings := projectOptionCheckSettingSet{}
+	var checks []*projectOptionCheckSetting
 	for i := 0; i < len(m.Checks); i++ {
 		expr := m.Checks[i]
 		if expr == "" {
-			return nil, nil, ctx.ChildItem("checks", i).NewValueEmptyError()
+			return nil, ctx.ChildItem("checks", i).NewValueEmptyError()
 		}
 		exprObj, err := dsh_utils.CompileExpr(expr)
 		if err != nil {
-			return nil, nil, ctx.ChildItem("checks", i).WrapValueInvalidError(err, expr)
+			return nil, ctx.ChildItem("checks", i).WrapValueInvalidError(err, expr)
 		}
-		optionCheckSettings = append(optionCheckSettings, newProjectOptionCheckSetting(expr, exprObj))
+		checks = append(checks, newProjectOptionCheckSetting(expr, exprObj))
 	}
 
-	return optionSettings, optionCheckSettings, nil
+	return newProjectOptionSetting(items, checks), nil
 }
 
 // endregion
@@ -207,15 +217,15 @@ func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (projectOp
 // region projectOptionItemSettingModel
 
 type projectOptionItemSettingModel struct {
-	Name     string
-	Type     projectOptionValueType
-	Choices  []string
-	Default  *string
-	Optional bool
-	Assigns  []*projectOptionItemAssignSettingModel
+	Name     string                                 `yaml:"name" toml:"name" json:"name"`
+	Type     projectOptionValueType                 `yaml:"type,omitempty" toml:"type,omitempty" json:"type,omitempty"`
+	Choices  []string                               `yaml:"choices,omitempty" toml:"choices,omitempty" json:"choices,omitempty"`
+	Default  *string                                `yaml:"default,omitempty" toml:"default,omitempty" json:"default,omitempty"`
+	Optional bool                                   `yaml:"optional,omitempty" toml:"optional,omitempty" json:"optional,omitempty"`
+	Assigns  []*projectOptionItemAssignSettingModel `yaml:"assigns,omitempty" toml:"assigns,omitempty" json:"assigns,omitempty"`
 }
 
-func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNamesDict, assignTargetsDict map[string]bool) (setting *projectOptionSetting, err error) {
+func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNamesDict, assignTargetsDict map[string]bool) (*projectOptionItemSetting, error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
@@ -241,8 +251,8 @@ func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNa
 		return nil, ctx.Child("type").NewValueInvalidError(m.Type)
 	}
 
-	setting = newProjectOptionSetting(m.Name, valueType, m.Choices, m.Optional)
-	if err = setting.setDefaultValue(m.Default); err != nil {
+	setting := newProjectOptionItemSetting(m.Name, valueType, m.Choices, m.Optional)
+	if err := setting.setDefaultValue(m.Default); err != nil {
 		return nil, ctx.Child("default").WrapValueInvalidError(err, *m.Default)
 	}
 
@@ -250,7 +260,7 @@ func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNa
 		if assignSetting, err := m.Assigns[i].convert(ctx.ChildItem("assigns", i), assignTargetsDict); err != nil {
 			return nil, err
 		} else {
-			setting.addAssignSetting(assignSetting)
+			setting.addAssign(assignSetting)
 		}
 	}
 
@@ -263,12 +273,12 @@ func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNa
 // region projectOptionItemAssignSettingModel
 
 type projectOptionItemAssignSettingModel struct {
-	Project string
-	Option  string
-	Mapping string
+	Project string `yaml:"project" toml:"project" json:"project"`
+	Option  string `yaml:"option" toml:"option" json:"option"`
+	Mapping string `yaml:"mapping,omitempty" toml:"mapping,omitempty" json:"mapping,omitempty"`
 }
 
-func (m *projectOptionItemAssignSettingModel) convert(ctx *modelConvertContext, targetsDict map[string]bool) (setting *projectOptionAssignSetting, err error) {
+func (m *projectOptionItemAssignSettingModel) convert(ctx *modelConvertContext, targetsDict map[string]bool) (_ *projectOptionItemAssignSetting, err error) {
 	if m.Project == "" {
 		return nil, ctx.Child("project").NewValueEmptyError()
 	}
@@ -294,7 +304,7 @@ func (m *projectOptionItemAssignSettingModel) convert(ctx *modelConvertContext, 
 	}
 
 	targetsDict[assignTarget] = true
-	return newProjectOptionAssignSetting(m.Project, m.Option, m.Mapping, mappingObj), nil
+	return newProjectOptionItemAssignSetting(m.Project, m.Option, m.Mapping, mappingObj), nil
 }
 
 // endregion

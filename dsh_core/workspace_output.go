@@ -116,9 +116,9 @@ func (w *Workspace) cleanOutputDir(excludeOutputPath string) error {
 		} else {
 			projectCount = 1
 		}
-		if projectCount > w.setting.CleanSetting.OutputCount {
+		if projectCount > w.setting.Clean.OutputCount {
 			removeDirNames = append(removeDirNames, dirName)
-		} else if now.Sub(createTime) > w.setting.CleanSetting.OutputExpires {
+		} else if now.Sub(createTime) > w.setting.Clean.OutputExpires {
 			removeDirNames = append(removeDirNames, dirName)
 		}
 		projectCounts[projectName] = projectCount

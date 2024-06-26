@@ -26,7 +26,7 @@ func newProjectEntity(context *appContext, setting *projectSetting, option *proj
 			return nil, errW(err, "load project error",
 				reason("new project option error"),
 				kv("projectName", setting.Name),
-				kv("projectPath", setting.Path),
+				kv("projectPath", setting.Dir),
 			)
 		}
 	}
@@ -35,7 +35,7 @@ func newProjectEntity(context *appContext, setting *projectSetting, option *proj
 		return nil, errW(err, "load project error",
 			reason("new project import error"),
 			kv("projectName", setting.Name),
-			kv("projectPath", setting.Path),
+			kv("projectPath", setting.Dir),
 		)
 	}
 	source, err := newProjectSourceEntity(context, setting, option)
@@ -43,12 +43,12 @@ func newProjectEntity(context *appContext, setting *projectSetting, option *proj
 		return nil, errW(err, "load project error",
 			reason("new project source error"),
 			kv("projectName", setting.Name),
-			kv("projectPath", setting.Path),
+			kv("projectPath", setting.Dir),
 		)
 	}
 	project := &projectEntity{
 		Name:    setting.Name,
-		Path:    setting.Path,
+		Path:    setting.Dir,
 		context: context,
 		option:  option,
 		import_: import_,

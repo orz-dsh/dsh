@@ -3,19 +3,19 @@ option:
     - name: xxxx
       value: xxxx
       match: xxxx
-workspace:
-  executor:
-    items:
-      - name: powershell
-        args:
-          - -ExecutionPolicy
-          - Bypass
-          - -NoProfile
-          - -File
-          - "{{.target.path}}"
+executor:
+  items:
+    - name: powershell
+      args:
+        - -ExecutionPolicy
+        - Bypass
+        - -NoProfile
+        - -File
+        - "{{.target.path}}"
 project:
   items:
     - name: extra-project
-      path: .test2/app1
-      sources:
-        - dir: "script"
+      dir: .test2/app1
+      resource:
+        items:
+          - dir: "script"

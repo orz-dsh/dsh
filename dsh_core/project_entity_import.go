@@ -15,11 +15,11 @@ func newProjectImportEntity(context *appContext, setting *projectSetting, option
 	import_ := &projectImportEntity{
 		context:       context,
 		ProjectName:   setting.Name,
-		ProjectPath:   setting.Path,
+		ProjectPath:   setting.Dir,
 		itemPathsDict: map[string]bool{},
 	}
-	for i := 0; i < len(setting.ImportSettings); i++ {
-		importSetting := setting.ImportSettings[i]
+	for i := 0; i < len(setting.Dependency.Items); i++ {
+		importSetting := setting.Dependency.Items[i]
 		matched, err := option.evaluator.EvalBoolExpr(importSetting.match)
 		if err != nil {
 			return nil, err
@@ -34,7 +34,7 @@ func newProjectImportEntity(context *appContext, setting *projectSetting, option
 	return import_, nil
 }
 
-func (e *projectImportEntity) addImport(setting *projectImportSetting) (err error) {
+func (e *projectImportEntity) addImport(setting *projectDependencyItemSetting) (err error) {
 	target, err := e.context.profile.getProjectLinkTarget(setting.link)
 	if err != nil {
 		return errW(err, "add import error",

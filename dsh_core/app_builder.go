@@ -7,12 +7,12 @@ import (
 
 type AppBuilder struct {
 	workspace       *Workspace
-	profileSettings profileSettingSet
+	profileSettings []*profileSetting
 	err             error
 }
 
 func newAppBuilder(workspace *Workspace) *AppBuilder {
-	var profileSettings profileSettingSet
+	var profileSettings []*profileSetting
 	for i := 0; i < len(workspace.profileSettings); i++ {
 		profileSettings = append(profileSettings, workspace.profileSettings[i])
 	}
@@ -51,7 +51,7 @@ func (b *AppBuilder) Build(link string) (*App, error) {
 		return nil, b.err
 	}
 
-	profile := newProfileInstance(b.workspace, b.profileSettings)
+	profile := newAppSetting(b.workspace, b.profileSettings)
 
 	mainProjectSetting, err := profile.getProjectEntityByRawLink(link)
 	if err != nil {
@@ -60,7 +60,7 @@ func (b *AppBuilder) Build(link string) (*App, error) {
 
 	evaluator := b.workspace.evaluator.SetData("main_project", map[string]any{
 		"name": mainProjectSetting.Name,
-		"path": mainProjectSetting.Path,
+		"path": mainProjectSetting.Dir,
 	})
 
 	option, err := profile.getAppOption(mainProjectSetting, evaluator)

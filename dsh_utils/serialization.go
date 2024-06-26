@@ -1,7 +1,7 @@
 package dsh_utils
 
 type SerializationMetadata struct {
-	Path   string
+	File   string
 	Format SerializationFormat
 }
 
@@ -51,19 +51,19 @@ func DeserializeFromDir(dir string, globs []string, model any, required bool) (m
 	return DeserializeFromFile(file.Path, GetSerializationFormat(file.Type), model)
 }
 
-func DeserializeFromFile(path string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {
+func DeserializeFromFile(file string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {
 	if format == "" {
-		if !IsFileExists(path) {
+		if !IsFileExists(file) {
 			return nil, errN("deserialize error",
 				reason("file not found"),
-				kv("path", path),
+				kv("file", file),
 			)
 		}
-		fileType := GetFileType(path, serializationSupportedFileTypes)
+		fileType := GetFileType(file, serializationSupportedFileTypes)
 		if fileType == "" {
 			return nil, errN("deserialize error",
 				reason("file type not supported"),
-				kv("path", path),
+				kv("file", file),
 			)
 		}
 		format = GetSerializationFormat(fileType)
@@ -71,11 +71,11 @@ func DeserializeFromFile(path string, format SerializationFormat, model any) (me
 
 	switch format {
 	case SerializationFormatYaml:
-		err = ReadYamlFile(path, model)
+		err = ReadYamlFile(file, model)
 	case SerializationFormatToml:
-		err = ReadTomlFile(path, model)
+		err = ReadTomlFile(file, model)
 	case SerializationFormatJson:
-		err = ReadJsonFile(path, model)
+		err = ReadJsonFile(file, model)
 	default:
 		impossible()
 	}
@@ -83,13 +83,13 @@ func DeserializeFromFile(path string, format SerializationFormat, model any) (me
 	if err != nil {
 		return nil, errW(err, "deserialize error",
 			reason("read file error"),
-			kv("path", path),
+			kv("file", file),
 			kv("format", format),
 		)
 	}
 
 	metadata = &SerializationMetadata{
-		Path:   path,
+		File:   file,
 		Format: format,
 	}
 	return metadata, nil

@@ -12,7 +12,7 @@ type Workspace struct {
 	dir             string
 	setting         *workspaceSetting
 	evaluator       *Evaluator
-	profileSettings profileSettingSet
+	profileSettings []*profileSetting
 }
 
 type WorkspaceCleanSetting struct {
@@ -61,11 +61,11 @@ func MakeWorkspace(global *Global, dir string) (workspace *Workspace, err error)
 		"runtime_version_code": dsh_utils.GetRuntimeVersionCode(),
 	})
 
-	profiles, err := setting.ProfileSettings.getFiles(evaluator)
+	profiles, err := setting.Profile.getFiles(evaluator)
 	if err != nil {
 		return nil, err
 	}
-	var profileSettings profileSettingSet
+	var profileSettings []*profileSetting
 	for i := 0; i < len(profiles); i++ {
 		profileSetting, err := loadProfileSetting(profiles[i])
 		if err != nil {

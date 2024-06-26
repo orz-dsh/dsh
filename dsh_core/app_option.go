@@ -25,7 +25,7 @@ func newAppOption(systemInfo *SystemInfo, evaluator *Evaluator, projectName stri
 	}
 }
 
-func (o *appOption) addAssign(sourceProject string, sourceOption string, assignSetting *projectOptionAssignSetting) error {
+func (o *appOption) addAssign(sourceProject string, sourceOption string, assignSetting *projectOptionItemAssignSetting) error {
 	source := sourceProject + "." + sourceOption
 	target := assignSetting.Project + "." + assignSetting.Option
 	assign := &appOptionAssign{
@@ -98,7 +98,7 @@ func (o *appOption) findAssignValue(projectName string, optionName string) (*app
 	return nil, nil, nil
 }
 
-func (o *appOption) findResult(projectName string, declare *projectOptionSetting) (result *appOptionResult, err error) {
+func (o *appOption) findResult(projectName string, declare *projectOptionItemSetting) (result *appOptionResult, err error) {
 	found := false
 	var rawValue string
 	var parsedValue any = nil

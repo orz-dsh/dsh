@@ -14,54 +14,47 @@ var projectNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9-]*[a-z0-9]$")
 // region projectSetting
 
 type projectSetting struct {
-	Name                string
-	Path                string
-	RuntimeSetting      *projectRuntimeSetting
-	OptionSettings      projectOptionSettingSet
-	OptionCheckSettings projectOptionCheckSettingSet
-	SourceSettings      projectSourceSettingSet
-	ImportSettings      projectImportSettingSet
+	Name       string
+	Dir        string
+	Runtime    *projectRuntimeSetting
+	Option     *projectOptionSetting
+	Dependency *projectDependencySetting
+	Resource   *projectResourceSetting
 }
 
-type projectSettingSet []*projectSetting
-
-func newProjectSetting(name string, path string, runtimeSetting *projectRuntimeSetting, optionSettings projectOptionSettingSet, optionCheckSettings projectOptionCheckSettingSet, importSettings projectImportSettingSet, sourceSettings projectSourceSettingSet) *projectSetting {
-	if runtimeSetting == nil {
-		runtimeSetting = newProjectRuntimeSetting("", "")
+func newProjectSetting(name, dir string, runtime *projectRuntimeSetting, option *projectOptionSetting, dependency *projectDependencySetting, resource *projectResourceSetting) *projectSetting {
+	if runtime == nil {
+		runtime = newProjectRuntimeSetting("", "")
 	}
-	if optionSettings == nil {
-		optionSettings = projectOptionSettingSet{}
+	if option == nil {
+		option = newProjectOptionSetting(nil, nil)
 	}
-	if optionCheckSettings == nil {
-		optionCheckSettings = projectOptionCheckSettingSet{}
+	if dependency == nil {
+		dependency = newProjectDependencySetting(nil)
 	}
-	if importSettings == nil {
-		importSettings = projectImportSettingSet{}
-	}
-	if sourceSettings == nil {
-		sourceSettings = projectSourceSettingSet{}
+	if resource == nil {
+		resource = newProjectResourceSetting(nil)
 	}
 	return &projectSetting{
-		Name:                name,
-		Path:                path,
-		RuntimeSetting:      runtimeSetting,
-		OptionSettings:      optionSettings,
-		OptionCheckSettings: optionCheckSettings,
-		ImportSettings:      importSettings,
-		SourceSettings:      sourceSettings,
+		Name:       name,
+		Dir:        dir,
+		Runtime:    runtime,
+		Option:     option,
+		Dependency: dependency,
+		Resource:   resource,
 	}
 }
 
-func loadProjectSetting(path string) (setting *projectSetting, err error) {
+func loadProjectSetting(dir string) (setting *projectSetting, err error) {
 	model := &projectSettingModel{}
-	metadata, err := dsh_utils.DeserializeFromDir(path, []string{"project"}, model, true)
+	metadata, err := dsh_utils.DeserializeFromDir(dir, []string{"project"}, model, true)
 	if err != nil {
 		return nil, errW(err, "load project setting error",
 			reason("deserialize error"),
-			kv("path", path),
+			kv("dir", dir),
 		)
 	}
-	if setting, err = model.convert(newModelConvertContext("project setting", metadata.Path), path); err != nil {
+	if setting, err = model.convert(newModelConvertContext("project setting", metadata.File), dir); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -72,14 +65,14 @@ func loadProjectSetting(path string) (setting *projectSetting, err error) {
 // region projectSettingModel
 
 type projectSettingModel struct {
-	Name    string
-	Runtime *projectRuntimeSettingModel
-	Option  *projectOptionSettingModel
-	Imports projectImportSettingModelSet
-	Sources projectSourceSettingModelSet
+	Name       string                         `yaml:"name" toml:"name" json:"name"`
+	Runtime    *projectRuntimeSettingModel    `yaml:"runtime,omitempty" toml:"runtime,omitempty" json:"runtime,omitempty"`
+	Option     *projectOptionSettingModel     `yaml:"option,omitempty" toml:"option,omitempty" json:"option,omitempty"`
+	Dependency *projectDependencySettingModel `yaml:"dependency,omitempty" toml:"dependency,omitempty" json:"dependency,omitempty"`
+	Resource   *projectResourceSettingModel   `yaml:"resource,omitempty" toml:"resource,omitempty" json:"resource,omitempty"`
 }
 
-func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath string) (setting *projectSetting, err error) {
+func (m *projectSettingModel) convert(ctx *modelConvertContext, dir string) (setting *projectSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
@@ -88,36 +81,35 @@ func (m *projectSettingModel) convert(ctx *modelConvertContext, projectPath stri
 	}
 	ctx.AddVariable("projectName", m.Name)
 
-	var runtimeSetting *projectRuntimeSetting
+	var runtime *projectRuntimeSetting
 	if m.Runtime != nil {
-		if runtimeSetting, err = m.Runtime.convert(ctx.Child("runtime")); err != nil {
+		if runtime, err = m.Runtime.convert(ctx.Child("runtime")); err != nil {
 			return nil, err
 		}
 	}
 
-	var optionSettings projectOptionSettingSet
-	var optionCheckSettings projectOptionCheckSettingSet
+	var option *projectOptionSetting
 	if m.Option != nil {
-		if optionSettings, optionCheckSettings, err = m.Option.convert(ctx.Child("option")); err != nil {
+		if option, err = m.Option.convert(ctx.Child("option")); err != nil {
 			return nil, err
 		}
 	}
 
-	var importSettings projectImportSettingSet
-	if m.Imports != nil {
-		if importSettings, err = m.Imports.convert(ctx.Child("imports")); err != nil {
+	var dependency *projectDependencySetting
+	if m.Dependency != nil {
+		if dependency, err = m.Dependency.convert(ctx.Child("dependency")); err != nil {
 			return nil, err
 		}
 	}
 
-	var sourceSettings projectSourceSettingSet
-	if m.Sources != nil {
-		if sourceSettings, err = m.Sources.convert(ctx.Child("sources")); err != nil {
+	var resource *projectResourceSetting
+	if m.Resource != nil {
+		if resource, err = m.Resource.convert(ctx.Child("resource")); err != nil {
 			return nil, err
 		}
 	}
 
-	return newProjectSetting(m.Name, projectPath, runtimeSetting, optionSettings, optionCheckSettings, importSettings, sourceSettings), nil
+	return newProjectSetting(m.Name, dir, runtime, option, dependency, resource), nil
 }
 
 // endregion

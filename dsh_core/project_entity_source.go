@@ -28,8 +28,8 @@ func newProjectSourceEntity(context *appContext, setting *projectSetting, option
 		configFilesDict:   map[string]bool{},
 		targetFilesByName: map[string]*projectSourceTargetFileEntity{},
 	}
-	for i := 0; i < len(setting.SourceSettings); i++ {
-		sourceSetting := setting.SourceSettings[i]
+	for i := 0; i < len(setting.Resource.Items); i++ {
+		sourceSetting := setting.Resource.Items[i]
 		matched, err := option.evaluator.EvalBoolExpr(sourceSetting.match)
 		if err != nil {
 			return nil, err
@@ -37,7 +37,7 @@ func newProjectSourceEntity(context *appContext, setting *projectSetting, option
 		if !matched {
 			continue
 		}
-		if err = source.scan(filepath.Join(setting.Path, sourceSetting.Dir), sourceSetting.Files); err != nil {
+		if err = source.scan(filepath.Join(setting.Dir, sourceSetting.Dir), sourceSetting.Includes); err != nil {
 			return nil, err
 		}
 	}

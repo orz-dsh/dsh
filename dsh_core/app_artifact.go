@@ -104,7 +104,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	executor = &appArtifactExecutor{
 		context:    a.context,
 		Name:       setting.Name,
-		Path:       setting.Path,
+		Path:       setting.File,
 		Args:       args,
 		TargetGlob: targetGlob,
 		TargetName: targetName,
@@ -113,7 +113,7 @@ func (a *AppArtifact) createExecutor(targetGlob string) (executor *appArtifactEx
 	return executor, nil
 }
 
-func (a *AppArtifact) getTargetName(entity *workspaceExecutorSetting, targetGlob string) (targetName string, err error) {
+func (a *AppArtifact) getTargetName(entity *workspaceExecutorItemSetting, targetGlob string) (targetName string, err error) {
 	if targetGlob == "" {
 		return "", errN("get target name error",
 			reason("target glob empty"),
@@ -150,14 +150,14 @@ func (a *AppArtifact) getTargetName(entity *workspaceExecutorSetting, targetGlob
 	)
 }
 
-func (a *AppArtifact) getExecutorArgs(setting *workspaceExecutorSetting, targetGlob string, targetName string, targetPath string) (executorArgs []string, err error) {
+func (a *AppArtifact) getExecutorArgs(setting *workspaceExecutorItemSetting, targetGlob string, targetName string, targetPath string) (executorArgs []string, err error) {
 	args := setting.Args
 	if len(args) == 0 {
 		executorArgs = []string{targetPath}
 	} else {
 		evaluator := a.context.evaluator.SetRootData("executor", map[string]any{
 			"name": setting.Name,
-			"path": setting.Path,
+			"path": setting.File,
 			"target": map[string]any{
 				"glob": targetGlob,
 				"name": targetName,

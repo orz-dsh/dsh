@@ -7,35 +7,35 @@ import (
 // region workspaceSetting
 
 type workspaceSetting struct {
-	CleanSetting           *workspaceCleanSetting
-	ProfileSettings        workspaceProfileSettingSet
-	ExecutorSettings       workspaceExecutorSettingSet
-	ImportRegistrySettings workspaceImportRegistrySettingSet
-	ImportRedirectSettings workspaceImportRedirectSettingSet
+	Clean    *workspaceCleanSetting
+	Profile  *workspaceProfileSetting
+	Executor *workspaceExecutorSetting
+	Registry *workspaceRegistrySetting
+	Redirect *workspaceRedirectSetting
 }
 
-func newWorkspaceSetting(cleanSetting *workspaceCleanSetting, profileSettings workspaceProfileSettingSet, executorSettings workspaceExecutorSettingSet, importRegistrySettings workspaceImportRegistrySettingSet, importRedirectSettings workspaceImportRedirectSettingSet) *workspaceSetting {
-	if cleanSetting == nil {
-		cleanSetting = workspaceCleanSettingDefault
+func newWorkspaceSetting(clean *workspaceCleanSetting, profile *workspaceProfileSetting, executor *workspaceExecutorSetting, registry *workspaceRegistrySetting, redirect *workspaceRedirectSetting) *workspaceSetting {
+	if clean == nil {
+		clean = workspaceCleanSettingDefault
 	}
-	if profileSettings == nil {
-		profileSettings = workspaceProfileSettingSet{}
+	if profile == nil {
+		profile = newWorkspaceProfileSetting(nil)
 	}
-	if executorSettings == nil {
-		executorSettings = workspaceExecutorSettingSet{}
+	if executor == nil {
+		executor = newWorkspaceExecutorSetting(nil)
 	}
-	if importRegistrySettings == nil {
-		importRegistrySettings = workspaceImportRegistrySettingSet{}
+	if registry == nil {
+		registry = newWorkspaceRegistrySetting(nil)
 	}
-	if importRedirectSettings == nil {
-		importRedirectSettings = workspaceImportRedirectSettingSet{}
+	if redirect == nil {
+		redirect = newWorkspaceRedirectSetting(nil)
 	}
 	return &workspaceSetting{
-		CleanSetting:           cleanSetting,
-		ProfileSettings:        profileSettings,
-		ExecutorSettings:       executorSettings,
-		ImportRegistrySettings: importRegistrySettings,
-		ImportRedirectSettings: importRedirectSettings,
+		Clean:    clean,
+		Profile:  profile,
+		Executor: executor,
+		Registry: registry,
+		Redirect: redirect,
 	}
 }
 
@@ -50,7 +50,7 @@ func loadWorkspaceSetting(path string) (setting *workspaceSetting, err error) {
 	}
 	file := ""
 	if metadata != nil {
-		file = metadata.Path
+		file = metadata.File
 	}
 	if setting, err = model.convert(newModelConvertContext("workspace setting", file)); err != nil {
 		return nil, err
@@ -66,40 +66,47 @@ type workspaceSettingModel struct {
 	Clean    *workspaceCleanSettingModel
 	Profile  *workspaceProfileSettingModel
 	Executor *workspaceExecutorSettingModel
-	Import   *workspaceImportSettingModel
+	Registry *workspaceRegistrySettingModel
+	Redirect *workspaceRedirectSettingModel
 }
 
 func (s *workspaceSettingModel) convert(ctx *modelConvertContext) (setting *workspaceSetting, err error) {
-	var cleanSetting *workspaceCleanSetting
+	var clean *workspaceCleanSetting
 	if s.Clean != nil {
-		if cleanSetting, err = s.Clean.convert(ctx.Child("clean")); err != nil {
+		if clean, err = s.Clean.convert(ctx.Child("clean")); err != nil {
 			return nil, err
 		}
 	}
 
-	var profileSettings workspaceProfileSettingSet
+	var profile *workspaceProfileSetting
 	if s.Profile != nil {
-		if profileSettings, err = s.Profile.convert(ctx.Child("profile")); err != nil {
+		if profile, err = s.Profile.convert(ctx.Child("profile")); err != nil {
 			return nil, err
 		}
 	}
 
-	var executorSettings workspaceExecutorSettingSet
+	var executor *workspaceExecutorSetting
 	if s.Executor != nil {
-		if executorSettings, err = s.Executor.convert(ctx.Child("executor")); err != nil {
+		if executor, err = s.Executor.convert(ctx.Child("executor")); err != nil {
 			return nil, err
 		}
 	}
 
-	var importRegistrySettings workspaceImportRegistrySettingSet
-	var importRedirectSettings workspaceImportRedirectSettingSet
-	if s.Import != nil {
-		if importRegistrySettings, importRedirectSettings, err = s.Import.convert(ctx.Child("import")); err != nil {
+	var registry *workspaceRegistrySetting
+	if s.Registry != nil {
+		if registry, err = s.Registry.convert(ctx.Child("registry")); err != nil {
 			return nil, err
 		}
 	}
 
-	return newWorkspaceSetting(cleanSetting, profileSettings, executorSettings, importRegistrySettings, importRedirectSettings), nil
+	var redirect *workspaceRedirectSetting
+	if s.Redirect != nil {
+		if redirect, err = s.Redirect.convert(ctx.Child("redirect")); err != nil {
+			return nil, err
+		}
+	}
+
+	return newWorkspaceSetting(clean, profile, executor, registry, redirect), nil
 }
 
 // endregion

@@ -8,54 +8,46 @@ import (
 // region workspaceProfileSetting
 
 type workspaceProfileSetting struct {
-	File     string
-	Optional bool
-	Match    string
-	match    *EvalExpr
+	Items []*workspaceProfileItemSetting
 }
 
-type workspaceProfileSettingSet []*workspaceProfileSetting
-
-func newWorkspaceProfileSetting(file string, optional bool, match string, matchObj *EvalExpr) *workspaceProfileSetting {
+func newWorkspaceProfileSetting(items []*workspaceProfileItemSetting) *workspaceProfileSetting {
 	return &workspaceProfileSetting{
-		File:     file,
-		Optional: optional,
-		Match:    match,
-		match:    matchObj,
+		Items: items,
 	}
 }
 
-func (s workspaceProfileSettingSet) getFiles(evaluator *Evaluator) ([]string, error) {
+func (s *workspaceProfileSetting) getFiles(evaluator *Evaluator) ([]string, error) {
 	var files []string
-	for i := 0; i < len(s); i++ {
-		schema := s[i]
-		if matched, err := evaluator.EvalBoolExpr(schema.match); err != nil {
+	for i := 0; i < len(s.Items); i++ {
+		item := s.Items[i]
+		if matched, err := evaluator.EvalBoolExpr(item.match); err != nil {
 			return nil, errW(err, "get workspace profile setting files error",
 				reason("eval expr error"),
-				kv("schema", schema),
+				kv("item", item),
 			)
 		} else if matched {
-			rawFile, err := evaluator.EvalStringTemplate(schema.File)
+			rawFile, err := evaluator.EvalStringTemplate(item.File)
 			if err != nil {
 				return nil, errW(err, "get workspace profile setting files error",
 					reason("eval template error"),
-					kv("schema", schema),
+					kv("item", item),
 				)
 			}
 			file, err := filepath.Abs(rawFile)
 			if err != nil {
 				return nil, errW(err, "get workspace profile setting files error",
 					reason("get abs-path error"),
-					kv("schema", schema),
+					kv("item", item),
 					kv("rawFile", rawFile),
 				)
 			}
 			if dsh_utils.IsFileExists(file) {
 				files = append(files, file)
-			} else if !schema.Optional {
+			} else if !item.Optional {
 				return nil, errN("get workspace profile setting files error",
 					reason("file not found"),
-					kv("schema", schema),
+					kv("item", item),
 					kv("rawFile", rawFile),
 					kv("file", file),
 				)
@@ -67,23 +59,42 @@ func (s workspaceProfileSettingSet) getFiles(evaluator *Evaluator) ([]string, er
 
 // endregion
 
+// region workspaceProfileItemSetting
+
+type workspaceProfileItemSetting struct {
+	File     string
+	Optional bool
+	Match    string
+	match    *EvalExpr
+}
+
+func newWorkspaceProfileItemSetting(file string, optional bool, match string, matchObj *EvalExpr) *workspaceProfileItemSetting {
+	return &workspaceProfileItemSetting{
+		File:     file,
+		Optional: optional,
+		Match:    match,
+		match:    matchObj,
+	}
+}
+
+// endregion
+
 // region workspaceProfileSettingModel
 
 type workspaceProfileSettingModel struct {
-	Items []*workspaceProfileItemSettingModel
+	Items []*workspaceProfileItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func (m *workspaceProfileSettingModel) convert(ctx *modelConvertContext) (workspaceProfileSettingSet, error) {
-	settings := workspaceProfileSettingSet{}
+func (m *workspaceProfileSettingModel) convert(ctx *modelConvertContext) (*workspaceProfileSetting, error) {
+	var items []*workspaceProfileItemSetting
 	for i := 0; i < len(m.Items); i++ {
-		if model, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
+		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
+		if err != nil {
 			return nil, err
-		} else {
-			settings = append(settings, model)
 		}
+		items = append(items, item)
 	}
-
-	return settings, nil
+	return newWorkspaceProfileSetting(items), nil
 }
 
 // endregion
@@ -91,12 +102,12 @@ func (m *workspaceProfileSettingModel) convert(ctx *modelConvertContext) (worksp
 // region workspaceProfileItemSettingModel
 
 type workspaceProfileItemSettingModel struct {
-	File     string
-	Optional bool
-	Match    string
+	File     string `yaml:"file" toml:"file" json:"file"`
+	Optional bool   `yaml:"optional" toml:"optional" json:"optional"`
+	Match    string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
 }
 
-func (m *workspaceProfileItemSettingModel) convert(ctx *modelConvertContext) (setting *workspaceProfileSetting, err error) {
+func (m *workspaceProfileItemSettingModel) convert(ctx *modelConvertContext) (_ *workspaceProfileItemSetting, err error) {
 	if m.File == "" {
 		return nil, ctx.Child("file").NewValueEmptyError()
 	}
@@ -109,7 +120,7 @@ func (m *workspaceProfileItemSettingModel) convert(ctx *modelConvertContext) (se
 		}
 	}
 
-	return newWorkspaceProfileSetting(m.File, m.Optional, m.Match, matchObj), nil
+	return newWorkspaceProfileItemSetting(m.File, m.Optional, m.Match, matchObj), nil
 }
 
 // endregion

@@ -7,37 +7,35 @@ import (
 // region profileSetting
 
 type profileSetting struct {
-	optionSettings                  profileOptionSettingSet
-	projectSettings                 profileProjectSettingSet
-	workspaceExecutorSettings       workspaceExecutorSettingSet
-	workspaceImportRegistrySettings workspaceImportRegistrySettingSet
-	workspaceImportRedirectSettings workspaceImportRedirectSettingSet
+	Option   *profileOptionSetting
+	Project  *profileProjectSetting
+	Executor *workspaceExecutorSetting
+	Registry *workspaceRegistrySetting
+	Redirect *workspaceRedirectSetting
 }
 
-type profileSettingSet []*profileSetting
-
-func newProfileSetting(optionSettings profileOptionSettingSet, projectSettings profileProjectSettingSet, workspaceExecutorSettings workspaceExecutorSettingSet, workspaceImportRegistrySettings workspaceImportRegistrySettingSet, workspaceImportRedirectSettings workspaceImportRedirectSettingSet) *profileSetting {
-	if optionSettings == nil {
-		optionSettings = profileOptionSettingSet{}
+func newProfileSetting(option *profileOptionSetting, project *profileProjectSetting, executor *workspaceExecutorSetting, registry *workspaceRegistrySetting, redirect *workspaceRedirectSetting) *profileSetting {
+	if option == nil {
+		option = newProfileOptionSetting(nil)
 	}
-	if projectSettings == nil {
-		projectSettings = profileProjectSettingSet{}
+	if project == nil {
+		project = newProfileProjectSetting(nil)
 	}
-	if workspaceExecutorSettings == nil {
-		workspaceExecutorSettings = workspaceExecutorSettingSet{}
+	if executor == nil {
+		executor = newWorkspaceExecutorSetting(nil)
 	}
-	if workspaceImportRegistrySettings == nil {
-		workspaceImportRegistrySettings = workspaceImportRegistrySettingSet{}
+	if registry == nil {
+		registry = newWorkspaceRegistrySetting(nil)
 	}
-	if workspaceImportRedirectSettings == nil {
-		workspaceImportRedirectSettings = workspaceImportRedirectSettingSet{}
+	if redirect == nil {
+		redirect = newWorkspaceRedirectSetting(nil)
 	}
 	return &profileSetting{
-		optionSettings:                  optionSettings,
-		projectSettings:                 projectSettings,
-		workspaceExecutorSettings:       workspaceExecutorSettings,
-		workspaceImportRegistrySettings: workspaceImportRegistrySettings,
-		workspaceImportRedirectSettings: workspaceImportRedirectSettings,
+		Option:   option,
+		Project:  project,
+		Executor: executor,
+		Registry: registry,
+		Redirect: redirect,
 	}
 }
 
@@ -51,7 +49,7 @@ func loadProfileSetting(path string) (setting *profileSetting, error error) {
 			kv("path", path),
 		)
 	}
-	if setting, err = model.convert(newModelConvertContext("profile setting", metadata.Path)); err != nil {
+	if setting, err = model.convert(newModelConvertContext("profile setting", metadata.File)); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -69,44 +67,60 @@ func loadProfileSettingModel(model *profileSettingModel) (setting *profileSettin
 // region profileSettingModel
 
 type profileSettingModel struct {
-	Option    *profileOptionSettingModel
-	Project   *profileProjectSettingModel
-	Workspace *profileWorkspaceSettingModel
+	Option   *profileOptionSettingModel
+	Project  *profileProjectSettingModel
+	Executor *workspaceExecutorSettingModel
+	Registry *workspaceRegistrySettingModel
+	Redirect *workspaceRedirectSettingModel
 }
 
-func newProfileSettingModel(option *profileOptionSettingModel, project *profileProjectSettingModel, workspace *profileWorkspaceSettingModel) *profileSettingModel {
+func newProfileSettingModel(option *profileOptionSettingModel, project *profileProjectSettingModel, executor *workspaceExecutorSettingModel, registry *workspaceRegistrySettingModel, redirect *workspaceRedirectSettingModel) *profileSettingModel {
 	return &profileSettingModel{
-		Option:    option,
-		Project:   project,
-		Workspace: workspace,
+		Option:   option,
+		Project:  project,
+		Executor: executor,
+		Registry: registry,
+		Redirect: redirect,
 	}
 }
 
 func (m *profileSettingModel) convert(ctx *modelConvertContext) (setting *profileSetting, err error) {
-	var optionSettings profileOptionSettingSet
+	var option *profileOptionSetting
 	if m.Option != nil {
-		if optionSettings, err = m.Option.convert(ctx.Child("option")); err != nil {
+		if option, err = m.Option.convert(ctx.Child("option")); err != nil {
 			return nil, err
 		}
 	}
 
-	var projectSettings profileProjectSettingSet
+	var project *profileProjectSetting
 	if m.Project != nil {
-		if projectSettings, err = m.Project.convert(ctx.Child("project")); err != nil {
+		if project, err = m.Project.convert(ctx.Child("project")); err != nil {
 			return nil, err
 		}
 	}
 
-	var workspaceExecutorSettings workspaceExecutorSettingSet
-	var workspaceImportRegistrySettings workspaceImportRegistrySettingSet
-	var workspaceImportRedirectSettings workspaceImportRedirectSettingSet
-	if m.Workspace != nil {
-		if workspaceExecutorSettings, workspaceImportRegistrySettings, workspaceImportRedirectSettings, err = m.Workspace.convert(ctx.Child("workspace")); err != nil {
+	var executor *workspaceExecutorSetting
+	if m.Executor != nil {
+		if executor, err = m.Executor.convert(ctx.Child("executor")); err != nil {
 			return nil, err
 		}
 	}
 
-	return newProfileSetting(optionSettings, projectSettings, workspaceExecutorSettings, workspaceImportRegistrySettings, workspaceImportRedirectSettings), nil
+	var registry *workspaceRegistrySetting
+	if m.Registry != nil {
+		if registry, err = m.Registry.convert(ctx.Child("registry")); err != nil {
+			return nil, err
+		}
+	}
+
+	var redirect *workspaceRedirectSetting
+	if m.Redirect != nil {
+		if redirect, err = m.Redirect.convert(ctx.Child("redirect")); err != nil {
+			return nil, err
+		}
+	}
+
+	return newProfileSetting(option, project, executor, registry, redirect), nil
 }
 
 // endregion

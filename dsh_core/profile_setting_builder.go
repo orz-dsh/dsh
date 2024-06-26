@@ -3,10 +3,12 @@ package dsh_core
 // region ProfileSettingBuilder
 
 type ProfileSettingBuilder[P any] struct {
-	commit    func(*profileSetting, error) P
-	option    *profileOptionSettingModel
-	project   *profileProjectSettingModel
-	workspace *profileWorkspaceSettingModel
+	commit   func(*profileSetting, error) P
+	option   *profileOptionSettingModel
+	project  *profileProjectSettingModel
+	executor *workspaceExecutorSettingModel
+	registry *workspaceRegistrySettingModel
+	redirect *workspaceRedirectSettingModel
 }
 
 func newProfileSettingBuilder[P any](commit func(*profileSetting, error) P) *ProfileSettingBuilder[P] {
@@ -23,12 +25,20 @@ func (b *ProfileSettingBuilder[P]) SetProjectSetting() *ProfileProjectSettingBui
 	return newProfileProjectSettingBuilder(b.setProjectSettingModel)
 }
 
-func (b *ProfileSettingBuilder[P]) SetWorkspaceSetting() *ProfileWorkspaceSettingBuilder[*ProfileSettingBuilder[P]] {
-	return newProfileWorkspaceSettingBuilder(b.setWorkspaceSettingModel)
+func (b *ProfileSettingBuilder[P]) SetExecutorSetting() *ProfileExecutorSettingBuilder[*ProfileSettingBuilder[P]] {
+	return newProfileExecutorSettingBuilder(b.setExecutorSettingModel)
+}
+
+func (b *ProfileSettingBuilder[P]) SetRegistrySetting() *ProfileRegistrySettingBuilder[*ProfileSettingBuilder[P]] {
+	return newProfileRegistrySettingBuilder(b.setRegistrySettingModel)
+}
+
+func (b *ProfileSettingBuilder[P]) SetRedirectSetting() *ProfileRedirectSettingBuilder[*ProfileSettingBuilder[P]] {
+	return newProfileRedirectSettingBuilder(b.setRedirectSettingModel)
 }
 
 func (b *ProfileSettingBuilder[P]) CommitProfileSetting() P {
-	setting, err := loadProfileSettingModel(newProfileSettingModel(b.option, b.project, b.workspace))
+	setting, err := loadProfileSettingModel(newProfileSettingModel(b.option, b.project, b.executor, b.registry, b.redirect))
 	return b.commit(setting, err)
 }
 
@@ -42,8 +52,18 @@ func (b *ProfileSettingBuilder[P]) setProjectSettingModel(project *profileProjec
 	return b
 }
 
-func (b *ProfileSettingBuilder[P]) setWorkspaceSettingModel(workspace *profileWorkspaceSettingModel) *ProfileSettingBuilder[P] {
-	b.workspace = workspace
+func (b *ProfileSettingBuilder[P]) setExecutorSettingModel(executor *workspaceExecutorSettingModel) *ProfileSettingBuilder[P] {
+	b.executor = executor
+	return b
+}
+
+func (b *ProfileSettingBuilder[P]) setRegistrySettingModel(registry *workspaceRegistrySettingModel) *ProfileSettingBuilder[P] {
+	b.registry = registry
+	return b
+}
+
+func (b *ProfileSettingBuilder[P]) setRedirectSettingModel(redirect *workspaceRedirectSettingModel) *ProfileSettingBuilder[P] {
+	b.redirect = redirect
 	return b
 }
 
@@ -115,19 +135,21 @@ func (b *ProfileProjectSettingBuilder[P]) addItemSettingModel(item *profileProje
 // region ProfileProjectItemSettingBuilder
 
 type ProfileProjectItemSettingBuilder[P any] struct {
-	commit  func(*profileProjectItemSettingModel) P
-	name    string
-	path    string
-	match   string
-	imports projectImportSettingModelSet
-	sources projectSourceSettingModelSet
+	commit     func(*profileProjectItemSettingModel) P
+	name       string
+	path       string
+	match      string
+	dependency *projectDependencySettingModel
+	resource   *projectResourceSettingModel
 }
 
 func newProfileProjectItemSettingBuilder[P any](commit func(*profileProjectItemSettingModel) P, name, path string) *ProfileProjectItemSettingBuilder[P] {
 	return &ProfileProjectItemSettingBuilder[P]{
-		commit: commit,
-		name:   name,
-		path:   path,
+		commit:     commit,
+		name:       name,
+		path:       path,
+		dependency: newProjectDependencySettingModel(nil),
+		resource:   newProjectResourceSettingModel(nil),
 	}
 }
 
@@ -136,112 +158,90 @@ func (b *ProfileProjectItemSettingBuilder[P]) SetMatch(match string) *ProfilePro
 	return b
 }
 
-func (b *ProfileProjectItemSettingBuilder[P]) AddImport(link, match string) *ProfileProjectItemSettingBuilder[P] {
-	b.imports = append(b.imports, newProjectImportSettingModel(link, match))
+func (b *ProfileProjectItemSettingBuilder[P]) AddDependencyItem(link, match string) *ProfileProjectItemSettingBuilder[P] {
+	b.dependency.Items = append(b.dependency.Items, newProjectDependencyItemSettingModel(link, match))
 	return b
 }
 
-func (b *ProfileProjectItemSettingBuilder[P]) AddSource(dir string, files []string, match string) *ProfileProjectItemSettingBuilder[P] {
-	b.sources = append(b.sources, newProjectSourceSettingModel(dir, files, match))
+func (b *ProfileProjectItemSettingBuilder[P]) AddResourceItem(dir string, includes, excludes []string, match string) *ProfileProjectItemSettingBuilder[P] {
+	b.resource.Items = append(b.resource.Items, newProjectResourceItemSettingModel(dir, includes, excludes, match))
 	return b
 }
 
 func (b *ProfileProjectItemSettingBuilder[P]) CommitItemSetting() P {
-	return b.commit(newProfileProjectItemSettingModel(b.name, b.path, b.match, b.imports, b.sources))
+	return b.commit(newProfileProjectItemSettingModel(b.name, b.path, b.match, b.dependency, b.resource))
 }
 
 // endregion
 
-// region ProfileWorkspaceSettingBuilder
+// region ProfileExecutorSettingBuilder
 
-type ProfileWorkspaceSettingBuilder[P any] struct {
-	commit   func(*profileWorkspaceSettingModel) P
-	executor *workspaceExecutorSettingModel
-	import_  *workspaceImportSettingModel
-}
-
-func newProfileWorkspaceSettingBuilder[P any](commit func(*profileWorkspaceSettingModel) P) *ProfileWorkspaceSettingBuilder[P] {
-	return &ProfileWorkspaceSettingBuilder[P]{
-		commit: commit,
-	}
-}
-
-func (b *ProfileWorkspaceSettingBuilder[P]) SetExecutorSetting() *ProfileWorkspaceExecutorSettingBuilder[*ProfileWorkspaceSettingBuilder[P]] {
-	return newProfileWorkspaceExecutorSettingBuilder(b.setExecutorSettingModel)
-}
-
-func (b *ProfileWorkspaceSettingBuilder[P]) SetImportSetting() *ProfileWorkspaceImportSettingBuilder[*ProfileWorkspaceSettingBuilder[P]] {
-	return newProfileWorkspaceImportSettingBuilder(b.setImportSettingModel)
-}
-
-func (b *ProfileWorkspaceSettingBuilder[P]) CommitWorkspaceSetting() P {
-	return b.commit(newProfileWorkspaceSettingModel(b.executor, b.import_))
-}
-
-func (b *ProfileWorkspaceSettingBuilder[P]) setExecutorSettingModel(executor *workspaceExecutorSettingModel) *ProfileWorkspaceSettingBuilder[P] {
-	b.executor = executor
-	return b
-}
-
-func (b *ProfileWorkspaceSettingBuilder[P]) setImportSettingModel(import_ *workspaceImportSettingModel) *ProfileWorkspaceSettingBuilder[P] {
-	b.import_ = import_
-	return b
-}
-
-// endregion
-
-// region ProfileWorkspaceExecutorSettingBuilder
-
-type ProfileWorkspaceExecutorSettingBuilder[P any] struct {
+type ProfileExecutorSettingBuilder[P any] struct {
 	commit func(*workspaceExecutorSettingModel) P
 	items  []*workspaceExecutorItemSettingModel
 }
 
-func newProfileWorkspaceExecutorSettingBuilder[P any](commit func(*workspaceExecutorSettingModel) P) *ProfileWorkspaceExecutorSettingBuilder[P] {
-	return &ProfileWorkspaceExecutorSettingBuilder[P]{
+func newProfileExecutorSettingBuilder[P any](commit func(*workspaceExecutorSettingModel) P) *ProfileExecutorSettingBuilder[P] {
+	return &ProfileExecutorSettingBuilder[P]{
 		commit: commit,
 	}
 }
 
-func (b *ProfileWorkspaceExecutorSettingBuilder[P]) AddItem(name, path string, exts, args []string, match string) *ProfileWorkspaceExecutorSettingBuilder[P] {
+func (b *ProfileExecutorSettingBuilder[P]) AddItem(name, path string, exts, args []string, match string) *ProfileExecutorSettingBuilder[P] {
 	b.items = append(b.items, newWorkspaceExecutorItemSettingModel(name, path, exts, args, match))
 	return b
 }
 
-func (b *ProfileWorkspaceExecutorSettingBuilder[P]) CommitExecutorSetting() P {
+func (b *ProfileExecutorSettingBuilder[P]) CommitExecutorSetting() P {
 	return b.commit(newWorkspaceExecutorSettingModel(b.items))
 }
 
 // endregion
 
-// region ProfileWorkspaceImportSettingBuilder
+// region ProfileRegistrySettingBuilder
 
-type ProfileWorkspaceImportSettingBuilder[P any] struct {
-	commit   func(*workspaceImportSettingModel) P
-	registry *workspaceImportRegistrySettingModel
-	redirect *workspaceImportRedirectSettingModel
+type ProfileRegistrySettingBuilder[P any] struct {
+	commit func(*workspaceRegistrySettingModel) P
+	items  []*workspaceRegistryItemSettingModel
 }
 
-func newProfileWorkspaceImportSettingBuilder[P any](commit func(*workspaceImportSettingModel) P) *ProfileWorkspaceImportSettingBuilder[P] {
-	return &ProfileWorkspaceImportSettingBuilder[P]{
-		commit:   commit,
-		registry: &workspaceImportRegistrySettingModel{},
-		redirect: &workspaceImportRedirectSettingModel{},
+func newProfileRegistrySettingBuilder[P any](commit func(*workspaceRegistrySettingModel) P) *ProfileRegistrySettingBuilder[P] {
+	return &ProfileRegistrySettingBuilder[P]{
+		commit: commit,
 	}
 }
 
-func (b *ProfileWorkspaceImportSettingBuilder[P]) AddRegistryItem(name, link, match string) *ProfileWorkspaceImportSettingBuilder[P] {
-	b.registry.Items = append(b.registry.Items, newWorkspaceImportRegistryItemSettingModel(name, link, match))
+func (b *ProfileRegistrySettingBuilder[P]) AddItem(name, link, match string) *ProfileRegistrySettingBuilder[P] {
+	b.items = append(b.items, newWorkspaceRegistryItemSettingModel(name, link, match))
 	return b
 }
 
-func (b *ProfileWorkspaceImportSettingBuilder[P]) AddRedirectItem(regex, link, match string) *ProfileWorkspaceImportSettingBuilder[P] {
-	b.redirect.Items = append(b.redirect.Items, newWorkspaceImportRedirectItemSettingModel(regex, link, match))
+func (b *ProfileRegistrySettingBuilder[P]) CommitRegistrySetting() P {
+	return b.commit(newWorkspaceRegistrySettingModel(b.items))
+}
+
+// endregion
+
+// region ProfileRedirectSettingBuilder
+
+type ProfileRedirectSettingBuilder[P any] struct {
+	commit func(*workspaceRedirectSettingModel) P
+	items  []*workspaceRedirectItemSettingModel
+}
+
+func newProfileRedirectSettingBuilder[P any](commit func(*workspaceRedirectSettingModel) P) *ProfileRedirectSettingBuilder[P] {
+	return &ProfileRedirectSettingBuilder[P]{
+		commit: commit,
+	}
+}
+
+func (b *ProfileRedirectSettingBuilder[P]) AddItem(regex, link, match string) *ProfileRedirectSettingBuilder[P] {
+	b.items = append(b.items, newWorkspaceRedirectItemSettingModel(regex, link, match))
 	return b
 }
 
-func (b *ProfileWorkspaceImportSettingBuilder[P]) CommitImportSetting() P {
-	return b.commit(newWorkspaceImportSettingModel(b.registry, b.redirect))
+func (b *ProfileRedirectSettingBuilder[P]) CommitRedirectSetting() P {
+	return b.commit(newWorkspaceRedirectSettingModel(b.items))
 }
 
 // endregion

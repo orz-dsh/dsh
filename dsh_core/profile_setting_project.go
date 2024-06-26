@@ -8,79 +8,95 @@ import (
 // region profileProjectSetting
 
 type profileProjectSetting struct {
-	Name           string
-	Path           string
-	Match          string
-	ImportSettings projectImportSettingSet
-	SourceSettings projectSourceSettingSet
-	match          *EvalExpr
+	Items []*profileProjectItemSetting
 }
 
-type profileProjectSettingSet []*profileProjectSetting
-
-func newProfileProjectSetting(name string, path string, match string, importSettings projectImportSettingSet, sourceSettings projectSourceSettingSet, matchObj *EvalExpr) *profileProjectSetting {
-	if importSettings == nil {
-		importSettings = projectImportSettingSet{}
-	}
-	if sourceSettings == nil {
-		sourceSettings = projectSourceSettingSet{}
-	}
+func newProfileProjectSetting(items []*profileProjectItemSetting) *profileProjectSetting {
 	return &profileProjectSetting{
-		Name:           name,
-		Path:           path,
-		Match:          match,
-		ImportSettings: importSettings,
-		SourceSettings: sourceSettings,
-		match:          matchObj,
+		Items: items,
 	}
 }
 
-func (s *profileProjectSetting) inspect() *ProfileProjectSettingInspection {
-	return newProfileProjectSettingInspection(s.Name, s.Path, s.Match, s.ImportSettings.inspect(), s.SourceSettings.inspect())
+func (s *profileProjectSetting) merge(setting *profileProjectSetting) {
+	s.Items = append(s.Items, setting.Items...)
 }
 
-func (s profileProjectSettingSet) getProjectSettings(evaluator *Evaluator) (projectSettingSet, error) {
-	result := projectSettingSet{}
-	for i := len(s) - 1; i >= 0; i-- {
-		setting := s[i]
-		matched, err := evaluator.EvalBoolExpr(setting.match)
+func (s *profileProjectSetting) getProjectSettings(evaluator *Evaluator) ([]*projectSetting, error) {
+	var result []*projectSetting
+	for i := len(s.Items) - 1; i >= 0; i-- {
+		item := s.Items[i]
+		matched, err := evaluator.EvalBoolExpr(item.match)
 		if err != nil {
 			return nil, errW(err, "get profile project settings error",
 				reason("eval expr error"),
-				kv("setting", setting),
+				kv("item", item),
 			)
 		}
 		if !matched {
 			continue
 		}
 
-		rawPath, err := evaluator.EvalStringTemplate(setting.Path)
+		rawPath, err := evaluator.EvalStringTemplate(item.Path)
 		if err != nil {
 			return nil, errW(err, "get profile project settings error",
 				reason("eval template error"),
-				kv("setting", setting),
+				kv("item", item),
 			)
 		}
 		path, err := filepath.Abs(rawPath)
 		if err != nil {
 			return nil, errW(err, "get profile project settings error",
 				reason("get abs-path error"),
-				kv("setting", setting),
+				kv("item", item),
 				kv("rawPath", rawPath),
 			)
 		}
 
-		result = append(result, newProjectSetting(setting.Name, path, nil, nil, nil, setting.ImportSettings, setting.SourceSettings))
+		result = append(result, newProjectSetting(item.Name, path, nil, nil, item.Dependency, item.Resource))
 	}
 	return result, nil
 }
 
-func (s profileProjectSettingSet) inspect() []*ProfileProjectSettingInspection {
-	var inspections []*ProfileProjectSettingInspection
-	for i := 0; i < len(s); i++ {
-		inspections = append(inspections, s[i].inspect())
+func (s *profileProjectSetting) inspect() *ProfileProjectSettingInspection {
+	var items []*ProfileProjectItemSettingInspection
+	for i := 0; i < len(s.Items); i++ {
+		items = append(items, s.Items[i].inspect())
 	}
-	return inspections
+	return newProfileProjectSettingInspection(items)
+}
+
+// endregion
+
+// region profileProjectItemSetting
+
+type profileProjectItemSetting struct {
+	Name       string
+	Path       string
+	Match      string
+	Dependency *projectDependencySetting
+	Resource   *projectResourceSetting
+	match      *EvalExpr
+}
+
+func newProfileProjectItemSetting(name, dir, match string, dependency *projectDependencySetting, resource *projectResourceSetting, matchObj *EvalExpr) *profileProjectItemSetting {
+	if dependency == nil {
+		dependency = newProjectDependencySetting(nil)
+	}
+	if resource == nil {
+		resource = newProjectResourceSetting(nil)
+	}
+	return &profileProjectItemSetting{
+		Name:       name,
+		Path:       dir,
+		Match:      match,
+		Dependency: dependency,
+		Resource:   resource,
+		match:      matchObj,
+	}
+}
+
+func (s *profileProjectItemSetting) inspect() *ProfileProjectItemSettingInspection {
+	return newProfileProjectItemSettingInspection(s.Name, s.Path, s.Match, s.Dependency.inspect(), s.Resource.inspect())
 }
 
 // endregion
@@ -88,7 +104,7 @@ func (s profileProjectSettingSet) inspect() []*ProfileProjectSettingInspection {
 // region profileProjectSettingModel
 
 type profileProjectSettingModel struct {
-	Items []*profileProjectItemSettingModel
+	Items []*profileProjectItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
 func newProfileProjectSettingModel(items []*profileProjectItemSettingModel) *profileProjectSettingModel {
@@ -97,16 +113,16 @@ func newProfileProjectSettingModel(items []*profileProjectItemSettingModel) *pro
 	}
 }
 
-func (m *profileProjectSettingModel) convert(ctx *modelConvertContext) (profileProjectSettingSet, error) {
-	settings := profileProjectSettingSet{}
+func (m *profileProjectSettingModel) convert(ctx *modelConvertContext) (*profileProjectSetting, error) {
+	var items []*profileProjectItemSetting
 	for i := 0; i < len(m.Items); i++ {
-		if setting, err := m.Items[i].convert(ctx.ChildItem("items", i)); err != nil {
+		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
+		if err != nil {
 			return nil, err
-		} else {
-			settings = append(settings, setting)
 		}
+		items = append(items, item)
 	}
-	return settings, nil
+	return newProfileProjectSetting(items), nil
 }
 
 // endregion
@@ -114,24 +130,24 @@ func (m *profileProjectSettingModel) convert(ctx *modelConvertContext) (profileP
 // region profileProjectItemSettingModel
 
 type profileProjectItemSettingModel struct {
-	Name    string
-	Path    string
-	Match   string
-	Imports projectImportSettingModelSet
-	Sources projectSourceSettingModelSet
+	Name       string                         `yaml:"name" toml:"name" json:"name"`
+	Dir        string                         `yaml:"dir" toml:"dir" json:"dir"`
+	Match      string                         `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+	Dependency *projectDependencySettingModel `yaml:"dependency,omitempty" toml:"dependency,omitempty" json:"dependency,omitempty"`
+	Resource   *projectResourceSettingModel   `yaml:"resource,omitempty" toml:"resource,omitempty" json:"resource,omitempty"`
 }
 
-func newProfileProjectItemSettingModel(name, path, match string, imports projectImportSettingModelSet, sources projectSourceSettingModelSet) *profileProjectItemSettingModel {
+func newProfileProjectItemSettingModel(name, dir, match string, dependency *projectDependencySettingModel, resource *projectResourceSettingModel) *profileProjectItemSettingModel {
 	return &profileProjectItemSettingModel{
-		Name:    name,
-		Path:    path,
-		Match:   match,
-		Imports: imports,
-		Sources: sources,
+		Name:       name,
+		Dir:        dir,
+		Match:      match,
+		Dependency: dependency,
+		Resource:   resource,
 	}
 }
 
-func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (setting *profileProjectSetting, err error) {
+func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (_ *profileProjectItemSetting, err error) {
 	if m.Name == "" {
 		return nil, ctx.Child("name").NewValueEmptyError()
 	}
@@ -139,20 +155,20 @@ func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (sett
 		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
 	}
 
-	if m.Path == "" {
-		return nil, ctx.Child("path").NewValueEmptyError()
+	if m.Dir == "" {
+		return nil, ctx.Child("dir").NewValueEmptyError()
 	}
 
-	var importSettings projectImportSettingSet
-	if m.Imports != nil {
-		if importSettings, err = m.Imports.convert(ctx.Child("imports")); err != nil {
+	var dependency *projectDependencySetting
+	if m.Dependency != nil {
+		if dependency, err = m.Dependency.convert(ctx.Child("dependency")); err != nil {
 			return nil, err
 		}
 	}
 
-	var sourceSettings projectSourceSettingSet
-	if m.Sources != nil {
-		if sourceSettings, err = m.Sources.convert(ctx.Child("sources")); err != nil {
+	var resource *projectResourceSetting
+	if m.Resource != nil {
+		if resource, err = m.Resource.convert(ctx.Child("resource")); err != nil {
 			return nil, err
 		}
 	}
@@ -165,29 +181,7 @@ func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (sett
 		}
 	}
 
-	return newProfileProjectSetting(m.Name, m.Path, m.Match, importSettings, sourceSettings, matchObj), nil
-}
-
-// endregion
-
-// region ProfileProjectSettingInspection
-
-type ProfileProjectSettingInspection struct {
-	Name    string                            `yaml:"name" toml:"name" json:"name"`
-	Path    string                            `yaml:"path" toml:"path" json:"path"`
-	Match   string                            `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
-	Imports []*ProjectImportSettingInspection `yaml:"imports,omitempty" toml:"imports,omitempty" json:"imports,omitempty"`
-	Sources []*ProjectSourceSettingInspection `yaml:"sources,omitempty" toml:"sources,omitempty" json:"sources,omitempty"`
-}
-
-func newProfileProjectSettingInspection(name string, path string, match string, imports []*ProjectImportSettingInspection, sources []*ProjectSourceSettingInspection) *ProfileProjectSettingInspection {
-	return &ProfileProjectSettingInspection{
-		Name:    name,
-		Path:    path,
-		Match:   match,
-		Imports: imports,
-		Sources: sources,
-	}
+	return newProfileProjectItemSetting(m.Name, m.Dir, m.Match, dependency, resource, matchObj), nil
 }
 
 // endregion

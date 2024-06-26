@@ -38,6 +38,20 @@ option:
     - test != 'd'
     - test_object.a == 1
     - test_array[0] == 1
+dependency:
+  items:
+    - link: "dir:./.test1/lib1"
+      match: test == 'a'
+    - link: "dir:./.test1/lib2"
+      match: test == 'a'
+resource:
+  items:
+    - dir: script
+      match: test == 'a' || test == 'b'
+    - dir: config
+      includes:
+        - test1.dcfg.yml
+      match: test == 'a' || test == 'b'
 imports:
   - link: "dir:./.test1/lib1"
     match: test == 'a'
