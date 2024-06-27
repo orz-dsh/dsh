@@ -182,14 +182,10 @@ func newWorkspaceExecutorSettingModel(items []*workspaceExecutorItemSettingModel
 	}
 }
 
-func (m *workspaceExecutorSettingModel) convert(ctx *modelConvertContext) (*workspaceExecutorSetting, error) {
-	var items []*workspaceExecutorItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *workspaceExecutorSettingModel) convert(helper *modelHelper) (*workspaceExecutorSetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newWorkspaceExecutorSetting(items), nil
 }
@@ -216,33 +212,26 @@ func newWorkspaceExecutorItemSettingModel(name, file string, exts, args []string
 	}
 }
 
-func (m *workspaceExecutorItemSettingModel) convert(ctx *modelConvertContext) (_ *workspaceExecutorItemSetting, err error) {
+func (m *workspaceExecutorItemSettingModel) convert(helper *modelHelper) (*workspaceExecutorItemSetting, error) {
 	if m.Name == "" {
-		return nil, ctx.Child("name").NewValueEmptyError()
+		return nil, helper.Child("name").NewValueEmptyError()
 	}
 
 	if m.File != "" && !dsh_utils.IsFileExists(m.File) {
-		return nil, ctx.Child("file").NewValueInvalidError(m.File)
+		return nil, helper.Child("file").NewValueInvalidError(m.File)
 	}
 
-	for i := 0; i < len(m.Exts); i++ {
-		if m.Exts[i] == "" {
-			return nil, ctx.ChildItem("exts", i).NewValueEmptyError()
-		}
+	if err := helper.CheckStringItemEmpty("exts", m.Exts); err != nil {
+		return nil, err
 	}
 
-	for i := 0; i < len(m.Args); i++ {
-		if m.Args[i] == "" {
-			return nil, ctx.ChildItem("args", i).NewValueEmptyError()
-		}
+	if err := helper.CheckStringItemEmpty("args", m.Args); err != nil {
+		return nil, err
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newWorkspaceExecutorItemSetting(m.Name, m.File, m.Exts, m.Args, m.Match, matchObj), nil

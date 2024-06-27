@@ -54,7 +54,7 @@ func loadProjectSetting(dir string) (setting *projectSetting, err error) {
 			kv("dir", dir),
 		)
 	}
-	if setting, err = model.convert(newModelConvertContext("project setting", metadata.File), dir); err != nil {
+	if setting, err = model.convert(newModelHelper("project setting", metadata.File), dir); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -72,39 +72,39 @@ type projectSettingModel struct {
 	Resource   *projectResourceSettingModel   `yaml:"resource,omitempty" toml:"resource,omitempty" json:"resource,omitempty"`
 }
 
-func (m *projectSettingModel) convert(ctx *modelConvertContext, dir string) (setting *projectSetting, err error) {
+func (m *projectSettingModel) convert(helper *modelHelper, dir string) (_ *projectSetting, err error) {
 	if m.Name == "" {
-		return nil, ctx.Child("name").NewValueEmptyError()
+		return nil, helper.Child("name").NewValueEmptyError()
 	}
 	if !projectNameCheckRegex.MatchString(m.Name) {
-		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
+		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
-	ctx.AddVariable("projectName", m.Name)
+	helper.AddVariable("projectName", m.Name)
 
 	var runtime *projectRuntimeSetting
 	if m.Runtime != nil {
-		if runtime, err = m.Runtime.convert(ctx.Child("runtime")); err != nil {
+		if runtime, err = m.Runtime.convert(helper.Child("runtime")); err != nil {
 			return nil, err
 		}
 	}
 
 	var option *projectOptionSetting
 	if m.Option != nil {
-		if option, err = m.Option.convert(ctx.Child("option")); err != nil {
+		if option, err = m.Option.convert(helper.Child("option")); err != nil {
 			return nil, err
 		}
 	}
 
 	var dependency *projectDependencySetting
 	if m.Dependency != nil {
-		if dependency, err = m.Dependency.convert(ctx.Child("dependency")); err != nil {
+		if dependency, err = m.Dependency.convert(helper.Child("dependency")); err != nil {
 			return nil, err
 		}
 	}
 
 	var resource *projectResourceSetting
 	if m.Resource != nil {
-		if resource, err = m.Resource.convert(ctx.Child("resource")); err != nil {
+		if resource, err = m.Resource.convert(helper.Child("resource")); err != nil {
 			return nil, err
 		}
 	}

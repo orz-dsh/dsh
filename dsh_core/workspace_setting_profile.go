@@ -85,14 +85,10 @@ type workspaceProfileSettingModel struct {
 	Items []*workspaceProfileItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func (m *workspaceProfileSettingModel) convert(ctx *modelConvertContext) (*workspaceProfileSetting, error) {
-	var items []*workspaceProfileItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *workspaceProfileSettingModel) convert(helper *modelHelper) (*workspaceProfileSetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newWorkspaceProfileSetting(items), nil
 }
@@ -107,17 +103,14 @@ type workspaceProfileItemSettingModel struct {
 	Match    string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
 }
 
-func (m *workspaceProfileItemSettingModel) convert(ctx *modelConvertContext) (_ *workspaceProfileItemSetting, err error) {
+func (m *workspaceProfileItemSettingModel) convert(helper *modelHelper) (*workspaceProfileItemSetting, error) {
 	if m.File == "" {
-		return nil, ctx.Child("file").NewValueEmptyError()
+		return nil, helper.Child("file").NewValueEmptyError()
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newWorkspaceProfileItemSetting(m.File, m.Optional, m.Match, matchObj), nil

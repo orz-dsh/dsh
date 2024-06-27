@@ -116,14 +116,10 @@ func newWorkspaceRedirectSettingModel(items []*workspaceRedirectItemSettingModel
 	}
 }
 
-func (m *workspaceRedirectSettingModel) convert(ctx *modelConvertContext) (*workspaceRedirectSetting, error) {
-	var items []*workspaceRedirectItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *workspaceRedirectSettingModel) convert(helper *modelHelper) (*workspaceRedirectSetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newWorkspaceRedirectSetting(items), nil
 }
@@ -146,28 +142,25 @@ func newWorkspaceRedirectItemSettingModel(regex, link, match string) *workspaceR
 	}
 }
 
-func (m *workspaceRedirectItemSettingModel) convert(ctx *modelConvertContext) (_ *workspaceRedirectItemSetting, err error) {
+func (m *workspaceRedirectItemSettingModel) convert(helper *modelHelper) (*workspaceRedirectItemSetting, error) {
 	if m.Regex == "" {
-		return nil, ctx.Child("regex").NewValueEmptyError()
+		return nil, helper.Child("regex").NewValueEmptyError()
 	}
 	regexObj, err := regexp.Compile(m.Regex)
 	if err != nil {
-		return nil, ctx.Child("regex").WrapValueInvalidError(err, m.Regex)
+		return nil, helper.Child("regex").WrapValueInvalidError(err, m.Regex)
 	}
 
 	if m.Link == "" {
-		return nil, ctx.Child("link").NewValueEmptyError()
+		return nil, helper.Child("link").NewValueEmptyError()
 	}
 	if !workspaceRedirectLinkCheckRegex.MatchString(m.Link) {
-		return nil, ctx.Child("link").NewValueInvalidError(m.Link)
+		return nil, helper.Child("link").NewValueInvalidError(m.Link)
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newWorkspaceRedirectItemSetting(m.Regex, m.Link, m.Match, regexObj, matchObj), nil

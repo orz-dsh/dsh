@@ -1,7 +1,6 @@
 package dsh_core
 
 import (
-	"dsh/dsh_utils"
 	"path/filepath"
 )
 
@@ -113,14 +112,10 @@ func newProfileProjectSettingModel(items []*profileProjectItemSettingModel) *pro
 	}
 }
 
-func (m *profileProjectSettingModel) convert(ctx *modelConvertContext) (*profileProjectSetting, error) {
-	var items []*profileProjectItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *profileProjectSettingModel) convert(helper *modelHelper) (*profileProjectSetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newProfileProjectSetting(items), nil
 }
@@ -147,38 +142,35 @@ func newProfileProjectItemSettingModel(name, dir, match string, dependency *proj
 	}
 }
 
-func (m *profileProjectItemSettingModel) convert(ctx *modelConvertContext) (_ *profileProjectItemSetting, err error) {
+func (m *profileProjectItemSettingModel) convert(helper *modelHelper) (_ *profileProjectItemSetting, err error) {
 	if m.Name == "" {
-		return nil, ctx.Child("name").NewValueEmptyError()
+		return nil, helper.Child("name").NewValueEmptyError()
 	}
 	if !projectNameCheckRegex.MatchString(m.Name) {
-		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
+		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
 
 	if m.Dir == "" {
-		return nil, ctx.Child("dir").NewValueEmptyError()
+		return nil, helper.Child("dir").NewValueEmptyError()
 	}
 
 	var dependency *projectDependencySetting
 	if m.Dependency != nil {
-		if dependency, err = m.Dependency.convert(ctx.Child("dependency")); err != nil {
+		if dependency, err = m.Dependency.convert(helper.Child("dependency")); err != nil {
 			return nil, err
 		}
 	}
 
 	var resource *projectResourceSetting
 	if m.Resource != nil {
-		if resource, err = m.Resource.convert(ctx.Child("resource")); err != nil {
+		if resource, err = m.Resource.convert(helper.Child("resource")); err != nil {
 			return nil, err
 		}
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newProfileProjectItemSetting(m.Name, m.Dir, m.Match, dependency, resource, matchObj), nil

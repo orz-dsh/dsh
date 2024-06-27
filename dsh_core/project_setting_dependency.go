@@ -1,9 +1,5 @@
 package dsh_core
 
-import (
-	"dsh/dsh_utils"
-)
-
 // region projectDependencySetting
 
 type projectDependencySetting struct {
@@ -62,14 +58,10 @@ func newProjectDependencySettingModel(items []*projectDependencyItemSettingModel
 	}
 }
 
-func (m *projectDependencySettingModel) convert(ctx *modelConvertContext) (*projectDependencySetting, error) {
-	var items []*projectDependencyItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *projectDependencySettingModel) convert(helper *modelHelper) (*projectDependencySetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newProjectDependencySetting(items), nil
 }
@@ -90,21 +82,18 @@ func newProjectDependencyItemSettingModel(link, match string) *projectDependency
 	}
 }
 
-func (m *projectDependencyItemSettingModel) convert(ctx *modelConvertContext) (setting *projectDependencyItemSetting, err error) {
+func (m *projectDependencyItemSettingModel) convert(helper *modelHelper) (*projectDependencyItemSetting, error) {
 	if m.Link == "" {
-		return nil, ctx.Child("link").NewValueEmptyError()
+		return nil, helper.Child("link").NewValueEmptyError()
 	}
 	linkObj, err := parseProjectLink(m.Link)
 	if err != nil {
-		return nil, ctx.Child("link").WrapValueInvalidError(err, m.Link)
+		return nil, helper.Child("link").WrapValueInvalidError(err, m.Link)
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newProjectDependencyItemSetting(m.Link, m.Match, linkObj, matchObj), nil

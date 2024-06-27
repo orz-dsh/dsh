@@ -49,14 +49,14 @@ func loadProfileSetting(path string) (setting *profileSetting, error error) {
 			kv("path", path),
 		)
 	}
-	if setting, err = model.convert(newModelConvertContext("profile setting", metadata.File)); err != nil {
+	if setting, err = model.convert(newModelHelper("profile setting", metadata.File)); err != nil {
 		return nil, err
 	}
 	return setting, nil
 }
 
 func loadProfileSettingModel(model *profileSettingModel) (setting *profileSetting, err error) {
-	if setting, err = model.convert(newModelConvertContext("profile setting", "")); err != nil {
+	if setting, err = model.convert(newModelHelper("profile setting", "")); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -84,38 +84,38 @@ func newProfileSettingModel(option *profileOptionSettingModel, project *profileP
 	}
 }
 
-func (m *profileSettingModel) convert(ctx *modelConvertContext) (setting *profileSetting, err error) {
+func (m *profileSettingModel) convert(helper *modelHelper) (_ *profileSetting, err error) {
 	var option *profileOptionSetting
 	if m.Option != nil {
-		if option, err = m.Option.convert(ctx.Child("option")); err != nil {
+		if option, err = m.Option.convert(helper.Child("option")); err != nil {
 			return nil, err
 		}
 	}
 
 	var project *profileProjectSetting
 	if m.Project != nil {
-		if project, err = m.Project.convert(ctx.Child("project")); err != nil {
+		if project, err = m.Project.convert(helper.Child("project")); err != nil {
 			return nil, err
 		}
 	}
 
 	var executor *workspaceExecutorSetting
 	if m.Executor != nil {
-		if executor, err = m.Executor.convert(ctx.Child("executor")); err != nil {
+		if executor, err = m.Executor.convert(helper.Child("executor")); err != nil {
 			return nil, err
 		}
 	}
 
 	var registry *workspaceRegistrySetting
 	if m.Registry != nil {
-		if registry, err = m.Registry.convert(ctx.Child("registry")); err != nil {
+		if registry, err = m.Registry.convert(helper.Child("registry")); err != nil {
 			return nil, err
 		}
 	}
 
 	var redirect *workspaceRedirectSetting
 	if m.Redirect != nil {
-		if redirect, err = m.Redirect.convert(ctx.Child("redirect")); err != nil {
+		if redirect, err = m.Redirect.convert(helper.Child("redirect")); err != nil {
 			return nil, err
 		}
 	}

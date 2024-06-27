@@ -52,7 +52,7 @@ func loadWorkspaceSetting(path string) (setting *workspaceSetting, err error) {
 	if metadata != nil {
 		file = metadata.File
 	}
-	if setting, err = model.convert(newModelConvertContext("workspace setting", file)); err != nil {
+	if setting, err = model.convert(newModelHelper("workspace setting", file)); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -70,38 +70,38 @@ type workspaceSettingModel struct {
 	Redirect *workspaceRedirectSettingModel
 }
 
-func (s *workspaceSettingModel) convert(ctx *modelConvertContext) (setting *workspaceSetting, err error) {
+func (s *workspaceSettingModel) convert(helper *modelHelper) (_ *workspaceSetting, err error) {
 	var clean *workspaceCleanSetting
 	if s.Clean != nil {
-		if clean, err = s.Clean.convert(ctx.Child("clean")); err != nil {
+		if clean, err = s.Clean.convert(helper.Child("clean")); err != nil {
 			return nil, err
 		}
 	}
 
 	var profile *workspaceProfileSetting
 	if s.Profile != nil {
-		if profile, err = s.Profile.convert(ctx.Child("profile")); err != nil {
+		if profile, err = s.Profile.convert(helper.Child("profile")); err != nil {
 			return nil, err
 		}
 	}
 
 	var executor *workspaceExecutorSetting
 	if s.Executor != nil {
-		if executor, err = s.Executor.convert(ctx.Child("executor")); err != nil {
+		if executor, err = s.Executor.convert(helper.Child("executor")); err != nil {
 			return nil, err
 		}
 	}
 
 	var registry *workspaceRegistrySetting
 	if s.Registry != nil {
-		if registry, err = s.Registry.convert(ctx.Child("registry")); err != nil {
+		if registry, err = s.Registry.convert(helper.Child("registry")); err != nil {
 			return nil, err
 		}
 	}
 
 	var redirect *workspaceRedirectSetting
 	if s.Redirect != nil {
-		if redirect, err = s.Redirect.convert(ctx.Child("redirect")); err != nil {
+		if redirect, err = s.Redirect.convert(helper.Child("redirect")); err != nil {
 			return nil, err
 		}
 	}

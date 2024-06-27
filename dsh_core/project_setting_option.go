@@ -184,27 +184,27 @@ type projectOptionSettingModel struct {
 	Checks []string                         `yaml:"checks,omitempty" toml:"checks,omitempty" json:"checks,omitempty"`
 }
 
-func (m *projectOptionSettingModel) convert(ctx *modelConvertContext) (*projectOptionSetting, error) {
+func (m *projectOptionSettingModel) convert(helper *modelHelper) (*projectOptionSetting, error) {
 	var items []*projectOptionItemSetting
 	optionNamesDict := map[string]bool{}
 	assignTargetsDict := map[string]bool{}
 	for i := 0; i < len(m.Items); i++ {
-		if item, err := m.Items[i].convert(ctx.ChildItem("items", i), optionNamesDict, assignTargetsDict); err != nil {
+		item, err := m.Items[i].convert(helper.ChildItem("items", i), optionNamesDict, assignTargetsDict)
+		if err != nil {
 			return nil, err
-		} else {
-			items = append(items, item)
 		}
+		items = append(items, item)
 	}
 
 	var checks []*projectOptionCheckSetting
 	for i := 0; i < len(m.Checks); i++ {
 		expr := m.Checks[i]
 		if expr == "" {
-			return nil, ctx.ChildItem("checks", i).NewValueEmptyError()
+			return nil, helper.ChildItem("checks", i).NewValueEmptyError()
 		}
 		exprObj, err := dsh_utils.CompileExpr(expr)
 		if err != nil {
-			return nil, ctx.ChildItem("checks", i).WrapValueInvalidError(err, expr)
+			return nil, helper.ChildItem("checks", i).WrapValueInvalidError(err, expr)
 		}
 		checks = append(checks, newProjectOptionCheckSetting(expr, exprObj))
 	}
@@ -225,15 +225,15 @@ type projectOptionItemSettingModel struct {
 	Assigns  []*projectOptionItemAssignSettingModel `yaml:"assigns,omitempty" toml:"assigns,omitempty" json:"assigns,omitempty"`
 }
 
-func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNamesDict, assignTargetsDict map[string]bool) (*projectOptionItemSetting, error) {
+func (m *projectOptionItemSettingModel) convert(helper *modelHelper, itemNamesDict, assignTargetsDict map[string]bool) (*projectOptionItemSetting, error) {
 	if m.Name == "" {
-		return nil, ctx.Child("name").NewValueEmptyError()
+		return nil, helper.Child("name").NewValueEmptyError()
 	}
 	if !projectOptionNameCheckRegex.MatchString(m.Name) {
-		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
+		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
 	if _, exist := itemNamesDict[m.Name]; exist {
-		return nil, ctx.Child("name").NewError("option name duplicated", kv("name", m.Name))
+		return nil, helper.Child("name").NewError("option name duplicated", kv("name", m.Name))
 	}
 
 	valueType := m.Type
@@ -248,16 +248,16 @@ func (m *projectOptionItemSettingModel) convert(ctx *modelConvertContext, itemNa
 	case projectOptionValueTypeObject:
 	case projectOptionValueTypeArray:
 	default:
-		return nil, ctx.Child("type").NewValueInvalidError(m.Type)
+		return nil, helper.Child("type").NewValueInvalidError(m.Type)
 	}
 
 	setting := newProjectOptionItemSetting(m.Name, valueType, m.Choices, m.Optional)
 	if err := setting.setDefaultValue(m.Default); err != nil {
-		return nil, ctx.Child("default").WrapValueInvalidError(err, *m.Default)
+		return nil, helper.Child("default").WrapValueInvalidError(err, *m.Default)
 	}
 
 	for i := 0; i < len(m.Assigns); i++ {
-		if assignSetting, err := m.Assigns[i].convert(ctx.ChildItem("assigns", i), assignTargetsDict); err != nil {
+		if assignSetting, err := m.Assigns[i].convert(helper.ChildItem("assigns", i), assignTargetsDict); err != nil {
 			return nil, err
 		} else {
 			setting.addAssign(assignSetting)
@@ -278,29 +278,26 @@ type projectOptionItemAssignSettingModel struct {
 	Mapping string `yaml:"mapping,omitempty" toml:"mapping,omitempty" json:"mapping,omitempty"`
 }
 
-func (m *projectOptionItemAssignSettingModel) convert(ctx *modelConvertContext, targetsDict map[string]bool) (_ *projectOptionItemAssignSetting, err error) {
+func (m *projectOptionItemAssignSettingModel) convert(helper *modelHelper, targetsDict map[string]bool) (*projectOptionItemAssignSetting, error) {
 	if m.Project == "" {
-		return nil, ctx.Child("project").NewValueEmptyError()
+		return nil, helper.Child("project").NewValueEmptyError()
 	}
-	if m.Project == ctx.GetStringVariable("projectName") {
-		return nil, ctx.Child("project").NewError("can not assign to self project option")
+	if m.Project == helper.GetStringVariable("projectName") {
+		return nil, helper.Child("project").NewError("can not assign to self project option")
 	}
 
 	if m.Option == "" {
-		return nil, ctx.Child("option").NewValueEmptyError()
+		return nil, helper.Child("option").NewValueEmptyError()
 	}
 
 	assignTarget := m.Project + "." + m.Option
 	if _, exists := targetsDict[assignTarget]; exists {
-		return nil, ctx.NewError("option assign target duplicated", kv("target", assignTarget))
+		return nil, helper.NewError("option assign target duplicated", kv("target", assignTarget))
 	}
 
-	var mappingObj *EvalExpr
-	if m.Mapping != "" {
-		mappingObj, err = dsh_utils.CompileExpr(m.Mapping)
-		if err != nil {
-			return nil, ctx.Child("mapping").WrapValueInvalidError(err, m.Mapping)
-		}
+	mappingObj, err := helper.ConvertEvalExpr("mapping", m.Mapping)
+	if err != nil {
+		return nil, err
 	}
 
 	targetsDict[assignTarget] = true

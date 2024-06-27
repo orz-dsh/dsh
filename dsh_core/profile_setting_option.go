@@ -1,7 +1,6 @@
 package dsh_core
 
 import (
-	"dsh/dsh_utils"
 	"regexp"
 )
 
@@ -94,14 +93,10 @@ func newProfileOptionSettingModel(items []*profileOptionItemSettingModel) *profi
 	}
 }
 
-func (m *profileOptionSettingModel) convert(ctx *modelConvertContext) (*profileOptionSetting, error) {
-	var items []*profileOptionItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *profileOptionSettingModel) convert(helper *modelHelper) (*profileOptionSetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newProfileOptionSetting(items), nil
 }
@@ -116,20 +111,17 @@ type profileOptionItemSettingModel struct {
 	Match string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
 }
 
-func (m *profileOptionItemSettingModel) convert(ctx *modelConvertContext) (setting *profileOptionItemSetting, err error) {
+func (m *profileOptionItemSettingModel) convert(helper *modelHelper) (*profileOptionItemSetting, error) {
 	if m.Name == "" {
-		return nil, ctx.Child("name").NewValueEmptyError()
+		return nil, helper.Child("name").NewValueEmptyError()
 	}
 	if !profileOptionNameCheckRegex.MatchString(m.Name) {
-		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
+		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newProfileOptionItemSetting(m.Name, m.Value, m.Match, matchObj), nil

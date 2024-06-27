@@ -1,7 +1,6 @@
 package dsh_core
 
 import (
-	"dsh/dsh_utils"
 	"regexp"
 )
 
@@ -138,14 +137,10 @@ func newWorkspaceRegistrySettingModel(items []*workspaceRegistryItemSettingModel
 	}
 }
 
-func (m *workspaceRegistrySettingModel) convert(ctx *modelConvertContext) (*workspaceRegistrySetting, error) {
-	var items []*workspaceRegistryItemSetting
-	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].convert(ctx.ChildItem("items", i))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
+func (m *workspaceRegistrySettingModel) convert(helper *modelHelper) (*workspaceRegistrySetting, error) {
+	items, err := convertChildModels(helper, "items", m.Items)
+	if err != nil {
+		return nil, err
 	}
 	return newWorkspaceRegistrySetting(items), nil
 }
@@ -168,27 +163,24 @@ func newWorkspaceRegistryItemSettingModel(name, link, match string) *workspaceRe
 	}
 }
 
-func (m *workspaceRegistryItemSettingModel) convert(ctx *modelConvertContext) (_ *workspaceRegistryItemSetting, err error) {
+func (m *workspaceRegistryItemSettingModel) convert(helper *modelHelper) (*workspaceRegistryItemSetting, error) {
 	if m.Name == "" {
-		return nil, ctx.Child("name").NewValueEmptyError()
+		return nil, helper.Child("name").NewValueEmptyError()
 	}
 	if !workspaceRegistryNameCheckRegex.MatchString(m.Name) {
-		return nil, ctx.Child("name").NewValueInvalidError(m.Name)
+		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
 
 	if m.Link == "" {
-		return nil, ctx.Child("link").NewValueEmptyError()
+		return nil, helper.Child("link").NewValueEmptyError()
 	}
 	if !workspaceRegistryLinkCheckRegex.MatchString(m.Link) {
-		return nil, ctx.Child("link").NewValueInvalidError(m.Link)
+		return nil, helper.Child("link").NewValueInvalidError(m.Link)
 	}
 
-	var matchObj *EvalExpr
-	if m.Match != "" {
-		matchObj, err = dsh_utils.CompileExpr(m.Match)
-		if err != nil {
-			return nil, ctx.Child("match").WrapValueInvalidError(err, m.Match)
-		}
+	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
+	if err != nil {
+		return nil, err
 	}
 
 	return newWorkspaceRegistryItemSetting(m.Name, m.Link, m.Match, matchObj), nil
