@@ -1,15 +1,15 @@
 package main
 
 import (
-	"dsh/dsh_core"
-	"dsh/dsh_utils"
+	"github.com/orz-dsh/dsh/core"
+	"github.com/orz-dsh/dsh/utils"
 	"os"
 	"runtime"
 	"testing"
 )
 
 func TestProject1(t *testing.T) {
-	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
+	logger := utils.NewLogger(utils.LogLevelAll)
 	err := os.Setenv("DSH_GLOBAL_VAR1", "global variable 1 in env")
 	if err != nil {
 		logger.Panic("%+v", err)
@@ -18,13 +18,13 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	global, err := dsh_core.MakeGlobal(logger, map[string]string{
+	global, err := core.MakeGlobal(logger, map[string]string{
 		"var2": "global variable 2 in map",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	workspace, err := dsh_core.MakeWorkspace(global, "./.test_workspace")
+	workspace, err := core.MakeWorkspace(global, "./.test_workspace")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -41,7 +41,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsSettings{
+	artifact, err := app.MakeScripts(core.AppMakeScriptsSettings{
 		OutputPath:      "./.test1/app1/output",
 		OutputPathClear: true,
 		UseHardLink:     true,
@@ -50,7 +50,7 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = workspace.Clean(dsh_core.WorkspaceCleanSetting{
+	err = workspace.Clean(core.WorkspaceCleanSetting{
 		ExcludeOutputPath: artifact.OutputPath,
 	})
 	if err != nil {
@@ -59,12 +59,12 @@ func TestProject1(t *testing.T) {
 }
 
 func TestProject2(t *testing.T) {
-	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	global, err := dsh_core.MakeGlobal(logger, nil)
+	logger := utils.NewLogger(utils.LogLevelAll)
+	global, err := core.MakeGlobal(logger, nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	workspace, err := dsh_core.MakeWorkspace(global, "./.test_workspace")
+	workspace, err := core.MakeWorkspace(global, "./.test_workspace")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -83,18 +83,18 @@ func TestProject2(t *testing.T) {
 }
 
 func TestProject3(t *testing.T) {
-	logger := dsh_utils.NewLogger(dsh_utils.LogLevelAll)
-	global, err := dsh_core.MakeGlobal(logger, nil)
+	logger := utils.NewLogger(utils.LogLevelAll)
+	global, err := core.MakeGlobal(logger, nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	workspace, err := dsh_core.MakeWorkspace(global, "./.test_workspace")
+	workspace, err := core.MakeWorkspace(global, "./.test_workspace")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
 	options := map[string]string{}
 	if runtime.GOOS == "windows" {
-		options[dsh_core.GenericOptionNameExecutor] = "powershell"
+		options[core.GenericOptionNameExecutor] = "powershell"
 	}
 	app, err := workspace.NewAppBuilder().
 		AddProfileSetting(0).
@@ -106,11 +106,11 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	artifact, err := app.MakeScripts(dsh_core.AppMakeScriptsSettings{})
+	artifact, err := app.MakeScripts(core.AppMakeScriptsSettings{})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = workspace.Clean(dsh_core.WorkspaceCleanSetting{
+	err = workspace.Clean(core.WorkspaceCleanSetting{
 		ExcludeOutputPath: artifact.OutputPath,
 	})
 	if err != nil {

@@ -1,4 +1,4 @@
-module dsh
+module github.com/orz-dsh/dsh
 
 go 1.22
 
