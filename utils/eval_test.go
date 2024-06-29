@@ -358,10 +358,10 @@ func TestEvalExprModifyData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(desc(
+	t.Log(DescN(
 		"eval success",
-		kv("result", result),
-		kv("data", data),
+		KV("result", result),
+		KV("data", data),
 	))
 }
 
@@ -412,22 +412,22 @@ func TestEvaluator(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(desc("test evaluator",
-		kv("evaluator0", evaluator0),
-		kv("evaluator0-map", evaluator0.ToMap(true)),
-		kv("evaluator1", evaluator1),
-		kv("evaluator1-map", evaluator1.ToMap(true)),
-		kv("evaluator2", evaluator2),
-		kv("evaluator2-map", evaluator2.ToMap(true)),
-		kv("evaluator3", evaluator3),
-		kv("evaluator3-map", evaluator3.ToMap(true)),
-		kv("evaluator4", evaluator4),
-		kv("evaluator4-map", evaluator4.ToMap(true)),
-		kv("evaluator5", evaluator5),
-		kv("evaluator5-map", evaluator5.ToMap(true)),
-		kv("expr1Result", expr1Result),
-		kv("expr2Result", expr2Result),
-		kv("template1Result", template1Result),
-		kv("template2Result", template2Result),
+	t.Log(DescN("test evaluator",
+		KV("evaluator0", evaluator0),
+		KV("evaluator0-map", evaluator0.GetMap(true)),
+		KV("evaluator1", evaluator1),
+		KV("evaluator1-map", evaluator1.GetMap(true)),
+		KV("evaluator2", evaluator2),
+		KV("evaluator2-map", evaluator2.GetMap(true)),
+		KV("evaluator3", evaluator3),
+		KV("evaluator3-map", evaluator3.GetMap(true)),
+		KV("evaluator4", evaluator4),
+		KV("evaluator4-map", evaluator4.GetMap(true)),
+		KV("evaluator5", evaluator5),
+		KV("evaluator5-map", evaluator5.GetMap(true)),
+		KV("expr1Result", expr1Result),
+		KV("expr2Result", expr2Result),
+		KV("template1Result", template1Result),
+		KV("template2Result", template2Result),
 	))
 }

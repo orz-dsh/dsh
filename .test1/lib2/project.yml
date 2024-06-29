@@ -8,14 +8,15 @@ option:
         - C
         - D
       assigns:
-        - project: lib1
-          option: test
-imports:
-  - link: "dir:./.test1/lib1"
-  - link: "dir:./.test1/lib3"
-sources:
-  - dir: script
-  - dir: config
-    files:
-      - test.dcfg.yml
-    match: test == "A"
+        - target: lib1.test
+dependency:
+  items:
+    - link: "dir:./.test1/lib1"
+    - link: "dir:./.test1/lib3"
+resources:
+  items:
+    - dir: script
+    - dir: config
+      includes:
+        - test.dcfg.yml
+      match: test == "A"

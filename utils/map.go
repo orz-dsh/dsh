@@ -10,7 +10,7 @@ const (
 	MapMergeModeRootKey string       = "$root"
 )
 
-func MapStrStrToStrAny(m map[string]string) map[string]any {
+func MapAnyByStr[E any, M map[string]E](m M) map[string]any {
 	result := map[string]any{}
 	for k, v := range m {
 		result[k] = v
@@ -62,11 +62,11 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 							target[key] = targetResult
 						}
 					default:
-						return nil, errN("merge map error",
-							reason("merge mode invalid"),
-							kv("field", field),
-							kv("specifyMode", mode),
-							kv("supportModes", []MapMergeMode{
+						return nil, ErrN("merge map error",
+							Reason("merge mode invalid"),
+							KV("field", field),
+							KV("specifyMode", mode),
+							KV("supportModes", []MapMergeMode{
 								MapMergeModeReplace,
 							}),
 						)
@@ -77,11 +77,11 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 					}
 				}
 			} else {
-				return nil, errN("merge map error",
-					reason("value type not match"),
-					kv("field", field),
-					kv("sourceType", reflect.TypeOf(sourceValue)),
-					kv("targetType", reflect.TypeOf(targetValue)),
+				return nil, ErrN("merge map error",
+					Reason("value type not match"),
+					KV("field", field),
+					KV("sourceType", reflect.TypeOf(sourceValue)),
+					KV("targetType", reflect.TypeOf(targetValue)),
 				)
 			}
 		case []any:
@@ -98,11 +98,11 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 						target[key] = append(sourceList, targetList...)
 						tracer.traceInsertList(key, len(sourceList))
 					} else {
-						return nil, errN("merge map error",
-							reason("merge type invalid"),
-							kv("field", field),
-							kv("specifyMode", mode),
-							kv("supportModes", []MapMergeMode{
+						return nil, ErrN("merge map error",
+							Reason("merge type invalid"),
+							KV("field", field),
+							KV("specifyMode", mode),
+							KV("supportModes", []MapMergeMode{
 								MapMergeModeReplace,
 								MapMergeModeInsert,
 							}),
@@ -113,29 +113,29 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 					tracer.traceAppendList(key, len(sourceList))
 				}
 			} else {
-				return nil, errN("merge map error",
-					reason("value type not match"),
-					kv("field", field),
-					kv("sourceType", reflect.TypeOf(sourceValue)),
-					kv("targetType", reflect.TypeOf(targetValue)),
+				return nil, ErrN("merge map error",
+					Reason("value type not match"),
+					KV("field", field),
+					KV("sourceType", reflect.TypeOf(sourceValue)),
+					KV("targetType", reflect.TypeOf(targetValue)),
 				)
 			}
 		default:
 			if sourceValue != nil {
 				switch targetValue.(type) {
 				case map[string]any:
-					return nil, errN("merge map error",
-						reason("value type not match"),
-						kv("field", field),
-						kv("sourceType", reflect.TypeOf(sourceValue)),
-						kv("targetType", reflect.TypeOf(targetValue)),
+					return nil, ErrN("merge map error",
+						Reason("value type not match"),
+						KV("field", field),
+						KV("sourceType", reflect.TypeOf(sourceValue)),
+						KV("targetType", reflect.TypeOf(targetValue)),
 					)
 				case []any:
-					return nil, errN("merge map error",
-						reason("value type not match"),
-						kv("field", field),
-						kv("sourceType", reflect.TypeOf(sourceValue)),
-						kv("targetType", reflect.TypeOf(targetValue)),
+					return nil, ErrN("merge map error",
+						Reason("value type not match"),
+						KV("field", field),
+						KV("sourceType", reflect.TypeOf(sourceValue)),
+						KV("targetType", reflect.TypeOf(targetValue)),
 					)
 				}
 			}

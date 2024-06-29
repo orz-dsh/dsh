@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var systemInfo *SystemInfo
+var _systemInfo *SystemInfo
 
 type SystemInfo struct {
 	Os         string
@@ -20,8 +20,8 @@ type SystemInfo struct {
 }
 
 func GetSystemInfo() (*SystemInfo, error) {
-	if systemInfo != nil {
-		return systemInfo, nil
+	if _systemInfo != nil {
+		return _systemInfo, nil
 	}
 
 	hostname, err := GetSystemHostname()
@@ -41,7 +41,7 @@ func GetSystemInfo() (*SystemInfo, error) {
 		return nil, err
 	}
 
-	systemInfo = &SystemInfo{
+	_systemInfo = &SystemInfo{
 		Os:         GetSystemOs(),
 		Arch:       GetSystemArch(),
 		Hostname:   hostname,
@@ -49,7 +49,7 @@ func GetSystemInfo() (*SystemInfo, error) {
 		HomeDir:    homedir,
 		WorkingDir: workingDir,
 	}
-	return systemInfo, nil
+	return _systemInfo, nil
 }
 
 func GetSystemOs() string {
@@ -69,7 +69,7 @@ func GetSystemArch() string {
 func GetSystemHostname() (string, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
-		return "", errW(err, "get system hostname error")
+		return "", ErrW(err, "get system hostname error")
 	}
 	return hostname, nil
 }
@@ -77,8 +77,8 @@ func GetSystemHostname() (string, error) {
 func GetSystemUsername() (string, error) {
 	currentUser, err := user.Current()
 	if err != nil {
-		return "", errW(err, "get system username error",
-			reason("get current user error"),
+		return "", ErrW(err, "get system username error",
+			Reason("get current user error"),
 		)
 	}
 	username := currentUser.Username
@@ -91,13 +91,13 @@ func GetSystemUsername() (string, error) {
 func GetSystemHomeDir() (string, error) {
 	dir, err := os.UserHomeDir()
 	if err != nil {
-		return "", errW(err, "get system home dir error")
+		return "", ErrW(err, "get system home dir error")
 	}
 	path, err := filepath.Abs(dir)
 	if err != nil {
-		return "", errW(err, "get system home dir error",
-			reason("get abs path error"),
-			kv("dir", dir),
+		return "", ErrW(err, "get system home dir error",
+			Reason("get abs path error"),
+			KV("dir", dir),
 		)
 	}
 	return path, nil
@@ -106,13 +106,13 @@ func GetSystemHomeDir() (string, error) {
 func GetSystemWorkingDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", errW(err, "get system working dir error")
+		return "", ErrW(err, "get system working dir error")
 	}
 	path, err := filepath.Abs(dir)
 	if err != nil {
-		return "", errW(err, "get system working dir error",
-			reason("get abs path error"),
-			kv("dir", dir),
+		return "", ErrW(err, "get system working dir error",
+			Reason("get abs path error"),
+			KV("dir", dir),
 		)
 	}
 	return path, nil

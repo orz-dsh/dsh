@@ -28,7 +28,7 @@ func GetSerializationFormat(fileType FileType) SerializationFormat {
 	case FileTypeConfigJson, FileTypeJson:
 		return SerializationFormatJson
 	default:
-		impossible()
+		Impossible()
 	}
 	return ""
 }
@@ -38,10 +38,10 @@ func DeserializeFromDir(dir string, globs []string, model any, required bool) (m
 	file := FindFile(dir, names, serializationSupportedFileTypes)
 	if file == nil {
 		if required {
-			return nil, errN("deserialize error",
-				reason("file not found"),
-				kv("dir", dir),
-				kv("names", names),
+			return nil, ErrN("deserialize error",
+				Reason("file not found"),
+				KV("dir", dir),
+				KV("names", names),
 			)
 		} else {
 			return nil, nil
@@ -54,16 +54,16 @@ func DeserializeFromDir(dir string, globs []string, model any, required bool) (m
 func DeserializeFromFile(file string, format SerializationFormat, model any) (metadata *SerializationMetadata, err error) {
 	if format == "" {
 		if !IsFileExists(file) {
-			return nil, errN("deserialize error",
-				reason("file not found"),
-				kv("file", file),
+			return nil, ErrN("deserialize error",
+				Reason("file not found"),
+				KV("file", file),
 			)
 		}
 		fileType := GetFileType(file, serializationSupportedFileTypes)
 		if fileType == "" {
-			return nil, errN("deserialize error",
-				reason("file type not supported"),
-				kv("file", file),
+			return nil, ErrN("deserialize error",
+				Reason("file type not supported"),
+				KV("file", file),
 			)
 		}
 		format = GetSerializationFormat(fileType)
@@ -77,14 +77,14 @@ func DeserializeFromFile(file string, format SerializationFormat, model any) (me
 	case SerializationFormatJson:
 		err = ReadJsonFile(file, model)
 	default:
-		impossible()
+		Impossible()
 	}
 
 	if err != nil {
-		return nil, errW(err, "deserialize error",
-			reason("read file error"),
-			kv("file", file),
-			kv("format", format),
+		return nil, ErrW(err, "deserialize error",
+			Reason("read file error"),
+			KV("file", file),
+			KV("format", format),
 		)
 	}
 

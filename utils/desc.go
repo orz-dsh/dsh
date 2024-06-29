@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// region desc
+// region Desc
 
 type Desc struct {
 	Title string
@@ -47,7 +47,7 @@ func (l DescList) String() string {
 
 // endregion
 
-// region body
+// region DescBody
 
 type DescBody []string
 
@@ -173,7 +173,7 @@ func (b DescBody) String() string {
 
 // endregion
 
-// region key value
+// region DescKeyValue
 
 type DescKeyValue struct {
 	Key          string

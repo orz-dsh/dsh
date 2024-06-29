@@ -42,15 +42,15 @@ func IsDirExists(dir string) bool {
 
 func RemakeDir(dir string) (err error) {
 	if err = os.RemoveAll(dir); err != nil {
-		return errW(err, "remake dir error",
-			reason("remove dir error"),
-			kv("dir", dir),
+		return ErrW(err, "remake dir error",
+			Reason("remove dir error"),
+			KV("dir", dir),
 		)
 	}
 	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-		return errW(err, "remake dir error",
-			reason("make dir error"),
-			kv("dir", dir),
+		return ErrW(err, "remake dir error",
+			Reason("make dir error"),
+			KV("dir", dir),
 		)
 	}
 	return nil
@@ -59,25 +59,25 @@ func RemakeDir(dir string) (err error) {
 func ClearDir(dir string) (err error) {
 	children, err := os.ReadDir(dir)
 	if err != nil {
-		return errW(err, "clear dir error",
-			reason("read dir error"),
-			kv("dir", dir),
+		return ErrW(err, "clear dir error",
+			Reason("read dir error"),
+			KV("dir", dir),
 		)
 	}
 	for i := 0; i < len(children); i++ {
 		child := filepath.Join(dir, children[i].Name())
 		if children[i].IsDir() {
 			if err = os.RemoveAll(child); err != nil {
-				return errW(err, "clear dir error",
-					reason("remove child dir error"),
-					kv("child", child),
+				return ErrW(err, "clear dir error",
+					Reason("remove child dir error"),
+					KV("child", child),
 				)
 			}
 		} else {
 			if err = os.Remove(child); err != nil {
-				return errW(err, "clear dir error",
-					reason("remove child file error"),
-					kv("child", child),
+				return ErrW(err, "clear dir error",
+					Reason("remove child file error"),
+					KV("child", child),
 				)
 			}
 		}
@@ -88,9 +88,9 @@ func ClearDir(dir string) (err error) {
 func LinkFile(sourceFile string, targetFile string) (err error) {
 	targetDir := filepath.Dir(targetFile)
 	if err = os.MkdirAll(targetDir, os.ModePerm); err != nil {
-		return errW(err, "link file error",
-			reason("make target dir error"),
-			kv("targetDir", targetDir),
+		return ErrW(err, "link file error",
+			Reason("make target dir error"),
+			KV("targetDir", targetDir),
 		)
 	}
 	return os.Link(sourceFile, targetFile)
@@ -99,36 +99,36 @@ func LinkFile(sourceFile string, targetFile string) (err error) {
 func CopyFile(sourceFile string, targetFile string) (err error) {
 	targetDir := filepath.Dir(targetFile)
 	if err = os.MkdirAll(targetDir, os.ModePerm); err != nil {
-		return errW(err, "copy file error",
-			reason("make target dir error"),
-			kv("targetDir", targetDir),
+		return ErrW(err, "copy file error",
+			Reason("make target dir error"),
+			KV("targetDir", targetDir),
 		)
 	}
 
 	targetWriter, err := os.Create(targetFile)
 	if err != nil {
-		return errW(err, "copy file error",
-			reason("create target writer error"),
-			kv("targetFile", targetFile),
+		return ErrW(err, "copy file error",
+			Reason("create target writer error"),
+			KV("targetFile", targetFile),
 		)
 	}
 	defer targetWriter.Close()
 
 	sourceReader, err := os.Open(sourceFile)
 	if err != nil {
-		return errW(err, "copy file error",
-			reason("open source reader error"),
-			kv("sourceFile", sourceFile),
+		return ErrW(err, "copy file error",
+			Reason("open source reader error"),
+			KV("sourceFile", sourceFile),
 		)
 	}
 	defer sourceReader.Close()
 
 	_, err = io.Copy(targetWriter, sourceReader)
 	if err != nil {
-		return errW(err, "copy file error",
-			reason("io copy error"),
-			kv("targetFile", targetFile),
-			kv("sourceFile", sourceFile),
+		return ErrW(err, "copy file error",
+			Reason("io copy error"),
+			KV("targetFile", targetFile),
+			KV("sourceFile", sourceFile),
 		)
 	}
 	return nil
@@ -139,10 +139,10 @@ func LinkOrCopyFile(sourceFile string, targetFile string) (err error) {
 	if err != nil {
 		err = CopyFile(sourceFile, targetFile)
 		if err != nil {
-			return errW(err, "link or copy file error",
-				reason("copy file error"),
-				kv("sourceFile", sourceFile),
-				kv("targetFile", targetFile),
+			return ErrW(err, "link or copy file error",
+				Reason("copy file error"),
+				KV("sourceFile", sourceFile),
+				KV("targetFile", targetFile),
 			)
 		}
 	}
@@ -152,16 +152,16 @@ func LinkOrCopyFile(sourceFile string, targetFile string) (err error) {
 func ReadYamlFile(file string, model any) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return errW(err, "read yaml file error",
-			reason("read file error"),
-			kv("file", file),
+		return ErrW(err, "read yaml file error",
+			Reason("read file error"),
+			KV("file", file),
 		)
 	}
 	err = yaml.Unmarshal(data, model)
 	if err != nil {
-		return errW(err, "read yaml file error",
-			reason("yaml unmarshal error"),
-			kv("file", file),
+		return ErrW(err, "read yaml file error",
+			Reason("yaml unmarshal error"),
+			KV("file", file),
 		)
 	}
 	return nil
@@ -170,16 +170,16 @@ func ReadYamlFile(file string, model any) error {
 func ReadTomlFile(file string, model any) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return errW(err, "read toml file error",
-			reason("read file error"),
-			kv("file", file),
+		return ErrW(err, "read toml file error",
+			Reason("read file error"),
+			KV("file", file),
 		)
 	}
 	err = toml.Unmarshal(data, model)
 	if err != nil {
-		return errW(err, "read toml file error",
-			reason("toml unmarshal error"),
-			kv("file", file),
+		return ErrW(err, "read toml file error",
+			Reason("toml unmarshal error"),
+			KV("file", file),
 		)
 	}
 	return nil
@@ -188,16 +188,16 @@ func ReadTomlFile(file string, model any) error {
 func ReadJsonFile(file string, model any) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return errW(err, "read json file error",
-			reason("read file error"),
-			kv("file", file),
+		return ErrW(err, "read json file error",
+			Reason("read file error"),
+			KV("file", file),
 		)
 	}
 	err = json.Unmarshal(data, model)
 	if err != nil {
-		return errW(err, "read json file error",
-			reason("json unmarshal error"),
-			kv("file", file),
+		return ErrW(err, "read json file error",
+			Reason("json unmarshal error"),
+			KV("file", file),
 		)
 	}
 	return nil
@@ -206,9 +206,9 @@ func ReadJsonFile(file string, model any) error {
 func WriteYamlFile(file string, model any) error {
 	data, err := yaml.Marshal(model)
 	if err != nil {
-		return errW(err, "write yaml file error",
-			reason("yaml marshal error"),
-			kv("file", file),
+		return ErrW(err, "write yaml file error",
+			Reason("yaml marshal error"),
+			KV("file", file),
 		)
 	}
 	return os.WriteFile(file, data, os.ModePerm)
@@ -217,9 +217,9 @@ func WriteYamlFile(file string, model any) error {
 func WriteTomlFile(file string, model any) error {
 	data, err := toml.Marshal(model)
 	if err != nil {
-		return errW(err, "write toml file error",
-			reason("toml marshal error"),
-			kv("file", file),
+		return ErrW(err, "write toml file error",
+			Reason("toml marshal error"),
+			KV("file", file),
 		)
 	}
 	return os.WriteFile(file, data, os.ModePerm)
@@ -234,9 +234,9 @@ func WriteJsonFile(file string, model any, indent bool) error {
 		data, err = json.Marshal(model)
 	}
 	if err != nil {
-		return errW(err, "write json file error",
-			reason("json marshal error"),
-			kv("file", file),
+		return ErrW(err, "write json file error",
+			Reason("json marshal error"),
+			KV("file", file),
 		)
 	}
 	return os.WriteFile(file, data, os.ModePerm)
@@ -347,7 +347,7 @@ func GetFileNames(globs []string, types []FileType) []string {
 			case FileTypePlain:
 				fileNames = append(fileNames, fileName)
 			default:
-				impossible()
+				Impossible()
 			}
 		}
 	}
@@ -395,10 +395,10 @@ func ScanFiles(dir string, includes []string, excludes []string, types []FileTyp
 	}
 	err = filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
-			return errW(err, "scan files error",
-				reason("walk dir error"),
-				kv("dir", dir),
-				kv("path", path),
+			return ErrW(err, "scan files error",
+				Reason("walk dir error"),
+				KV("dir", dir),
+				KV("path", path),
 			)
 		}
 		if !entry.IsDir() {
@@ -414,10 +414,10 @@ func ScanFiles(dir string, includes []string, excludes []string, types []FileTyp
 			}
 			relPath, err := filepath.Rel(dir, path)
 			if err != nil {
-				return errW(err, "scan files error",
-					reason("get rel-path error"),
-					kv("dir", dir),
-					kv("path", path),
+				return ErrW(err, "scan files error",
+					Reason("get rel-path error"),
+					KV("dir", dir),
+					KV("path", path),
 				)
 			}
 			fileType := GetFileType(relPath, types)
@@ -436,9 +436,9 @@ func ScanFiles(dir string, includes []string, excludes []string, types []FileTyp
 func ListChildDirs(dir string) (names []string, err error) {
 	children, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, errW(err, "list child dirs error",
-			reason("read dir error"),
-			kv("dir", dir),
+		return nil, ErrW(err, "list child dirs error",
+			Reason("read dir error"),
+			KV("dir", dir),
 		)
 	}
 	for i := 0; i < len(children); i++ {

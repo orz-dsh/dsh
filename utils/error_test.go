@@ -15,10 +15,10 @@ func test12() error {
 }
 
 func test13() error {
-	return errW(
+	return ErrW(
 		errors.Join(errors.New("error1"), errors.New("error2"), errors.New("error3")),
 		"test error",
-		kv("a", "aaa"),
+		KV("a", "aaa"),
 	)
 }
 
@@ -31,10 +31,10 @@ func test22() error {
 }
 
 func test23() error {
-	return errW(
+	return ErrW(
 		errors2.Wrap(errors2.Wrap(errors2.Wrap(errors.New("error1"), "error2"), "error3"), "error4"),
 		"test error",
-		kv("a", "aaa"),
+		KV("a", "aaa"),
 	)
 }
 
@@ -47,9 +47,9 @@ func test32() error {
 }
 
 func test33() error {
-	return errN(
+	return ErrN(
 		"test error",
-		kv("a", "aaa"),
+		KV("a", "aaa"),
 	)
 }
 
@@ -62,18 +62,18 @@ func test42() error {
 }
 
 func test43() error {
-	return errW(
-		errW(
-			errN(
+	return ErrW(
+		ErrW(
+			ErrN(
 				"test error1",
-				kv("a", "aaa"),
-				kv("i", 1),
-				kv("obj", map[string]any{
+				KV("a", "aaa"),
+				KV("i", 1),
+				KV("obj", map[string]any{
 					"b": "bb\nb",
 				}),
 			),
 			"test error2",
-			kv("b", "bbb"),
+			KV("b", "bbb"),
 		),
 		"test error3",
 	)

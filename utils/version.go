@@ -7,24 +7,24 @@ import (
 
 type Version string
 
-const runtimeVersion Version = "1.0.0"
+const _runtimeVersion Version = "1.0.0"
 
-var runtimeVersionCode int32
+var _runtimeVersionCode int32
 
 func init() {
 	var err error
-	runtimeVersionCode, err = runtimeVersion.GetVersionCode()
+	_runtimeVersionCode, err = _runtimeVersion.GetVersionCode()
 	if err != nil {
 		panic(err)
 	}
 }
 
 func GetRuntimeVersion() Version {
-	return runtimeVersion
+	return _runtimeVersion
 }
 
 func GetRuntimeVersionCode() int32 {
-	return runtimeVersionCode
+	return _runtimeVersionCode
 }
 
 func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
@@ -32,9 +32,9 @@ func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
 	if minVersion != "" {
 		minVersionCode, err = minVersion.GetVersionCode()
 		if err != nil {
-			return errW(err, "check runtime version error",
-				reason("get min version code error"),
-				kv("minVersion", minVersion),
+			return ErrW(err, "check runtime version error",
+				Reason("get min version code error"),
+				KV("minVersion", minVersion),
 			)
 		}
 	}
@@ -42,20 +42,20 @@ func CheckRuntimeVersion(minVersion Version, maxVersion Version) (err error) {
 	if maxVersion != "" {
 		maxVersionCode, err = maxVersion.GetVersionCode()
 		if err != nil {
-			return errW(err, "check runtime version error",
-				reason("get max version code error"),
-				kv("maxVersion", maxVersion),
+			return ErrW(err, "check runtime version error",
+				Reason("get max version code error"),
+				KV("maxVersion", maxVersion),
 			)
 		}
 	}
-	if runtimeVersionCode >= minVersionCode && runtimeVersionCode <= maxVersionCode {
+	if _runtimeVersionCode >= minVersionCode && _runtimeVersionCode <= maxVersionCode {
 		return nil
 	}
-	return errN("check runtime version error",
-		reason("runtime version incompatible"),
-		kv("runtimeVersion", runtimeVersion),
-		kv("minVersion", minVersion),
-		kv("maxVersion", maxVersion),
+	return ErrN("check runtime version error",
+		Reason("runtime version incompatible"),
+		KV("runtimeVersion", _runtimeVersion),
+		KV("minVersion", minVersion),
+		KV("maxVersion", maxVersion),
 	)
 }
 
@@ -63,24 +63,24 @@ func (v Version) GetVersionCode() (versionCode int32, err error) {
 	versionStr := string(v)
 	fragmentStr := strings.Split(versionStr, ".")
 	if len(fragmentStr) < 1 || len(fragmentStr) > 3 {
-		return 0, errN("get version code error",
-			reason("format error"),
-			kv("version", versionStr),
+		return 0, ErrN("get version code error",
+			Reason("format error"),
+			KV("version", versionStr),
 		)
 	}
 	var fragmentCode []int32
 	for i := 0; i < len(fragmentStr); i++ {
 		code, err := strconv.Atoi(fragmentStr[i])
 		if err != nil {
-			return 0, errN("get version code error",
-				reason("format error"),
-				kv("version", versionStr),
+			return 0, ErrN("get version code error",
+				Reason("format error"),
+				KV("version", versionStr),
 			)
 		}
 		if code > 999 {
-			return 0, errN("get version code error",
-				reason("format error"),
-				kv("version", versionStr),
+			return 0, ErrN("get version code error",
+				Reason("format error"),
+				KV("version", versionStr),
 			)
 		}
 		fragmentCode = append(fragmentCode, int32(code))

@@ -8,16 +8,16 @@ option:
         - "5678"
         - "0000"
       assigns:
-        - project: lib2
-          option: test
+        - target: lib2.test
           mapping: >-
             value == '1234' ? 'A' : (value == '5678' ? 'B' : (value == '0000' ? 'C' : nil))
-        - project: app1
-          option: test
+        - target: app1.test
           mapping: >-
             value == '1234' ? 'a' : (value == '5678' ? 'b' : (value == '0000' ? 'c' : nil))
 
-imports:
-  - link: "dir:./.test1/lib2"
-sources:
-  - dir: script
+dependency:
+  items:
+    - link: "dir:./.test1/lib2"
+resource:
+  items:
+    - dir: script

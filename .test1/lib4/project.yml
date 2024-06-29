@@ -2,10 +2,12 @@ name: lib4
 option:
   items:
     - name: test
-imports:
-  - link: "dir:./.test1/lib2"
-  - link: "dir:./.test1/app1"
-sources:
-  - dir: script
+dependency:
+  items:
+    - link: "dir:./.test1/lib2"
+    - link: "dir:./.test1/app1"
+resource:
+  items:
+    - dir: script
 #    - link: "dir:./.test1/lib-err"
 #    - link: "git:https://github.com/orz-dsh/dsh#ref=main"

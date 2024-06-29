@@ -20,9 +20,9 @@ func (s *StructWithDescKeyValues) DescKeyValues() KVS {
 		return nil
 	}
 	return KVS{
-		kv("customDescIntValue", s.intValue),
-		kv("customDescStrValue", s.strValue),
-		kv("customDescNestedStruct", s.nestedStruct),
+		KV("customDescIntValue", s.intValue),
+		KV("customDescStrValue", s.strValue),
+		KV("customDescNestedStruct", s.nestedStruct),
 	}
 }
 
@@ -31,9 +31,9 @@ func (s *StructWithDescKeyValues) DescExtraKeyValues() KVS {
 		return nil
 	}
 	return KVS{
-		kv("customDescExtraIntValue", s.intValue),
-		kv("customDescExtraStrValue", s.strValue),
-		kv("customDescExtraNestedStruct", s.nestedStruct),
+		KV("customDescExtraIntValue", s.intValue),
+		KV("customDescExtraStrValue", s.strValue),
+		KV("customDescExtraNestedStruct", s.nestedStruct),
 	}
 }
 
@@ -46,14 +46,14 @@ type StructSliceWithDescKeyValues []*StructWithDescKeyValues
 func (s StructSliceWithDescKeyValues) DescKeyValues() KVS {
 	kvs := make(KVS, len(s))
 	for i, v := range s {
-		kvs[i] = kv(fmt.Sprintf("item-%d", i), v)
+		kvs[i] = KV(fmt.Sprintf("item-%d", i), v)
 	}
 	return kvs
 }
 
 func (s StructSliceWithDescKeyValues) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("len", len(s)),
+		KV("len", len(s)),
 	}
 }
 
@@ -62,29 +62,29 @@ type StructMapWithDescKeyValues map[string]*StructWithDescKeyValues
 func (m StructMapWithDescKeyValues) DescKeyValues() KVS {
 	var kvs KVS
 	for k, v := range m {
-		kvs = append(kvs, kv(fmt.Sprintf("item-%s", k), v))
+		kvs = append(kvs, KV(fmt.Sprintf("item-%s", k), v))
 	}
 	return kvs
 }
 
 func (m StructMapWithDescKeyValues) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("len", len(m)),
+		KV("len", len(m)),
 	}
 }
 
 func TestDescBase(t *testing.T) {
 	var nilValue any = nil
-	str := desc("test desc base",
-		kv("int", 0),
-		kv("float", 3.4),
-		kv("bool", true),
-		kv("string", "abc"),
-		kv("complex", complex(1, 2)),
-		kv("nil", nilValue),
-		kv("array", [3]int{1, 2, 3}),
-		kv("slice", []int{1, 2, 3}),
-		kv("map", map[string]any{"k1": "a", "k2": "b"}),
+	str := DescN("test desc base",
+		KV("int", 0),
+		KV("float", 3.4),
+		KV("bool", true),
+		KV("string", "abc"),
+		KV("complex", complex(1, 2)),
+		KV("nil", nilValue),
+		KV("array", [3]int{1, 2, 3}),
+		KV("slice", []int{1, 2, 3}),
+		KV("map", map[string]any{"k1": "a", "k2": "b"}),
 	)
 	t.Log(str)
 }
@@ -222,14 +222,14 @@ func TestDescCollection(t *testing.T) {
 		"k3": structSlice2[2],
 	}
 
-	str := desc("test desc collection",
-		kv("mapValue", mapValue),
-		kv("sliceValue", sliceValue),
-		kv("structSlice1", structSlice1),
-		kv("structMap1", structMap1),
-		kv("structSlice2", structSlice2),
-		kv("structMap2", structMap2),
-		kv("collection", []any{
+	str := DescN("test desc collection",
+		KV("mapValue", mapValue),
+		KV("sliceValue", sliceValue),
+		KV("structSlice1", structSlice1),
+		KV("structMap1", structMap1),
+		KV("structSlice2", structSlice2),
+		KV("structMap2", structMap2),
+		KV("collection", []any{
 			mapValue,
 			sliceValue,
 			structSlice1,
@@ -272,30 +272,30 @@ func TestDescKeyValuesFunc(t *testing.T) {
 		emptyDescExtraKeyValues: false,
 	}
 
-	str := desc("test desc key values func",
-		kv("struct1", struct1),
-		kv("struct2", struct2),
-		kv("struct3", struct3),
-		kv("struct4", struct4),
-		kv("struct5", struct5),
+	str := DescN("test desc key values func",
+		KV("struct1", struct1),
+		KV("struct2", struct2),
+		KV("struct3", struct3),
+		KV("struct4", struct4),
+		KV("struct5", struct5),
 	)
 	t.Log(str)
 }
 
 func TestDescNestedDesc(t *testing.T) {
-	str := desc("test desc nested desc",
-		kv("desc", desc("nested desc title",
-			kv("int", 0),
+	str := DescN("test desc nested desc",
+		KV("desc", DescN("nested desc title",
+			KV("int", 0),
 		)),
-		kv("kvs", KVS{
-			kv("int", 0),
-			kv("str", "abc"),
-			kv("struct", &StructWithDescKeyValues{
+		KV("kvs", KVS{
+			KV("int", 0),
+			KV("str", "abc"),
+			KV("struct", &StructWithDescKeyValues{
 				intValue: 1,
 				strValue: "struct",
 			}),
 		}),
-		kv("kv", kv("int", 0)),
+		KV("kv", KV("int", 0)),
 	)
 	t.Log(str)
 }
@@ -322,9 +322,9 @@ func TestDescStruct(t *testing.T) {
 		StrValue: "struct2",
 	}
 
-	str := desc("test desc struct",
-		kv("struct1", struct1),
-		kv("struct2", struct2),
+	str := DescN("test desc struct",
+		KV("struct1", struct1),
+		KV("struct2", struct2),
 	)
 	t.Log(str)
 }
@@ -392,35 +392,35 @@ func TestDescPointer(t *testing.T) {
 	struct2ValuePP := &struct2ValueP
 	struct2ValuePPP := &struct2ValuePP
 
-	str := desc("test desc pointer",
-		kv("intValue", intValue),
-		kv("intValueP", intValueP),
-		kv("intValuePP", intValuePP),
-		kv("intValuePPP", intValuePPP),
-		kv("strValue", strValue),
-		kv("strValueP", strValueP),
-		kv("strValuePP", strValuePP),
-		kv("strValuePPP", strValuePPP),
-		kv("arrValue", arrValue),
-		kv("arrValueP", arrValueP),
-		kv("arrValuePP", arrValuePP),
-		kv("arrValuePPP", arrValuePPP),
-		kv("sliceValue", sliceValue),
-		kv("sliceValueP", sliceValueP),
-		kv("sliceValuePP", sliceValuePP),
-		kv("sliceValuePPP", sliceValuePPP),
-		kv("mapValue", mapValue),
-		kv("mapValueP", mapValueP),
-		kv("mapValuePP", mapValuePP),
-		kv("mapValuePPP", mapValuePPP),
-		kv("struct1Value", struct1Value),
-		kv("struct1ValueP", struct1ValueP),
-		kv("struct1ValuePP", struct1ValuePP),
-		kv("struct1ValuePPP", struct1ValuePPP),
-		kv("struct2Value", struct2Value),
-		kv("struct2ValueP", struct2ValueP),
-		kv("struct2ValuePP", struct2ValuePP),
-		kv("struct2ValuePPP", struct2ValuePPP),
+	str := DescN("test desc pointer",
+		KV("intValue", intValue),
+		KV("intValueP", intValueP),
+		KV("intValuePP", intValuePP),
+		KV("intValuePPP", intValuePPP),
+		KV("strValue", strValue),
+		KV("strValueP", strValueP),
+		KV("strValuePP", strValuePP),
+		KV("strValuePPP", strValuePPP),
+		KV("arrValue", arrValue),
+		KV("arrValueP", arrValueP),
+		KV("arrValuePP", arrValuePP),
+		KV("arrValuePPP", arrValuePPP),
+		KV("sliceValue", sliceValue),
+		KV("sliceValueP", sliceValueP),
+		KV("sliceValuePP", sliceValuePP),
+		KV("sliceValuePPP", sliceValuePPP),
+		KV("mapValue", mapValue),
+		KV("mapValueP", mapValueP),
+		KV("mapValuePP", mapValuePP),
+		KV("mapValuePPP", mapValuePPP),
+		KV("struct1Value", struct1Value),
+		KV("struct1ValueP", struct1ValueP),
+		KV("struct1ValuePP", struct1ValuePP),
+		KV("struct1ValuePPP", struct1ValuePPP),
+		KV("struct2Value", struct2Value),
+		KV("struct2ValueP", struct2ValueP),
+		KV("struct2ValuePP", struct2ValuePP),
+		KV("struct2ValuePPP", struct2ValuePPP),
 	)
 	t.Log(str)
 }
@@ -438,12 +438,12 @@ func TestDescFunc(t *testing.T) {
 	}
 	func5 := (&StructWithDescKeyValues{}).DescExtraKeyValues
 
-	str := desc("test desc func",
-		kv("func1", func1),
-		kv("func2", func2),
-		kv("func3", func3),
-		kv("func4", func4),
-		kv("func5", func5),
+	str := DescN("test desc func",
+		KV("func1", func1),
+		KV("func2", func2),
+		KV("func3", func3),
+		KV("func4", func4),
+		KV("func5", func5),
 	)
 	t.Log(str)
 }
@@ -454,11 +454,11 @@ func TestDescChan(t *testing.T) {
 	chan3 := make(chan<- any)
 	chan4 := make(<-chan any)
 
-	str := desc("test desc chan",
-		kv("chan1", chan1),
-		kv("chan2", chan2),
-		kv("chan3", chan3),
-		kv("chan4", chan4),
+	str := DescN("test desc chan",
+		KV("chan1", chan1),
+		KV("chan2", chan2),
+		KV("chan3", chan3),
+		KV("chan4", chan4),
 	)
 	t.Log(str)
 }
@@ -469,9 +469,9 @@ func TestDescUnsafePointer(t *testing.T) {
 	intValue := 1
 	unsafePointer2 := unsafe.Pointer(&intValue)
 
-	str := desc("test desc unsafe pointer",
-		kv("unsafePointer1", unsafePointer1),
-		kv("unsafePointer2", unsafePointer2),
+	str := DescN("test desc unsafe pointer",
+		KV("unsafePointer1", unsafePointer1),
+		KV("unsafePointer2", unsafePointer2),
 	)
 	t.Log(str)
 }
@@ -481,10 +481,10 @@ func TestDescUintptr(t *testing.T) {
 	uintptr2 := uintptr(0)
 	uintptr3 := uintptr(unsafe.Pointer(&uintptr2))
 
-	str := desc("test desc uintptr",
-		kv("uintptr1", uintptr1),
-		kv("uintptr2", uintptr2),
-		kv("uintptr3", uintptr3),
+	str := DescN("test desc uintptr",
+		KV("uintptr1", uintptr1),
+		KV("uintptr2", uintptr2),
+		KV("uintptr3", uintptr3),
 	)
 	t.Log(str)
 }

@@ -60,11 +60,11 @@ func TestMergeMap1(t *testing.T) {
 		"subList2": MapMergeModeInsert,
 	}, "map2", trace2)
 
-	t.Log(desc("test merge map 1",
-		kv("result1", result1),
-		kv("trace1", trace1),
-		kv("result2", result2),
-		kv("trace2", trace2),
+	t.Log(DescN("test merge map 1",
+		KV("result1", result1),
+		KV("trace1", trace1),
+		KV("result2", result2),
+		KV("trace2", trace2),
 	))
 
 	_, _, err = MapMerge(result2, map3, nil, "map3", nil)

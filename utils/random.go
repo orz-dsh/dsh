@@ -7,9 +7,9 @@ import (
 
 func RandomString(len int) (string, error) {
 	if len%2 != 0 {
-		return "", errN("random string error",
-			reason("len must be a multiple of 2"),
-			kv("len", len),
+		return "", ErrN("random string error",
+			Reason("len must be a multiple of 2"),
+			KV("len", len),
 		)
 	}
 	bytes := make([]byte, len/2)

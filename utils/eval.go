@@ -18,7 +18,7 @@ type EvalExpr = vm.Program
 func CompileExpr(content string) (*EvalExpr, error) {
 	program, err := expr.Compile(content)
 	if err != nil {
-		return nil, errW(err, "compile expr error", kv("content", content))
+		return nil, ErrW(err, "compile expr error", KV("content", content))
 	}
 	return program, nil
 }
@@ -26,10 +26,10 @@ func CompileExpr(content string) (*EvalExpr, error) {
 func EvalBoolExpr(program *EvalExpr, data map[string]any) (bool, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
-		return false, errW(err, "eval bool expr error",
-			reason("eval expr error"),
-			kv("program", program.Source().Content()),
-			kv("data", data),
+		return false, ErrW(err, "eval bool expr error",
+			Reason("eval expr error"),
+			KV("program", program.Source().Content()),
+			KV("data", data),
 		)
 	}
 	if result != nil {
@@ -49,10 +49,10 @@ func EvalBoolExpr(program *EvalExpr, data map[string]any) (bool, error) {
 		case map[string]any:
 			return len(result.(map[string]any)) > 0, nil
 		default:
-			return false, errN("eval bool expr error",
-				reason("unsupported result type"),
-				kv("result", result),
-				kv("resultType", reflect.TypeOf(result)),
+			return false, ErrN("eval bool expr error",
+				Reason("unsupported result type"),
+				KV("result", result),
+				KV("resultType", reflect.TypeOf(result)),
 			)
 		}
 	}
@@ -62,10 +62,10 @@ func EvalBoolExpr(program *EvalExpr, data map[string]any) (bool, error) {
 func EvalStringExpr(program *EvalExpr, data map[string]any) (*string, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
-		return nil, errW(err, "eval string expr error",
-			reason("eval expr error"),
-			kv("program", program.Source().Content()),
-			kv("data", data),
+		return nil, ErrW(err, "eval string expr error",
+			Reason("eval expr error"),
+			KV("program", program.Source().Content()),
+			KV("data", data),
 		)
 	}
 	if result != nil {
@@ -83,27 +83,27 @@ func EvalStringExpr(program *EvalExpr, data map[string]any) (*string, error) {
 			str = strconv.FormatFloat(result.(float64), 'f', -1, 64)
 		case []any:
 			if bytes, err := json.Marshal(result.([]any)); err != nil {
-				return nil, errW(err, "eval string expr error",
-					reason("array result marshal json error"),
-					kv("result", result),
+				return nil, ErrW(err, "eval string expr error",
+					Reason("array result marshal json error"),
+					KV("result", result),
 				)
 			} else {
 				str = string(bytes)
 			}
 		case map[string]any:
 			if bytes, err := json.Marshal(result.(map[string]any)); err != nil {
-				return nil, errW(err, "eval string expr error",
-					reason("map result marshal json error"),
-					kv("result", result),
+				return nil, ErrW(err, "eval string expr error",
+					Reason("map result marshal json error"),
+					KV("result", result),
 				)
 			} else {
 				str = string(bytes)
 			}
 		default:
-			return nil, errN("eval string expr error",
-				reason("unsupported result type"),
-				kv("result", result),
-				kv("resultType", reflect.TypeOf(result)),
+			return nil, ErrN("eval string expr error",
+				Reason("unsupported result type"),
+				KV("result", result),
+				KV("resultType", reflect.TypeOf(result)),
 			)
 		}
 		return &str, nil
@@ -119,38 +119,38 @@ func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string
 	files := append([]string{inputPath}, libraryPaths...)
 	tpl, err := tpl.ParseFiles(files...)
 	if err != nil {
-		return errW(err, "eval file template error",
-			reason("parse template error"),
-			kv("inputPath", inputPath),
-			kv("libraryPaths", libraryPaths),
+		return ErrW(err, "eval file template error",
+			Reason("parse template error"),
+			KV("inputPath", inputPath),
+			KV("libraryPaths", libraryPaths),
 		)
 	}
 
 	if err = os.MkdirAll(filepath.Dir(outputPath), os.ModePerm); err != nil {
-		return errW(err, "eval file template error",
-			reason("make target dir error"),
-			kv("outputPath", outputPath),
+		return ErrW(err, "eval file template error",
+			Reason("make target dir error"),
+			KV("outputPath", outputPath),
 		)
 	}
 
 	targetFile, err := os.Create(outputPath)
 	if err != nil {
-		return errW(err, "eval file template error",
-			reason("create target file error"),
-			kv("outputPath", outputPath),
+		return ErrW(err, "eval file template error",
+			Reason("create target file error"),
+			KV("outputPath", outputPath),
 		)
 	}
 	defer targetFile.Close()
 
 	err = tpl.Execute(targetFile, data)
 	if err != nil {
-		return errW(err, "eval file template error",
-			reason("execute template error"),
-			kv("inputPath", inputPath),
-			kv("libraryPaths", libraryPaths),
-			kv("outputPath", outputPath),
-			kv("data", data),
-			kv("funcs", funcs),
+		return ErrW(err, "eval file template error",
+			Reason("execute template error"),
+			KV("inputPath", inputPath),
+			KV("libraryPaths", libraryPaths),
+			KV("outputPath", outputPath),
+			KV("data", data),
+			KV("funcs", funcs),
 		)
 	}
 	return nil
@@ -163,21 +163,21 @@ func EvalStringTemplate(str string, data map[string]any, funcs template.FuncMap)
 	}
 	tpl, err := tpl.Parse(str)
 	if err != nil {
-		return "", errW(err, "eval string template error",
-			reason("parse template error"),
-			kv("str", str),
-			kv("data", data),
-			kv("funcs", funcs),
+		return "", ErrW(err, "eval string template error",
+			Reason("parse template error"),
+			KV("str", str),
+			KV("data", data),
+			KV("funcs", funcs),
 		)
 	}
 	var writer strings.Builder
 	err = tpl.Execute(&writer, data)
 	if err != nil {
-		return "", errW(err, "eval string template error",
-			reason("execute template error"),
-			kv("str", str),
-			kv("data", data),
-			kv("funcs", funcs),
+		return "", ErrW(err, "eval string template error",
+			Reason("execute template error"),
+			KV("str", str),
+			KV("data", data),
+			KV("funcs", funcs),
 		)
 	}
 	return strings.TrimSpace(writer.String()), nil
@@ -323,15 +323,32 @@ func (e *Evaluator) MergeFuncs(funcs EvalFuncs) *Evaluator {
 	}
 }
 
-func (e *Evaluator) ToMap(includeFuncs bool) map[string]any {
-	return e.dataset.ToMap(e.root, t(includeFuncs, e.funcs, nil))
+func (e *Evaluator) GetMap(includeFuncs bool) map[string]any {
+	return e.dataset.ToMap(e.root, ValT(includeFuncs, e.funcs, nil))
+}
+
+func (e *Evaluator) GetFieldValue(name, field string) any {
+	if data, exist := e.dataset[name]; exist {
+		if value, exist := data[field]; exist {
+			return value
+		}
+	}
+	return nil
+}
+
+func (e *Evaluator) GetFieldString(name, field string) string {
+	value := e.GetFieldValue(name, field)
+	if value != nil {
+		return value.(string)
+	}
+	return ""
 }
 
 func (e *Evaluator) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("root", e.root),
-		kv("dataset", e.dataset),
-		kv("funcs", e.funcs),
+		KV("root", e.root),
+		KV("dataset", e.dataset),
+		KV("funcs", e.funcs),
 	}
 }
 
@@ -339,20 +356,20 @@ func (e *Evaluator) EvalBoolExpr(expr *EvalExpr) (bool, error) {
 	if expr == nil {
 		return true, nil
 	}
-	return EvalBoolExpr(expr, e.ToMap(true))
+	return EvalBoolExpr(expr, e.GetMap(true))
 }
 
 func (e *Evaluator) EvalStringExpr(expr *EvalExpr) (*string, error) {
 	if expr == nil {
 		return nil, nil
 	}
-	return EvalStringExpr(expr, e.ToMap(true))
+	return EvalStringExpr(expr, e.GetMap(true))
 }
 
 func (e *Evaluator) EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string) error {
-	return EvalFileTemplate(inputPath, libraryPaths, outputPath, e.ToMap(false), e.funcs.ToTemplateFuncMap())
+	return EvalFileTemplate(inputPath, libraryPaths, outputPath, e.GetMap(false), e.funcs.ToTemplateFuncMap())
 }
 
 func (e *Evaluator) EvalStringTemplate(str string) (string, error) {
-	return EvalStringTemplate(str, e.ToMap(false), e.funcs.ToTemplateFuncMap())
+	return EvalStringTemplate(str, e.GetMap(false), e.funcs.ToTemplateFuncMap())
 }

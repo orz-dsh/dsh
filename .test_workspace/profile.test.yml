@@ -1,4 +1,4 @@
-option:
+argument:
   items:
     - name: xxxx
       value: xxxx
@@ -11,8 +11,8 @@ executor:
         - Bypass
         - -NoProfile
         - -File
-        - "{{.target.path}}"
-project:
+        - "{{.target_file}}"
+addition:
   items:
     - name: extra-project
       dir: .test2/app1

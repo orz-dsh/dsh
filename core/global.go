@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/orz-dsh/dsh/utils"
+	. "github.com/orz-dsh/dsh/utils"
 	"os"
 	"strings"
 )
@@ -13,10 +13,10 @@ type Global struct {
 }
 
 func MakeGlobal(logger *Logger, variables map[string]string) (*Global, error) {
-	systemInfo, err := utils.GetSystemInfo()
+	systemInfo, err := GetSystemInfo()
 	if err != nil {
-		return nil, errW(err, "make global error",
-			reason("get system info error"),
+		return nil, ErrW(err, "make global error",
+			Reason("get system info error"),
 		)
 	}
 	global := &Global{
@@ -45,7 +45,7 @@ func mergeGlobalVariables(variables map[string]string) map[string]any {
 
 func (g *Global) DescExtraKeyValues() KVS {
 	return KVS{
-		kv("systemInfo", g.systemInfo),
-		kv("variables", g.variables),
+		KV("systemInfo", g.systemInfo),
+		KV("variables", g.variables),
 	}
 }

@@ -2,7 +2,9 @@ name: lib3
 option:
   items:
     - name: test
-imports:
-  - link: "dir:./.test1/lib4"
-sources:
-  - dir: script
+dependency:
+  items:
+    - link: "dir:./.test1/lib4"
+resource:
+  items:
+    - dir: script
