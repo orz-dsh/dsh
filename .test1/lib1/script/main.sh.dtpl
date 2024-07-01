@@ -2,10 +2,10 @@
 
 lib1_test() {
   echo "lib1 test"
-  echo "lib1 get options['_os']: {{ .options._os }}"
-  echo "lib1 get options['_arch']: {{ .options._arch }}"
-  echo "lib1 get options['_executor']: {{ .options._executor }}"
-  echo "lib1 get options['_hostname']: {{ .options._hostname }}"
-  echo "lib1 get options['_username']: {{ .options._username }}"
-  echo "lib1 get options['test']: {{ .options.test }}"
+  echo "lib1 get option['_os']: {{ .option._os }}"
+  echo "lib1 get option['_arch']: {{ .option._arch }}"
+  echo "lib1 get option['_executor']: {{ .option._executor }}"
+  echo "lib1 get option['_hostname']: {{ .option._hostname }}"
+  echo "lib1 get option['_username']: {{ .option._username }}"
+  echo "lib1 get option['test']: {{ .option.test }}"
 }

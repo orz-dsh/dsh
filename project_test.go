@@ -42,11 +42,18 @@ func TestProject1(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
+
+	inspection, err := app.Inspect()
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	logger.InfoDesc("inspect app", KV("inspection", inspection))
+
 	artifact, err := app.MakeArtifact(MakeArtifactOptions{
-		OutputDir:      "./.test1/app1/output",
-		OutputDirClear: true,
-		UseHardLink:    true,
-		Inspection:     true,
+		OutputDir:         "./.test1/app1/output",
+		OutputDirClear:    true,
+		UseHardLink:       true,
+		InspectSerializer: YamlSerializerDefault,
 	})
 	if err != nil {
 		logger.Panic("%+v", err)

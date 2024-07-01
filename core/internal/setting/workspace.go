@@ -39,7 +39,7 @@ func NewWorkspaceSetting(clean *WorkspaceCleanSetting, profile *WorkspaceProfile
 
 func LoadWorkspaceSetting(dir string) (setting *WorkspaceSetting, err error) {
 	model := &WorkspaceSettingModel{}
-	metadata, err := DeserializeFromDir(dir, []string{"workspace"}, model, false)
+	metadata, err := DeserializeDir(dir, []string{"workspace"}, model, false)
 	if err != nil {
 		return nil, ErrW(err, "load workspace setting error",
 			Reason("deserialize error"),

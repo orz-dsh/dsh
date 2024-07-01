@@ -18,22 +18,22 @@ func MapAnyByStr[E any, M map[string]E](m M) map[string]any {
 	return result
 }
 
-func MapMerge(target map[string]any, source map[string]any, modes map[string]MapMergeMode, label string, traces map[string]any) (map[string]any, map[string]any, error) {
-	if modes == nil {
-		modes = map[string]MapMergeMode{}
+func MapMerge(target map[string]any, source map[string]any, merge map[string]MapMergeMode, label string, trace map[string]any) (map[string]any, map[string]any, error) {
+	if merge == nil {
+		merge = map[string]MapMergeMode{}
 	}
-	if target != nil && modes[MapMergeModeRootKey] == MapMergeModeReplace {
+	if target != nil && merge[MapMergeModeRootKey] == MapMergeModeReplace {
 		clear(target)
 	}
-	tracer := newMapMergeTracer(label, traces)
-	target, err := mapMerge(target, source, modes, tracer, "")
+	tracer := newMapMergeTracer(label, trace)
+	target, err := mapMerge(target, source, merge, tracer, "")
 	if err != nil {
 		return nil, nil, err
 	}
-	return target, tracer.Traces, nil
+	return target, tracer.Trace, nil
 }
 
-func mapMerge(target map[string]any, source map[string]any, modes map[string]MapMergeMode, tracer *mapMergeTracer, parent string) (map[string]any, error) {
+func mapMerge(target map[string]any, source map[string]any, merge map[string]MapMergeMode, tracer *mapMergeTracer, parent string) (map[string]any, error) {
 	if target == nil {
 		target = map[string]any{}
 	}
@@ -47,16 +47,16 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 		case map[string]any:
 			sourceMap := sourceValue.(map[string]any)
 			if targetValue == nil {
-				if targetResult, err := mapMerge(nil, sourceMap, modes, tracer.empty(key), field); err != nil {
+				if targetResult, err := mapMerge(nil, sourceMap, merge, tracer.empty(key), field); err != nil {
 					return nil, err
 				} else {
 					target[key] = targetResult
 				}
 			} else if targetMap, ok := targetValue.(map[string]any); ok {
-				if mode, exist := modes[field]; exist {
+				if mode, exist := merge[field]; exist {
 					switch mode {
 					case MapMergeModeReplace:
-						if targetResult, err := mapMerge(nil, sourceMap, modes, tracer.empty(key), field); err != nil {
+						if targetResult, err := mapMerge(nil, sourceMap, merge, tracer.empty(key), field); err != nil {
 							return nil, err
 						} else {
 							target[key] = targetResult
@@ -72,7 +72,7 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 						)
 					}
 				} else {
-					if _, err := mapMerge(targetMap, sourceMap, modes, tracer.child(key), field); err != nil {
+					if _, err := mapMerge(targetMap, sourceMap, merge, tracer.child(key), field); err != nil {
 						return nil, err
 					}
 				}
@@ -88,15 +88,15 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 			sourceList := sourceValue.([]any)
 			if targetValue == nil {
 				target[key] = sourceList
-				tracer.traceNewList(key, len(sourceList))
+				tracer.addNewList(key, len(sourceList))
 			} else if targetList, ok := targetValue.([]any); ok {
-				if mode, exist := modes[field]; exist {
+				if mode, exist := merge[field]; exist {
 					if mode == MapMergeModeReplace {
 						target[key] = sourceList
-						tracer.traceNewList(key, len(sourceList))
+						tracer.addNewList(key, len(sourceList))
 					} else if mode == MapMergeModeInsert {
 						target[key] = append(sourceList, targetList...)
-						tracer.traceInsertList(key, len(sourceList))
+						tracer.addInsertList(key, len(sourceList))
 					} else {
 						return nil, ErrN("merge map error",
 							Reason("merge type invalid"),
@@ -110,7 +110,7 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 					}
 				} else {
 					target[key] = append(targetList, sourceList...)
-					tracer.traceAppendList(key, len(sourceList))
+					tracer.addAppendList(key, len(sourceList))
 				}
 			} else {
 				return nil, ErrN("merge map error",
@@ -140,7 +140,7 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 				}
 			}
 			target[key] = sourceValue
-			tracer.trace(key)
+			tracer.add(key)
 		}
 	}
 	return target, nil
@@ -149,68 +149,68 @@ func mapMerge(target map[string]any, source map[string]any, modes map[string]Map
 // region mapMergeTracer
 
 type mapMergeTracer struct {
-	Label  string
-	Traces map[string]any
+	Label string
+	Trace map[string]any
 }
 
-func newMapMergeTracer(label string, traces map[string]any) *mapMergeTracer {
-	if traces == nil {
-		traces = map[string]any{}
+func newMapMergeTracer(label string, trace map[string]any) *mapMergeTracer {
+	if trace == nil {
+		trace = map[string]any{}
 	}
 	return &mapMergeTracer{
-		Label:  label,
-		Traces: traces,
+		Label: label,
+		Trace: trace,
 	}
 }
 
 func (t *mapMergeTracer) empty(key string) *mapMergeTracer {
-	childTraces := map[string]any{}
-	t.Traces[key] = childTraces
-	return newMapMergeTracer(t.Label, childTraces)
-}
-
-func (t *mapMergeTracer) child(key string) *mapMergeTracer {
-	if childTraces, ok := t.Traces[key].(map[string]any); ok {
-		return newMapMergeTracer(t.Label, childTraces)
-	}
 	childTrace := map[string]any{}
-	t.Traces[key] = childTrace
+	t.Trace[key] = childTrace
 	return newMapMergeTracer(t.Label, childTrace)
 }
 
-func (t *mapMergeTracer) trace(key string) {
-	t.Traces[key] = t.Label
+func (t *mapMergeTracer) child(key string) *mapMergeTracer {
+	if childTrace, ok := t.Trace[key].(map[string]any); ok {
+		return newMapMergeTracer(t.Label, childTrace)
+	}
+	childTrace := map[string]any{}
+	t.Trace[key] = childTrace
+	return newMapMergeTracer(t.Label, childTrace)
 }
 
-func (t *mapMergeTracer) traceNewList(key string, len int) {
+func (t *mapMergeTracer) add(key string) {
+	t.Trace[key] = t.Label
+}
+
+func (t *mapMergeTracer) addNewList(key string, len int) {
 	var list []any
 	for i := 0; i < len; i++ {
 		list = append(list, t.Label)
 	}
-	t.Traces[key] = list
+	t.Trace[key] = list
 }
 
-func (t *mapMergeTracer) traceInsertList(key string, len int) {
+func (t *mapMergeTracer) addInsertList(key string, len int) {
 	var list []any
 	for i := 0; i < len; i++ {
 		list = append(list, t.Label)
 	}
-	if existList, ok := t.Traces[key].([]any); ok {
-		t.Traces[key] = append(list, existList...)
+	if existList, ok := t.Trace[key].([]any); ok {
+		t.Trace[key] = append(list, existList...)
 	} else {
-		t.Traces[key] = list
+		t.Trace[key] = list
 	}
 }
 
-func (t *mapMergeTracer) traceAppendList(key string, len int) {
+func (t *mapMergeTracer) addAppendList(key string, len int) {
 	var list []any
 	for i := 0; i < len; i++ {
 		list = append(list, t.Label)
 	}
-	if existList, ok := t.Traces[key].([]any); ok {
-		t.Traces[key] = append(existList, list...)
+	if existList, ok := t.Trace[key].([]any); ok {
+		t.Trace[key] = append(existList, list...)
 	} else {
-		t.Traces[key] = list
+		t.Trace[key] = list
 	}
 }
 

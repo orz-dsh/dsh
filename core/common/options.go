@@ -1,14 +1,16 @@
 package common
 
+import . "github.com/orz-dsh/dsh/utils"
+
 type WorkspaceCleanOptions struct {
 	ExcludeOutputDir string
 }
 
 type MakeArtifactOptions struct {
-	OutputDir      string
-	OutputDirClear bool
-	UseHardLink    bool
-	Inspection     bool
+	OutputDir         string
+	OutputDirClear    bool
+	UseHardLink       bool
+	InspectSerializer Serializer
 }
 
 const (

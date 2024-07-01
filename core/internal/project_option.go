@@ -29,7 +29,7 @@ func NewProjectOption(core *ApplicationCore, setting *ProjectSetting) (*ProjectO
 		items[declare.Name] = result.ParsedValue
 	}
 
-	evaluator := core.Evaluator.SetRootData("options", items)
+	evaluator := core.Evaluator.SetRootData("option", items)
 	for i := 0; i < len(setting.Option.Checks); i++ {
 		check := setting.Option.Checks[i]
 		result, err := evaluator.EvalBoolExpr(check.ExprObj)

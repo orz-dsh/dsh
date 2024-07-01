@@ -1,36 +1,36 @@
 #!/bin/sh
 
-echo "get configs string: {{ .configs.test.string }}"
-echo "get configs map item: {{ .configs.test.map.key1 }}"
+echo "get config string: {{ .config.test.string }}"
+echo "get config map item: {{ .config.test.map.key1 }}"
 
-echo "get configs deep map item: {{ .configs.test.deepMap.map1.map2.map3.key1 }}"
-{{ if index .configs.test.deepMap.map1.map2.map3 "key2" -}}
-echo "get configs deep map item: {{ .configs.test.deepMap.map1.map2.map3.key2 }}"
+echo "get config deep map item: {{ .config.test.deepMap.map1.map2.map3.key1 }}"
+{{ if index .config.test.deepMap.map1.map2.map3 "key2" -}}
+echo "get config deep map item: {{ .config.test.deepMap.map1.map2.map3.key2 }}"
 {{- else -}}
-echo "get configs deep map item: not set"
+echo "get config deep map item: not set"
 {{- end }}
 
-echo "get configs list item: {{ index .configs.test.list 1 }}"
-echo "get configs list size: {{ len .configs.test.list }}"
+echo "get config list item: {{ index .config.test.list 1 }}"
+echo "get config list size: {{ len .config.test.list }}"
 
-echo "get configs object list item: {{ (index .configs.test.objectList 0).key }}"
-echo "get configs object list len: {{ len .configs.test.objectList }}"
+echo "get config object list item: {{ (index .config.test.objectList 0).key }}"
+echo "get config object list len: {{ len .config.test.objectList }}"
 
-echo "get configs array list item: {{ index (index .configs.test.arrayList 0) 2 }}"
-echo "get configs array list len: {{ len .configs.test.arrayList }}"
+echo "get config array list item: {{ index (index .config.test.arrayList 0) 2 }}"
+echo "get config array list len: {{ len .config.test.arrayList }}"
 
-{{ if index .configs "test2" -}}
-echo "get configs test2: {{ .configs.test2 }}"
+{{ if index .config "test2" -}}
+echo "get config test2: {{ .config.test2 }}"
 {{- else -}}
-echo "get configs test2: not set"
+echo "get config test2: not set"
 {{- end }}
 
-echo "get options['_os']: {{ .options._os }}"
-echo "get options['_arch']: {{ .options._arch }}"
-echo "get options['_executor']: {{ .options._executor }}"
-echo "get options['_hostname']: {{ .options._hostname }}"
-echo "get options['_username']: {{ .options._username }}"
-echo "get options['test']: {{ .options.test }}"
+echo "get option['_os']: {{ .option._os }}"
+echo "get option['_arch']: {{ .option._arch }}"
+echo "get option['_executor']: {{ .option._executor }}"
+echo "get option['_hostname']: {{ .option._hostname }}"
+echo "get option['_username']: {{ .option._username }}"
+echo "get option['test']: {{ .option.test }}"
 
 echo "get global['var1']: {{ .global.var1 }}"
 echo "get global['var2']: {{ .global.var2 }}"

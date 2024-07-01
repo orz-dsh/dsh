@@ -1,13 +1,10 @@
 package internal
 
 import (
-	"fmt"
 	. "github.com/orz-dsh/dsh/core/common"
 	. "github.com/orz-dsh/dsh/core/internal/setting"
 	. "github.com/orz-dsh/dsh/utils"
-	"os"
 	"path/filepath"
-	"slices"
 	"time"
 )
 
@@ -19,6 +16,7 @@ type ApplicationCore struct {
 	Evaluator               *Evaluator
 	Setting                 *ApplicationSetting
 	Option                  *ApplicationOption
+	Config                  *ApplicationConfig
 	MainProjectSetting      *ProjectSetting
 	AdditionProjectSettings []*ProjectSetting
 	MainProject             *Project
@@ -26,8 +24,6 @@ type ApplicationCore struct {
 	DependencyProjects      []*Project
 	Projects                []*Project
 	projectsByName          map[string]*Project
-	Configs                 map[string]any
-	ConfigsTraces           map[string]any
 }
 
 func NewApplicationCore(workspace *WorkspaceCore, setting *ApplicationSetting, link string) (*ApplicationCore, error) {
@@ -38,7 +34,7 @@ func NewApplicationCore(workspace *WorkspaceCore, setting *ApplicationSetting, l
 
 	evaluator := workspace.Evaluator.SetData("main_project", map[string]any{
 		"name": mainProjectSetting.Name,
-		"path": mainProjectSetting.Dir,
+		"dir":  mainProjectSetting.Dir,
 	})
 
 	arguments, err := setting.Argument.GetArguments(evaluator)
@@ -182,67 +178,36 @@ func (a *ApplicationCore) loadProjects() (err error) {
 	return nil
 }
 
-func (a *ApplicationCore) MakeConfigs() (map[string]any, map[string]any, error) {
-	if a.Configs != nil {
-		return a.Configs, a.ConfigsTraces, nil
+func (a *ApplicationCore) LoadConfig() error {
+	if a.Config != nil {
+		return nil
 	}
 
 	startTime := time.Now()
-	a.Logger.Info("make configs start")
+	a.Logger.Info("make config start")
 
 	if err := a.loadProjects(); err != nil {
-		return nil, nil, ErrW(err, "make configs error",
+		return ErrW(err, "make config error",
 			Reason("load projects error"),
 			// TODO: error
 		)
 	}
 
-	var contents []*ProjectResourceConfigItemContent
-	for i := 0; i < len(a.Projects); i++ {
-		iContents, err := a.Projects[i].loadConfigContents()
-		if err != nil {
-			return nil, nil, ErrW(err, "make configs error",
-				Reason("load config contents error"),
-				// TODO: error
-				KV("project", a.Projects[i]),
-			)
-		}
-		contents = append(contents, iContents...)
+	config, err := NewApplicationConfig(a.Evaluator, a.Projects)
+	if err != nil {
+		return ErrW(err, "make config error",
+			Reason("make config error"),
+			// TODO: error
+		)
 	}
+	a.Config = config
 
-	slices.SortStableFunc(contents, func(l, r *ProjectResourceConfigItemContent) int {
-		n := l.Order - r.Order
-		if n < 0 {
-			return 1
-		} else if n > 0 {
-			return -1
-		} else {
-			return 0
-		}
-	})
-
-	configs := map[string]any{}
-	configsTraces := map[string]any{}
-	for i := 0; i < len(contents); i++ {
-		content := contents[i]
-		if err := content.merge(configs, configsTraces); err != nil {
-			return nil, nil, ErrW(err, "make configs error",
-				Reason("merge configs error"),
-				KV("file", content.file),
-			)
-		}
-	}
-
-	a.Configs = configs
-	a.ConfigsTraces = configsTraces
-
-	a.Logger.InfoDesc("make configs finish", KV("elapsed", time.Since(startTime)))
-	return a.Configs, a.ConfigsTraces, nil
+	a.Logger.InfoDesc("make config finish", KV("elapsed", time.Since(startTime)))
+	return nil
 }
 
 func (a *ApplicationCore) MakeArtifact(options MakeArtifactOptions) (artifact *ArtifactCore, err error) {
-	configs, configsTraces, err := a.MakeConfigs()
-	if err != nil {
+	if err = a.LoadConfig(); err != nil {
 		return nil, err
 	}
 
@@ -275,84 +240,24 @@ func (a *ApplicationCore) MakeArtifact(options MakeArtifactOptions) (artifact *A
 		}
 	}
 
-	evaluator := a.Evaluator.SetData("configs", configs).MergeFuncs(newProjectScriptTemplateFuncs())
-
-	inspectionPath := ""
-	if options.Inspection {
-		inspectionPath = filepath.Join(outputDir, "@inspection")
-		if err = os.MkdirAll(inspectionPath, os.ModePerm); err != nil {
-			return nil, ErrW(err, "make scripts error",
-				Reason("make inspection dir error"),
-				KV("path", inspectionPath),
-			)
-		}
-		configsTracesInspectionPath := filepath.Join(inspectionPath, "app.configs-traces.yml")
-		if err = WriteYamlFile(configsTracesInspectionPath, configsTraces); err != nil {
-			return nil, ErrW(err, "make scripts error",
-				Reason("write configs traces inspection file error"),
-				KV("path", configsTracesInspectionPath),
-			)
-		}
-		dataInspectionPath := filepath.Join(inspectionPath, "app.data.yml")
-		if err = WriteYamlFile(dataInspectionPath, evaluator.GetMap(false)); err != nil {
-			return nil, ErrW(err, "make scripts error",
-				Reason("write data inspection file error"),
-				KV("path", dataInspectionPath),
-			)
-		}
-		optionInspectionPath := filepath.Join(inspectionPath, "app.option.yml")
-		if err = WriteYamlFile(optionInspectionPath, a.Option.Inspect()); err != nil {
-			return nil, ErrW(err, "make scripts error",
-				Reason("write option inspection file error"),
-				KV("path", optionInspectionPath),
-			)
-		}
-		profileInspectionPath := filepath.Join(inspectionPath, "app.setting.yml")
-		if err = WriteYamlFile(profileInspectionPath, a.Setting.Inspect()); err != nil {
-			return nil, ErrW(err, "make scripts error",
-				Reason("write profile inspection file error"),
-				KV("path", profileInspectionPath),
-			)
-		}
-	}
-
-	if err := a.loadProjects(); err != nil {
+	if err = a.loadProjects(); err != nil {
 		return nil, ErrW(err, "make scripts error",
 			Reason("load projects error"),
 			// TODO: error
 		)
 	}
 
-	if inspectionPath != "" {
-		mainProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.main.%s.yml", a.MainProject.Name))
-		if err := WriteYamlFile(mainProjectInspectionPath, a.MainProject.inspect()); err != nil {
+	if options.InspectSerializer != nil {
+		if err = a.SaveInspection(options.InspectSerializer, outputDir); err != nil {
 			return nil, ErrW(err, "make scripts error",
-				Reason("write project inspection error"),
-				KV("project", a.MainProject),
+				Reason("save inspection error"),
 			)
-		}
-		for i := 0; i < len(a.AdditionProjects); i++ {
-			extraProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.ext-%d.%s.yml", i+1, a.AdditionProjects[i].Name))
-			if err := WriteYamlFile(extraProjectInspectionPath, a.AdditionProjects[i].inspect()); err != nil {
-				return nil, ErrW(err, "make scripts error",
-					Reason("write project inspection error"),
-					KV("project", a.AdditionProjects[i]),
-				)
-			}
-		}
-		for i := 0; i < len(a.DependencyProjects); i++ {
-			importProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.dep-%d.%s.yml", i+1, a.DependencyProjects[i].Name))
-			if err := WriteYamlFile(importProjectInspectionPath, a.DependencyProjects[i].inspect()); err != nil {
-				return nil, ErrW(err, "make scripts error",
-					Reason("write project inspection error"),
-					KV("project", a.DependencyProjects[i]),
-				)
-			}
 		}
 	}
 
+	evaluator := a.Config.Evaluator.MergeFuncs(newProjectScriptTemplateFuncs())
 	var targetNames []string
-	var targetNamesDict = map[string]bool{}
+	targetNamesDict := map[string]bool{}
 	for i := 0; i < len(a.Projects); i++ {
 		names, err := a.Projects[i].makeScripts(evaluator, outputDir, options.UseHardLink)
 		if err != nil {

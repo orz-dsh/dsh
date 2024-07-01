@@ -39,7 +39,7 @@ func NewProfileSetting(argument *ArgumentSetting, addition *AdditionSetting, exe
 
 func LoadProfileSetting(file string) (setting *ProfileSetting, error error) {
 	model := &ProfileSettingModel{}
-	metadata, err := DeserializeFromFile(file, "", model)
+	metadata, err := DeserializeFile(file, "", model)
 	if err != nil {
 		return nil, ErrW(err, "load profile setting error",
 			Reason("deserialize error"),

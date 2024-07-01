@@ -1,10 +1,10 @@
 order: 100
-merges:
+merge:
   # $root: replace
   test.deepMap.map1.map2.map3: replace
   test.list: insert
   test.objectList: replace
-configs:
+value:
   test:
     string: app1_abcd
     map:
@@ -25,3 +25,9 @@ configs:
     arrayList:
       - [ app1_1, app1_2, app1_3, app1_4, app1_5 ]
       - [ app1_6, app1_7, app1_8, app1_9, app1_10 ]
+  test2:
+    a: 1
+    b: 2
+    c:
+      c1: 1
+      c2: 2

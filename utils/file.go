@@ -203,45 +203,6 @@ func ReadJsonFile(file string, model any) error {
 	return nil
 }
 
-func WriteYamlFile(file string, model any) error {
-	data, err := yaml.Marshal(model)
-	if err != nil {
-		return ErrW(err, "write yaml file error",
-			Reason("yaml marshal error"),
-			KV("file", file),
-		)
-	}
-	return os.WriteFile(file, data, os.ModePerm)
-}
-
-func WriteTomlFile(file string, model any) error {
-	data, err := toml.Marshal(model)
-	if err != nil {
-		return ErrW(err, "write toml file error",
-			Reason("toml marshal error"),
-			KV("file", file),
-		)
-	}
-	return os.WriteFile(file, data, os.ModePerm)
-}
-
-func WriteJsonFile(file string, model any, indent bool) error {
-	var data []byte
-	var err error
-	if indent {
-		data, err = json.MarshalIndent(model, "", "    ")
-	} else {
-		data, err = json.Marshal(model)
-	}
-	if err != nil {
-		return ErrW(err, "write json file error",
-			Reason("json marshal error"),
-			KV("file", file),
-		)
-	}
-	return os.WriteFile(file, data, os.ModePerm)
-}
-
 func IsYamlFile(file string) bool {
 	return strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml")
 }

@@ -47,7 +47,7 @@ func NewProjectSetting(name, dir string, runtime *ProjectRuntimeSetting, option 
 
 func LoadProjectSetting(dir string) (setting *ProjectSetting, err error) {
 	model := &ProjectSettingModel{}
-	metadata, err := DeserializeFromDir(dir, []string{"project"}, model, true)
+	metadata, err := DeserializeDir(dir, []string{"project"}, model, true)
 	if err != nil {
 		return nil, ErrW(err, "load project setting error",
 			Reason("deserialize error"),

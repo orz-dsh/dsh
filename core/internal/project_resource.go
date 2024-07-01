@@ -249,25 +249,26 @@ func (e *ProjectResourceConfigItem) inspect() *ProjectResourceConfigItemInspecti
 // region ProjectResourceConfigItemContent
 
 type ProjectResourceConfigItemContent struct {
-	Order   int64
-	Merges  map[string]projectResourceConfigMergeMode
-	Configs map[string]any
-	file    string
+	Order int64                                     `yaml:"order" toml:"order" json:"order"`
+	Merge map[string]projectResourceConfigMergeMode `yaml:"merge,omitempty" toml:"merge,omitempty" json:"merge,omitempty"`
+	Value map[string]any                            `yaml:"value,omitempty" toml:"value,omitempty" json:"value,omitempty"`
+	file  string
 }
 
 func newProjectResourceConfigItemContentEntity(file string, format projectResourceConfigFormat) (*ProjectResourceConfigItemContent, error) {
 	content := &ProjectResourceConfigItemContent{
-		Merges: map[string]projectResourceConfigMergeMode{},
-		file:   file,
+		Merge: map[string]projectResourceConfigMergeMode{},
+		Value: map[string]any{},
+		file:  file,
 	}
-	if _, err := DeserializeFromFile(file, format, content); err != nil {
+	if _, err := DeserializeFile(file, format, content); err != nil {
 		return nil, ErrW(err, "load config sources error",
 			Reason("deserialize error"),
 			KV("file", file),
 			KV("format", format),
 		)
 	}
-	for k, v := range content.Merges {
+	for k, v := range content.Merge {
 		switch v {
 		case MapMergeModeReplace:
 		case MapMergeModeInsert:
@@ -283,8 +284,8 @@ func newProjectResourceConfigItemContentEntity(file string, format projectResour
 	return content, nil
 }
 
-func (e *ProjectResourceConfigItemContent) merge(configs map[string]any, configsTraces map[string]any) error {
-	if _, _, err := MapMerge(configs, e.Configs, e.Merges, e.file, configsTraces); err != nil {
+func (e *ProjectResourceConfigItemContent) merge(configValue map[string]any, configTraces map[string]any) error {
+	if _, _, err := MapMerge(configValue, e.Value, e.Merge, e.file, configTraces); err != nil {
 		return ErrW(err, "merge config content error",
 			KV("file", e.file),
 		)
