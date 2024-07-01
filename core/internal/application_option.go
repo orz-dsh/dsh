@@ -34,7 +34,7 @@ func (o *ApplicationOption) findAssignValue(projectName string, optionName strin
 	if assign, exist := o.Assign.Items[target]; exist {
 		if result, exist := o.Result.Items[assign.Source]; exist {
 			if assign.mapping != nil {
-				evaluator := o.evaluator.SetRootData("options", o.Common.merge(map[string]any{
+				evaluator := o.evaluator.SetRootData("option", o.Common.merge(map[string]any{
 					"value": result.ParsedValue,
 				}))
 				mappingResult, err := evaluator.EvalStringExpr(assign.mapping)
