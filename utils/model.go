@@ -15,14 +15,16 @@ type Model[R any] interface {
 // region ModelHelper
 
 type ModelHelper struct {
+	Logger    *Logger
 	Title     string
 	File      string
 	Field     string
 	Variables map[string]any
 }
 
-func NewModelHelper(title, file string) *ModelHelper {
+func NewModelHelper(logger *Logger, title, file string) *ModelHelper {
 	return &ModelHelper{
+		Logger:    logger,
 		Title:     title,
 		File:      file,
 		Variables: map[string]any{},
@@ -37,6 +39,7 @@ func (h *ModelHelper) Child(field string) *ModelHelper {
 		newField += "." + field
 	}
 	return &ModelHelper{
+		Logger:    h.Logger,
 		Title:     h.Title,
 		File:      h.File,
 		Field:     newField,
@@ -50,6 +53,7 @@ func (h *ModelHelper) ChildItem(field string, index int) *ModelHelper {
 
 func (h *ModelHelper) Item(index int) *ModelHelper {
 	return &ModelHelper{
+		Logger:    h.Logger,
 		Title:     h.Title,
 		File:      h.File,
 		Field:     fmt.Sprintf("%s[%d]", h.Field, index),
@@ -69,6 +73,15 @@ func (h *ModelHelper) GetStringVariable(key string) string {
 		Impossible()
 		return ""
 	}
+}
+
+func (h *ModelHelper) WarnValueUnsound(value any) {
+	h.Logger.WarnDesc(fmt.Sprintf("%s warn", h.Title),
+		Reason("value unsound"),
+		KV("file", h.File),
+		KV("field", h.Field),
+		KV("value", value),
+	)
 }
 
 func (h *ModelHelper) NewError(reason string, extra ...DescKeyValue) error {

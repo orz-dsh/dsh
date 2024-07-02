@@ -40,7 +40,7 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 			KV("dir", dir),
 		)
 	}
-	setting, err := LoadWorkspaceSetting(dir)
+	setting, err := LoadWorkspaceSetting(logger, dir)
 	if err != nil {
 		return nil, ErrW(err, "make workspace error",
 			Reason("load setting error"),
@@ -66,7 +66,7 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 	}
 	var profileSettings []*ProfileSetting
 	for i := 0; i < len(profiles); i++ {
-		profileSetting, err := LoadProfileSetting(profiles[i])
+		profileSetting, err := LoadProfileSetting(logger, profiles[i])
 		if err != nil {
 			return nil, err
 		}

@@ -37,7 +37,7 @@ func NewWorkspaceSetting(clean *WorkspaceCleanSetting, profile *WorkspaceProfile
 	}
 }
 
-func LoadWorkspaceSetting(dir string) (setting *WorkspaceSetting, err error) {
+func LoadWorkspaceSetting(logger *Logger, dir string) (setting *WorkspaceSetting, err error) {
 	model := &WorkspaceSettingModel{}
 	metadata, err := DeserializeDir(dir, []string{"workspace"}, model, false)
 	if err != nil {
@@ -50,7 +50,7 @@ func LoadWorkspaceSetting(dir string) (setting *WorkspaceSetting, err error) {
 	if metadata != nil {
 		file = metadata.File
 	}
-	if setting, err = model.Convert(NewModelHelper("workspace setting", file)); err != nil {
+	if setting, err = model.Convert(NewModelHelper(logger, "workspace setting", file)); err != nil {
 		return nil, err
 	}
 	return setting, nil

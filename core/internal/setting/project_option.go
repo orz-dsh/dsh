@@ -12,6 +12,11 @@ import (
 
 var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$")
 
+var projectOptionNameUnsoundsDict = map[string]bool{
+	"global": true,
+	"local":  true,
+}
+
 type ProjectOptionValueType string
 
 const (
@@ -233,6 +238,9 @@ func (m *ProjectOptionItemSettingModel) Convert(helper *ModelHelper, namesDict, 
 	}
 	if _, exist := namesDict[m.Name]; exist {
 		return nil, helper.Child("name").NewError("option name duplicated", KV("name", m.Name))
+	}
+	if projectOptionNameUnsoundsDict[m.Name] {
+		helper.Child("name").WarnValueUnsound(m.Name)
 	}
 
 	valueType := m.Type

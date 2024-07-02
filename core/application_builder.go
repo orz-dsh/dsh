@@ -37,7 +37,7 @@ func (b *ApplicationBuilder) AddProfileSettingFile(position int, file string) *A
 	if err != nil {
 		return b.addProfileSetting(position, nil, err)
 	}
-	setting, err := LoadProfileSetting(path)
+	setting, err := LoadProfileSetting(b.workspace.Logger, path)
 	if err != nil {
 		return b.addProfileSetting(position, nil, err)
 	}
@@ -67,7 +67,7 @@ func (b *ApplicationBuilder) addProfileSettingModel(position int, model *Profile
 	if b.err != nil {
 		return b
 	}
-	setting, err := model.GetSetting()
+	setting, err := model.GetSetting(b.workspace.Logger)
 	return b.addProfileSetting(position, setting, err)
 }
 

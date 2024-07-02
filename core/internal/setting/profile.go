@@ -37,7 +37,7 @@ func NewProfileSetting(argument *ArgumentSetting, addition *AdditionSetting, exe
 	}
 }
 
-func LoadProfileSetting(file string) (setting *ProfileSetting, error error) {
+func LoadProfileSetting(logger *Logger, file string) (setting *ProfileSetting, error error) {
 	model := &ProfileSettingModel{}
 	metadata, err := DeserializeFile(file, "", model)
 	if err != nil {
@@ -46,7 +46,7 @@ func LoadProfileSetting(file string) (setting *ProfileSetting, error error) {
 			KV("file", file),
 		)
 	}
-	if setting, err = model.Convert(NewModelHelper("profile setting", metadata.File)); err != nil {
+	if setting, err = model.Convert(NewModelHelper(logger, "profile setting", metadata.File)); err != nil {
 		return nil, err
 	}
 	return setting, nil
@@ -113,8 +113,8 @@ func (m *ProfileSettingModel) Convert(helper *ModelHelper) (_ *ProfileSetting, e
 	return NewProfileSetting(argument, addition, executor, registry, redirect), nil
 }
 
-func (m *ProfileSettingModel) GetSetting() (setting *ProfileSetting, err error) {
-	if setting, err = m.Convert(NewModelHelper("profile setting", "")); err != nil {
+func (m *ProfileSettingModel) GetSetting(logger *Logger) (setting *ProfileSetting, err error) {
+	if setting, err = m.Convert(NewModelHelper(logger, "profile setting", "")); err != nil {
 		return nil, err
 	}
 	return setting, nil

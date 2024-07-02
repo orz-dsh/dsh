@@ -174,7 +174,7 @@ func (s *ApplicationSetting) getProjectEntityByDir(path string) (*ProjectSetting
 
 	s.Workspace.Logger.DebugDesc("load project setting", KV("path", path))
 	var setting *ProjectSetting
-	if setting, err = LoadProjectSetting(path); err != nil {
+	if setting, err = LoadProjectSetting(s.Workspace.Logger, path); err != nil {
 		return nil, err
 	}
 	if existSetting, exist := s.projectsByName[setting.Name]; exist {

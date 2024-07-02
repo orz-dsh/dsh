@@ -45,7 +45,7 @@ func NewProjectSetting(name, dir string, runtime *ProjectRuntimeSetting, option 
 	}
 }
 
-func LoadProjectSetting(dir string) (setting *ProjectSetting, err error) {
+func LoadProjectSetting(logger *Logger, dir string) (setting *ProjectSetting, err error) {
 	model := &ProjectSettingModel{}
 	metadata, err := DeserializeDir(dir, []string{"project"}, model, true)
 	if err != nil {
@@ -54,7 +54,7 @@ func LoadProjectSetting(dir string) (setting *ProjectSetting, err error) {
 			KV("dir", dir),
 		)
 	}
-	if setting, err = model.convert(NewModelHelper("project setting", metadata.File), dir); err != nil {
+	if setting, err = model.convert(NewModelHelper(logger, "project setting", metadata.File), dir); err != nil {
 		return nil, err
 	}
 	return setting, nil
