@@ -19,6 +19,18 @@ var registryLinkCheckRegex = regexp.MustCompile("^(git|dir):.*$")
 
 var registrySettingDefault = NewRegistrySetting([]*RegistryItemSetting{
 	{
+		Name: "github",
+		Link: "git:https://github.com/{{.path}}.git#ref={{.ref}}",
+	},
+	{
+		Name: "gitlab",
+		Link: "git:https://gitlab.com/{{.path}}.git#ref={{.ref}}",
+	},
+	{
+		Name: "gitee",
+		Link: "git:https://gitee.com/{{.path}}.git#ref={{.ref}}",
+	},
+	{
 		Name: "orz-dsh",
 		Link: "git:https://github.com/orz-dsh/{{.path}}.git#ref={{.ref}}",
 	},
