@@ -32,9 +32,9 @@ func NewApplicationCore(workspace *WorkspaceCore, setting *ApplicationSetting, l
 		return nil, err
 	}
 
-	evaluator := workspace.Evaluator.SetData("main_project", map[string]any{
-		"name": mainProjectSetting.Name,
-		"dir":  mainProjectSetting.Dir,
+	evaluator := workspace.Evaluator.MergeData("local", map[string]any{
+		"project_name": mainProjectSetting.Name,
+		"project_dir":  mainProjectSetting.Dir,
 	})
 
 	arguments, err := setting.Argument.GetArguments(evaluator)

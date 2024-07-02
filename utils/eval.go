@@ -194,6 +194,13 @@ func (ds EvalDataset) SetData(name string, data map[string]any) EvalDataset {
 	return dataset
 }
 
+func (ds EvalDataset) MergeData(name string, data map[string]any) EvalDataset {
+	newData := map[string]any{}
+	maps.Copy(newData, ds[name])
+	maps.Copy(newData, data)
+	return ds.SetData(name, newData)
+}
+
 func (ds EvalDataset) MergeDataset(dataset EvalDataset) EvalDataset {
 	result := EvalDataset{}
 	maps.Copy(result, ds)
@@ -275,6 +282,14 @@ func (e *Evaluator) SetData(name string, data map[string]any) *Evaluator {
 	}
 }
 
+func (e *Evaluator) MergeData(name string, data map[string]any) *Evaluator {
+	return &Evaluator{
+		root:    e.root,
+		dataset: e.dataset.MergeData(name, data),
+		funcs:   e.funcs,
+	}
+}
+
 func (e *Evaluator) SetRootData(name string, data map[string]any) *Evaluator {
 	return &Evaluator{
 		root:    name,
@@ -325,23 +340,6 @@ func (e *Evaluator) MergeFuncs(funcs EvalFuncs) *Evaluator {
 
 func (e *Evaluator) GetMap(includeFuncs bool) map[string]any {
 	return e.dataset.ToMap(e.root, ValT(includeFuncs, e.funcs, nil))
-}
-
-func (e *Evaluator) GetFieldValue(name, field string) any {
-	if data, exist := e.dataset[name]; exist {
-		if value, exist := data[field]; exist {
-			return value
-		}
-	}
-	return nil
-}
-
-func (e *Evaluator) GetFieldString(name, field string) string {
-	value := e.GetFieldValue(name, field)
-	if value != nil {
-		return value.(string)
-	}
-	return ""
 }
 
 func (e *Evaluator) DescExtraKeyValues() KVS {

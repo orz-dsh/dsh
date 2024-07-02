@@ -13,7 +13,7 @@ dependency:
   items:
     - link: "dir:./.test1/lib1"
     - link: "dir:./.test1/lib3"
-resources:
+resource:
   items:
     - dir: script
     - dir: config

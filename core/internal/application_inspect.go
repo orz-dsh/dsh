@@ -20,7 +20,7 @@ func (a *ApplicationCore) Inspect() (*ApplicationInspection, error) {
 		)
 	}
 
-	data := a.Evaluator.GetMap(false)
+	variables := a.Evaluator.GetMap(false)
 
 	var additionProjects []*ProjectInspection
 	for i := 0; i < len(a.AdditionProjects); i++ {
@@ -33,7 +33,7 @@ func (a *ApplicationCore) Inspect() (*ApplicationInspection, error) {
 	}
 
 	inspection := NewApplicationInspection(
-		data,
+		variables,
 		a.Setting.Inspect(),
 		a.Option.Inspect(),
 		a.Config.Inspect(),
@@ -60,11 +60,11 @@ func (a *ApplicationCore) SaveInspection(serializer Serializer, outputDir string
 		)
 	}
 
-	dataInspectionPath := filepath.Join(inspectionPath, "app.data"+serializer.GetFileExt())
-	if err = serializer.SerializeFile(dataInspectionPath, inspection.Data); err != nil {
+	variableInspectionPath := filepath.Join(inspectionPath, "app.variable"+serializer.GetFileExt())
+	if err = serializer.SerializeFile(variableInspectionPath, inspection.Variables); err != nil {
 		return ErrW(err, "make scripts error",
-			Reason("write data inspection file error"),
-			KV("path", dataInspectionPath),
+			Reason("write variable inspection file error"),
+			KV("path", variableInspectionPath),
 		)
 	}
 
@@ -101,8 +101,8 @@ func (a *ApplicationCore) SaveInspection(serializer Serializer, outputDir string
 	}
 
 	for i := 0; i < len(inspection.AdditionProjects); i++ {
-		extraProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.ext-%d.%s%s", i+1, inspection.AdditionProjects[i].Name, serializer.GetFileExt()))
-		if err = serializer.SerializeFile(extraProjectInspectionPath, inspection.AdditionProjects[i]); err != nil {
+		additionProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.a%03d.%s%s", i+1, inspection.AdditionProjects[i].Name, serializer.GetFileExt()))
+		if err = serializer.SerializeFile(additionProjectInspectionPath, inspection.AdditionProjects[i]); err != nil {
 			return ErrW(err, "make scripts error",
 				Reason("write project inspection error"),
 				KV("project", inspection.AdditionProjects[i].Name),
@@ -111,7 +111,7 @@ func (a *ApplicationCore) SaveInspection(serializer Serializer, outputDir string
 	}
 
 	for i := 0; i < len(inspection.DependencyProjects); i++ {
-		importProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.dep-%d.%s%s", i+1, inspection.DependencyProjects[i].Name, serializer.GetFileExt()))
+		importProjectInspectionPath := filepath.Join(inspectionPath, fmt.Sprintf("project.d%03d.%s%s", i+1, inspection.DependencyProjects[i].Name, serializer.GetFileExt()))
 		if err = serializer.SerializeFile(importProjectInspectionPath, inspection.DependencyProjects[i]); err != nil {
 			return ErrW(err, "make scripts error",
 				Reason("write project inspection error"),
