@@ -14,9 +14,9 @@ type MakeArtifactOptions struct {
 }
 
 const (
-	OptionNameOs       = "_os"
-	OptionNameArch     = "_arch"
-	OptionNameExecutor = "_executor"
-	OptionNameHostname = "_hostname"
-	OptionNameUsername = "_username"
+	OptionNameCommonOs       = "_os"
+	OptionNameCommonArch     = "_arch"
+	OptionNameCommonExecutor = "_executor"
+	OptionNameCommonHostname = "_hostname"
+	OptionNameCommonUsername = "_username"
 )

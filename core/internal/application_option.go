@@ -168,15 +168,15 @@ type ApplicationOptionCommon struct {
 
 func NewApplicationOptionCommon(systemInfo *SystemInfo, arguments map[string]string) *ApplicationOptionCommon {
 	os := ""
-	if os = arguments[OptionNameOs]; os == "" {
+	if os = arguments[OptionNameCommonOs]; os == "" {
 		os = systemInfo.Os
 	}
 	arch := ""
-	if arch = arguments[OptionNameArch]; arch == "" {
+	if arch = arguments[OptionNameCommonArch]; arch == "" {
 		arch = systemInfo.Arch
 	}
 	executor := ""
-	if executor = arguments[OptionNameExecutor]; executor == "" {
+	if executor = arguments[OptionNameCommonExecutor]; executor == "" {
 		if os == "windows" {
 			executor = "cmd"
 		} else {
@@ -184,11 +184,11 @@ func NewApplicationOptionCommon(systemInfo *SystemInfo, arguments map[string]str
 		}
 	}
 	hostname := ""
-	if hostname = arguments[OptionNameHostname]; hostname == "" {
+	if hostname = arguments[OptionNameCommonHostname]; hostname == "" {
 		hostname = systemInfo.Os
 	}
 	username := ""
-	if username = arguments[OptionNameUsername]; username == "" {
+	if username = arguments[OptionNameCommonUsername]; username == "" {
 		username = systemInfo.Username
 	}
 	return &ApplicationOptionCommon{
@@ -201,14 +201,13 @@ func NewApplicationOptionCommon(systemInfo *SystemInfo, arguments map[string]str
 }
 
 func (c *ApplicationOptionCommon) copy() map[string]any {
-	result := map[string]any{
-		OptionNameOs:       c.Os,
-		OptionNameArch:     c.Arch,
-		OptionNameExecutor: c.Executor,
-		OptionNameHostname: c.Hostname,
-		OptionNameUsername: c.Username,
+	return map[string]any{
+		OptionNameCommonOs:       c.Os,
+		OptionNameCommonArch:     c.Arch,
+		OptionNameCommonExecutor: c.Executor,
+		OptionNameCommonHostname: c.Hostname,
+		OptionNameCommonUsername: c.Username,
 	}
-	return result
 }
 
 func (c *ApplicationOptionCommon) merge(items map[string]any) map[string]any {
