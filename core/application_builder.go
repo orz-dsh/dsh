@@ -27,8 +27,8 @@ func newAppBuilder(workspace *WorkspaceCore) *ApplicationBuilder {
 }
 
 func (b *ApplicationBuilder) AddProfileSetting(source string, position int) *ProfileSettingModelBuilder[*ApplicationBuilder] {
-	return NewProfileSettingModelBuilder(source, func(model *ProfileSettingModel) *ApplicationBuilder {
-		return b.addProfileSettingModel(position, model)
+	return NewProfileSettingModelBuilder(func(model *ProfileSettingModel) *ApplicationBuilder {
+		return b.addProfileSettingModel(source, position, model)
 	})
 }
 
@@ -63,11 +63,11 @@ func (b *ApplicationBuilder) Build(link string) (*Application, error) {
 	return newApplication(core), nil
 }
 
-func (b *ApplicationBuilder) addProfileSettingModel(position int, model *ProfileSettingModel) *ApplicationBuilder {
+func (b *ApplicationBuilder) addProfileSettingModel(source string, position int, model *ProfileSettingModel) *ApplicationBuilder {
 	if b.err != nil {
 		return b
 	}
-	setting, err := model.GetSetting(b.workspace.Logger)
+	setting, err := model.Convert(NewModelHelper(b.workspace.Logger, "profile setting", source))
 	return b.addProfileSetting(position, setting, err)
 }
 
