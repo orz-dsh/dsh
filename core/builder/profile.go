@@ -5,6 +5,7 @@ import . "github.com/orz-dsh/dsh/core/internal/setting"
 // region ProfileSettingModelBuilder
 
 type ProfileSettingModelBuilder[P any] struct {
+	source   string
 	commit   func(*ProfileSettingModel) P
 	argument *ArgumentSettingModel
 	addition *AdditionSettingModel
@@ -13,8 +14,9 @@ type ProfileSettingModelBuilder[P any] struct {
 	redirect *RedirectSettingModel
 }
 
-func NewProfileSettingModelBuilder[P any](commit func(*ProfileSettingModel) P) *ProfileSettingModelBuilder[P] {
+func NewProfileSettingModelBuilder[P any](source string, commit func(*ProfileSettingModel) P) *ProfileSettingModelBuilder[P] {
 	return &ProfileSettingModelBuilder[P]{
+		source: source,
 		commit: commit,
 	}
 }
@@ -40,7 +42,7 @@ func (b *ProfileSettingModelBuilder[P]) SetRedirectSetting() *RedirectSettingMod
 }
 
 func (b *ProfileSettingModelBuilder[P]) CommitProfileSetting() P {
-	return b.commit(NewProfileSettingModel(b.argument, b.addition, b.executor, b.registry, b.redirect))
+	return b.commit(NewProfileSettingModel(b.source, b.argument, b.addition, b.executor, b.registry, b.redirect))
 }
 
 func (b *ProfileSettingModelBuilder[P]) setArgumentSettingModel(argument *ArgumentSettingModel) *ProfileSettingModelBuilder[P] {

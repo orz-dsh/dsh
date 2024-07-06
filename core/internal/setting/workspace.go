@@ -46,11 +46,11 @@ func LoadWorkspaceSetting(logger *Logger, dir string) (setting *WorkspaceSetting
 			KV("dir", dir),
 		)
 	}
-	file := ""
+	source := "default"
 	if metadata != nil {
-		file = metadata.File
+		source = metadata.File
 	}
-	if setting, err = model.Convert(NewModelHelper(logger, "workspace setting", file)); err != nil {
+	if setting, err = model.Convert(NewModelHelper(logger, "workspace setting", source)); err != nil {
 		return nil, err
 	}
 	return setting, nil

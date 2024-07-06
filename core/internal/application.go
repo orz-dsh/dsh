@@ -98,7 +98,7 @@ func (a *ApplicationCore) loadImportProjects(project *Project, projectsDict map[
 		return nil, err
 	}
 
-	imp := project.import_
+	imp := project.dependency
 	for i := 0; i < len(imp.Items); i++ {
 		p := imp.Items[i].project
 		if !projectsDict[p.Dir] {
@@ -112,7 +112,7 @@ func (a *ApplicationCore) loadImportProjects(project *Project, projectsDict map[
 		if err = p1.loadImports(); err != nil {
 			return nil, err
 		}
-		imp1 := p1.import_
+		imp1 := p1.dependency
 		for j := 0; j < len(imp1.Items); j++ {
 			p2 := imp1.Items[j].project
 			if !projectsDict[p2.Dir] {

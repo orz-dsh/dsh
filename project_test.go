@@ -30,11 +30,12 @@ func TestProject1(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	app, err := workspace.NewAppBuilder().
-		AddProfileSetting(0).
+		AddProfileSetting("test code", 0).
 		SetArgumentSetting().
 		AddItemMap(map[string]string{
 			"_os":  "linux",
 			"test": "a",
+			"AAAA": "1",
 		}).
 		CommitArgumentSetting().
 		CommitProfileSetting().
@@ -77,7 +78,7 @@ func TestProject2(t *testing.T) {
 		logger.Panic("%+v", err)
 	}
 	_, err = workspace.NewAppBuilder().
-		AddProfileSetting(0).
+		AddProfileSetting("test code", 0).
 		SetArgumentSetting().
 		AddItemMap(map[string]string{
 			"option1": "value1",
@@ -105,7 +106,7 @@ func TestProject3(t *testing.T) {
 		options[OptionNameCommonExecutor] = "powershell"
 	}
 	app, err := workspace.NewAppBuilder().
-		AddProfileSetting(0).
+		AddProfileSetting("test code", 0).
 		SetArgumentSetting().
 		AddItemMap(options).
 		CommitArgumentSetting().

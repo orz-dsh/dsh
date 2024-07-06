@@ -57,6 +57,7 @@ func LoadProfileSetting(logger *Logger, file string) (setting *ProfileSetting, e
 // region ProfileSettingModel
 
 type ProfileSettingModel struct {
+	source   string
 	Argument *ArgumentSettingModel `yaml:"argument,omitempty" toml:"argument,omitempty" json:"argument,omitempty"`
 	Addition *AdditionSettingModel `yaml:"addition,omitempty" toml:"addition,omitempty" json:"addition,omitempty"`
 	Executor *ExecutorSettingModel `yaml:"executor,omitempty" toml:"executor,omitempty" json:"executor,omitempty"`
@@ -64,8 +65,9 @@ type ProfileSettingModel struct {
 	Redirect *RedirectSettingModel `yaml:"redirect,omitempty" toml:"redirect,omitempty" json:"redirect,omitempty"`
 }
 
-func NewProfileSettingModel(argument *ArgumentSettingModel, addition *AdditionSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *ProfileSettingModel {
+func NewProfileSettingModel(source string, argument *ArgumentSettingModel, addition *AdditionSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *ProfileSettingModel {
 	return &ProfileSettingModel{
+		source:   source,
 		Argument: argument,
 		Addition: addition,
 		Executor: executor,
@@ -114,7 +116,7 @@ func (m *ProfileSettingModel) Convert(helper *ModelHelper) (_ *ProfileSetting, e
 }
 
 func (m *ProfileSettingModel) GetSetting(logger *Logger) (setting *ProfileSetting, err error) {
-	if setting, err = m.Convert(NewModelHelper(logger, "profile setting", "")); err != nil {
+	if setting, err = m.Convert(NewModelHelper(logger, "profile setting", m.source)); err != nil {
 		return nil, err
 	}
 	return setting, nil

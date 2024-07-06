@@ -26,8 +26,8 @@ func newAppBuilder(workspace *WorkspaceCore) *ApplicationBuilder {
 	}
 }
 
-func (b *ApplicationBuilder) AddProfileSetting(position int) *ProfileSettingModelBuilder[*ApplicationBuilder] {
-	return NewProfileSettingModelBuilder(func(model *ProfileSettingModel) *ApplicationBuilder {
+func (b *ApplicationBuilder) AddProfileSetting(source string, position int) *ProfileSettingModelBuilder[*ApplicationBuilder] {
+	return NewProfileSettingModelBuilder(source, func(model *ProfileSettingModel) *ApplicationBuilder {
 		return b.addProfileSettingModel(position, model)
 	})
 }

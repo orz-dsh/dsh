@@ -17,16 +17,16 @@ type Model[R any] interface {
 type ModelHelper struct {
 	Logger    *Logger
 	Title     string
-	File      string
+	Source    string
 	Field     string
 	Variables map[string]any
 }
 
-func NewModelHelper(logger *Logger, title, file string) *ModelHelper {
+func NewModelHelper(logger *Logger, title, source string) *ModelHelper {
 	return &ModelHelper{
 		Logger:    logger,
 		Title:     title,
-		File:      file,
+		Source:    source,
 		Variables: map[string]any{},
 	}
 }
@@ -41,7 +41,7 @@ func (h *ModelHelper) Child(field string) *ModelHelper {
 	return &ModelHelper{
 		Logger:    h.Logger,
 		Title:     h.Title,
-		File:      h.File,
+		Source:    h.Source,
 		Field:     newField,
 		Variables: h.Variables,
 	}
@@ -55,7 +55,7 @@ func (h *ModelHelper) Item(index int) *ModelHelper {
 	return &ModelHelper{
 		Logger:    h.Logger,
 		Title:     h.Title,
-		File:      h.File,
+		Source:    h.Source,
 		Field:     fmt.Sprintf("%s[%d]", h.Field, index),
 		Variables: h.Variables,
 	}
@@ -78,7 +78,7 @@ func (h *ModelHelper) GetStringVariable(key string) string {
 func (h *ModelHelper) WarnValueUnsound(value any) {
 	h.Logger.WarnDesc(fmt.Sprintf("%s warn", h.Title),
 		Reason("value unsound"),
-		KV("file", h.File),
+		KV("source", h.Source),
 		KV("field", h.Field),
 		KV("value", value),
 	)
@@ -87,7 +87,7 @@ func (h *ModelHelper) WarnValueUnsound(value any) {
 func (h *ModelHelper) NewError(reason string, extra ...DescKeyValue) error {
 	kvs := KVS{
 		Reason(reason),
-		KV("file", h.File),
+		KV("source", h.Source),
 		KV("field", h.Field),
 	}
 	return NewError(1, fmt.Sprintf("%s error", h.Title), append(kvs, extra...)...)
@@ -96,7 +96,7 @@ func (h *ModelHelper) NewError(reason string, extra ...DescKeyValue) error {
 func (h *ModelHelper) WrapError(err error, reason string, extra ...DescKeyValue) error {
 	kvs := KVS{
 		Reason(reason),
-		KV("file", h.File),
+		KV("source", h.Source),
 		KV("field", h.Field),
 	}
 	return WrapError(1, err, fmt.Sprintf("%s error", h.Title), append(kvs, extra...)...)
@@ -105,7 +105,7 @@ func (h *ModelHelper) WrapError(err error, reason string, extra ...DescKeyValue)
 func (h *ModelHelper) NewValueEmptyError() error {
 	return NewError(1, fmt.Sprintf("%s error", h.Title),
 		Reason("value empty"),
-		KV("file", h.File),
+		KV("source", h.Source),
 		KV("field", h.Field),
 	)
 }
@@ -113,7 +113,7 @@ func (h *ModelHelper) NewValueEmptyError() error {
 func (h *ModelHelper) NewValueInvalidError(value any) error {
 	return NewError(1, fmt.Sprintf("%s error", h.Title),
 		Reason("value invalid"),
-		KV("file", h.File),
+		KV("source", h.Source),
 		KV("field", h.Field),
 		KV("value", value),
 	)
@@ -122,7 +122,7 @@ func (h *ModelHelper) NewValueInvalidError(value any) error {
 func (h *ModelHelper) WrapValueInvalidError(err error, value any) error {
 	return WrapError(1, err, fmt.Sprintf("%s error", h.Title),
 		Reason("value invalid"),
-		KV("file", h.File),
+		KV("source", h.Source),
 		KV("field", h.Field),
 		KV("value", value),
 	)
