@@ -35,7 +35,6 @@ func TestProject1(t *testing.T) {
 		AddItemMap(map[string]string{
 			"_os":  "linux",
 			"test": "a",
-			"AAAA": "1",
 		}).
 		CommitArgumentSetting().
 		CommitProfileSetting().
