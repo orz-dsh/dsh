@@ -47,6 +47,9 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 			KV("dir", dir),
 		)
 	}
+	// TODO: merge environment settings
+	// setting.Merge(environment.WorkspaceSetting)
+	setting.MergeDefault()
 
 	evaluator := NewEvaluator().SetData("global", variables).SetData("local", map[string]any{
 		"os":                   systemInfo.Os,

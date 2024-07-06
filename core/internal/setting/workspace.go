@@ -14,7 +14,7 @@ type WorkspaceSetting struct {
 
 func NewWorkspaceSetting(clean *WorkspaceCleanSetting, profile *WorkspaceProfileSetting, executor *ExecutorSetting, registry *RegistrySetting, redirect *RedirectSetting) *WorkspaceSetting {
 	if clean == nil {
-		clean = workspaceCleanSettingDefault
+		clean = NewWorkspaceCleanSetting(nil, nil)
 	}
 	if profile == nil {
 		profile = NewWorkspaceProfileSetting(nil)
@@ -56,6 +56,20 @@ func LoadWorkspaceSetting(logger *Logger, dir string) (setting *WorkspaceSetting
 	return setting, nil
 }
 
+func (w *WorkspaceSetting) Merge(other *WorkspaceSetting) {
+	w.Clean.Merge(other.Clean)
+	w.Profile.Merge(other.Profile)
+	w.Executor.Merge(other.Executor)
+	w.Registry.Merge(other.Registry)
+	w.Redirect.Merge(other.Redirect)
+}
+
+func (w *WorkspaceSetting) MergeDefault() {
+	w.Clean.MergeDefault()
+	w.Executor.MergeDefault()
+	w.Registry.MergeDefault()
+}
+
 // endregion
 
 // region WorkspaceSettingModel
@@ -66,6 +80,16 @@ type WorkspaceSettingModel struct {
 	Executor *ExecutorSettingModel         `yaml:"executor,omitempty" toml:"executor,omitempty" json:"executor,omitempty"`
 	Registry *RegistrySettingModel         `yaml:"registry,omitempty" toml:"registry,omitempty" json:"registry,omitempty"`
 	Redirect *RedirectSettingModel         `yaml:"redirect,omitempty" toml:"redirect,omitempty" json:"redirect,omitempty"`
+}
+
+func NewWorkspaceSettingModel(clean *WorkspaceCleanSettingModel, profile *WorkspaceProfileSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *WorkspaceSettingModel {
+	return &WorkspaceSettingModel{
+		Clean:    clean,
+		Profile:  profile,
+		Executor: executor,
+		Registry: registry,
+		Redirect: redirect,
+	}
 }
 
 func (s *WorkspaceSettingModel) Convert(helper *ModelHelper) (_ *WorkspaceSetting, err error) {

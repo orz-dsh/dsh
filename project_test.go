@@ -114,7 +114,9 @@ func TestProject3(t *testing.T) {
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	artifact, err := app.MakeArtifact(MakeArtifactOptions{})
+	artifact, err := app.MakeArtifact(MakeArtifactOptions{
+		InspectSerializer: YamlSerializerDefault,
+	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}

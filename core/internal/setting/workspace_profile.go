@@ -17,6 +17,10 @@ func NewWorkspaceProfileSetting(items []*WorkspaceProfileItemSetting) *Workspace
 	}
 }
 
+func (s *WorkspaceProfileSetting) Merge(other *WorkspaceProfileSetting) {
+	s.Items = append(s.Items, other.Items...)
+}
+
 func (s *WorkspaceProfileSetting) GetFiles(evaluator *Evaluator) ([]string, error) {
 	var files []string
 	for i := 0; i < len(s.Items); i++ {
@@ -85,6 +89,12 @@ type WorkspaceProfileSettingModel struct {
 	Items []*WorkspaceProfileItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
+func NewWorkspaceProfileSettingModel(items []*WorkspaceProfileItemSettingModel) *WorkspaceProfileSettingModel {
+	return &WorkspaceProfileSettingModel{
+		Items: items,
+	}
+}
+
 func (m *WorkspaceProfileSettingModel) Convert(helper *ModelHelper) (*WorkspaceProfileSetting, error) {
 	items, err := ConvertChildModels(helper, "items", m.Items)
 	if err != nil {
@@ -101,6 +111,14 @@ type WorkspaceProfileItemSettingModel struct {
 	File     string `yaml:"file" toml:"file" json:"file"`
 	Optional bool   `yaml:"optional,omitempty" toml:"optional,omitempty" json:"optional,omitempty"`
 	Match    string `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
+}
+
+func NewWorkspaceProfileItemSettingModel(file string, optional bool, match string) *WorkspaceProfileItemSettingModel {
+	return &WorkspaceProfileItemSettingModel{
+		File:     file,
+		Optional: optional,
+		Match:    match,
+	}
 }
 
 func (m *WorkspaceProfileItemSettingModel) Convert(helper *ModelHelper) (*WorkspaceProfileItemSetting, error) {

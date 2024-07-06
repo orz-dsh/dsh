@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/orz-dsh/dsh/core/common"
+	. "github.com/orz-dsh/dsh/core/common"
 	. "github.com/orz-dsh/dsh/core/inspection"
 	. "github.com/orz-dsh/dsh/core/internal/setting"
 	. "github.com/orz-dsh/dsh/utils"
@@ -38,9 +38,7 @@ func NewApplicationSetting(workspace *WorkspaceCore, profiles []*ProfileSetting)
 		redirect.Merge(profile.Redirect)
 	}
 	executor.Merge(workspace.Setting.Executor)
-	executor.MergeDefault()
 	registry.Merge(workspace.Setting.Registry)
-	registry.MergeDefault()
 	redirect.Merge(workspace.Setting.Redirect)
 
 	profile := &ApplicationSetting{
@@ -69,7 +67,7 @@ func (s *ApplicationSetting) GetExecutorItemSetting(name string) (*ExecutorItemS
 	return s.Executor.GetItem(name, s.Workspace.Evaluator)
 }
 
-func (s *ApplicationSetting) GetRegistryLink(registry *common.ProjectLinkRegistry) (*common.ProjectLink, error) {
+func (s *ApplicationSetting) GetRegistryLink(registry *ProjectLinkRegistry) (*ProjectLink, error) {
 	evaluator := s.Workspace.Evaluator.SetRootData("registry", map[string]any{
 		"name":    registry.Name,
 		"path":    registry.Path,
@@ -80,11 +78,11 @@ func (s *ApplicationSetting) GetRegistryLink(registry *common.ProjectLinkRegistr
 	return s.Registry.GetLink(registry.Name, evaluator)
 }
 
-func (s *ApplicationSetting) GetRedirectLink(resources []string) (*common.ProjectLink, string, error) {
+func (s *ApplicationSetting) GetRedirectLink(resources []string) (*ProjectLink, string, error) {
 	return s.Redirect.GetLink(resources, s.Workspace.Evaluator)
 }
 
-func (s *ApplicationSetting) GetProjectLinkTarget(link *common.ProjectLink) (target *common.ProjectLinkTarget, err error) {
+func (s *ApplicationSetting) GetProjectLinkTarget(link *ProjectLink) (target *ProjectLinkTarget, err error) {
 	finalLink := link
 	if link.Registry != nil {
 		registryLink, err := s.GetRegistryLink(link.Registry)
@@ -125,7 +123,7 @@ func (s *ApplicationSetting) GetProjectLinkTarget(link *common.ProjectLink) (tar
 			Impossible()
 		}
 	}
-	target = &common.ProjectLinkTarget{
+	target = &ProjectLinkTarget{
 		Link: link,
 		Dir:  path,
 		Git:  finalLink.Git,
@@ -134,7 +132,7 @@ func (s *ApplicationSetting) GetProjectLinkTarget(link *common.ProjectLink) (tar
 }
 
 func (s *ApplicationSetting) GetProjectEntityByRawLink(rawLink string) (*ProjectSetting, error) {
-	link, err := common.ParseProjectLink(rawLink)
+	link, err := ParseProjectLink(rawLink)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +143,7 @@ func (s *ApplicationSetting) GetProjectEntityByRawLink(rawLink string) (*Project
 	return s.GetProjectSettingByLinkTarget(target)
 }
 
-func (s *ApplicationSetting) GetProjectSettingByLinkTarget(target *common.ProjectLinkTarget) (*ProjectSetting, error) {
+func (s *ApplicationSetting) GetProjectSettingByLinkTarget(target *ProjectLinkTarget) (*ProjectSetting, error) {
 	if target.Git != nil {
 		return s.getProjectEntityByGit(target.Dir, target.Git.Url, target.Git.ParsedUrl, target.Git.Ref, target.Git.ParsedRef)
 	} else {
@@ -192,7 +190,7 @@ func (s *ApplicationSetting) getProjectEntityByDir(path string) (*ProjectSetting
 	return setting, nil
 }
 
-func (s *ApplicationSetting) getProjectEntityByGit(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *common.ProjectLinkGitRef) (entity *ProjectSetting, err error) {
+func (s *ApplicationSetting) getProjectEntityByGit(path string, rawUrl string, parsedUrl *url.URL, rawRef string, parsedRef *ProjectLinkGitRef) (entity *ProjectSetting, err error) {
 	if parsedUrl == nil {
 		if parsedUrl, err = url.Parse(rawUrl); err != nil {
 			return nil, ErrW(err, "load project manifest error",
@@ -203,7 +201,7 @@ func (s *ApplicationSetting) getProjectEntityByGit(path string, rawUrl string, p
 		}
 	}
 	if parsedRef == nil {
-		if parsedRef, err = common.ParseProjectLinkGitRef(rawRef); err != nil {
+		if parsedRef, err = ParseProjectLinkGitRef(rawRef); err != nil {
 			return nil, ErrW(err, "load project manifest error",
 				Reason("parse ref error"),
 				KV("url", rawUrl),

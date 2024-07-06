@@ -103,6 +103,10 @@ func (w *WorkspaceCore) CleanOutputDir(excludeOutputPath string) error {
 	var errorDirNames []string
 	var removeDirNames []string
 	var projectCounts = map[string]int{}
+
+	cleanOutputCount := *w.Setting.Clean.OutputCount
+	cleanOutputExpires := *w.Setting.Clean.OutputExpires
+
 	now := time.Now()
 	for i := 0; i < len(dirNames); i++ {
 		dirName := dirNames[i]
@@ -121,9 +125,9 @@ func (w *WorkspaceCore) CleanOutputDir(excludeOutputPath string) error {
 		} else {
 			projectCount = 1
 		}
-		if projectCount > w.Setting.Clean.OutputCount {
+		if projectCount > cleanOutputCount {
 			removeDirNames = append(removeDirNames, dirName)
-		} else if now.Sub(createTime) > w.Setting.Clean.OutputExpires {
+		} else if now.Sub(createTime) > cleanOutputExpires {
 			removeDirNames = append(removeDirNames, dirName)
 		}
 		projectCounts[projectName] = projectCount
