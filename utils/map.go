@@ -18,6 +18,28 @@ func MapAnyByStr[E any, M map[string]E](m M) map[string]any {
 	return result
 }
 
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	if m == nil {
+		return nil
+	}
+	result := make([]K, 0, len(m))
+	for k, _ := range m {
+		result = append(result, k)
+	}
+	return result
+}
+
+func MapValues[K comparable, V any](m map[K]V) []V {
+	if m == nil {
+		return nil
+	}
+	result := make([]V, 0, len(m))
+	for _, v := range m {
+		result = append(result, v)
+	}
+	return result
+}
+
 func MapMerge(target map[string]any, source map[string]any, merge map[string]MapMergeMode, label string, trace map[string]any) (map[string]any, map[string]any, error) {
 	if merge == nil {
 		merge = map[string]MapMergeMode{}

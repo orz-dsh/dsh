@@ -101,7 +101,7 @@ func (s *ProjectOptionItemSetting) ParseValue(rawValue string) (any, error) {
 	case ProjectOptionValueTypeBool:
 		parsedValue = rawValue == "true"
 	case ProjectOptionValueTypeInteger:
-		integer, err := ParseInteger(rawValue)
+		integer, err := ParseInt64(rawValue)
 		if err != nil {
 			return nil, ErrW(err, "parse option value error",
 				Reason("parse integer error"),
@@ -111,7 +111,7 @@ func (s *ProjectOptionItemSetting) ParseValue(rawValue string) (any, error) {
 		}
 		parsedValue = integer
 	case ProjectOptionValueTypeDecimal:
-		decimal, err := ParseDecimal(rawValue)
+		decimal, err := ParseFloat64(rawValue)
 		if err != nil {
 			return nil, ErrW(err, "parse option value error",
 				Reason("parse decimal error"),
