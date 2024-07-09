@@ -8,6 +8,30 @@ import (
 	"strings"
 )
 
+// region base
+
+type EnvironmentVariableSource string
+
+const (
+	EnvironmentVariableSourceAssign EnvironmentVariableSource = "assign"
+	EnvironmentVariableSourceSystem EnvironmentVariableSource = "system"
+)
+
+type EnvironmentVariableKind string
+
+const (
+	EnvironmentVariableKindArgumentItem      EnvironmentVariableKind = "argument_item"
+	EnvironmentVariableKindWorkspaceDir      EnvironmentVariableKind = "workspace_dir"
+	EnvironmentVariableKindWorkspaceClean    EnvironmentVariableKind = "workspace_clean"
+	EnvironmentVariableKindWorkspaceProfile  EnvironmentVariableKind = "workspace_profile_item"
+	EnvironmentVariableKindWorkspaceExecutor EnvironmentVariableKind = "workspace_executor_item"
+	EnvironmentVariableKindWorkspaceRegistry EnvironmentVariableKind = "workspace_registry_item"
+	EnvironmentVariableKindWorkspaceRedirect EnvironmentVariableKind = "workspace_redirect_item"
+	EnvironmentVariableKindUnknown           EnvironmentVariableKind = "unknown"
+)
+
+// endregion
+
 // region EnvironmentVariable
 
 type EnvironmentVariable struct {
@@ -20,7 +44,7 @@ func NewEnvironmentVariable(system *System, assigns map[string]string) *Environm
 	for rawKey, value := range assigns {
 		key := strings.ToLower(rawKey)
 		if !itemKeysDict[key] {
-			items = append(items, NewEnvironmentVariableItem(key, value, EnvironmentVariableItemSourceAssign))
+			items = append(items, NewEnvironmentVariableItem(key, value, EnvironmentVariableSourceAssign))
 			itemKeysDict[key] = true
 		}
 	}
@@ -28,7 +52,7 @@ func NewEnvironmentVariable(system *System, assigns map[string]string) *Environm
 		if key, matched := strings.CutPrefix(rawKey, "DSH_"); matched {
 			key = strings.ToLower(key)
 			if !itemKeysDict[key] {
-				items = append(items, NewEnvironmentVariableItem(key, value, EnvironmentVariableItemSourceSystem))
+				items = append(items, NewEnvironmentVariableItem(key, value, EnvironmentVariableSourceSystem))
 				itemKeysDict[key] = true
 			}
 		}
@@ -54,59 +78,39 @@ type EnvironmentVariableItem struct {
 	Key    string
 	Name   string
 	Value  string
-	Source EnvironmentVariableItemSource
-	Kind   EnvironmentVariableItemKind
+	Source EnvironmentVariableSource
+	Kind   EnvironmentVariableKind
 }
 
-type EnvironmentVariableItemSource string
-
-const (
-	EnvironmentVariableItemSourceAssign EnvironmentVariableItemSource = "assign"
-	EnvironmentVariableItemSourceSystem EnvironmentVariableItemSource = "system"
-)
-
-type EnvironmentVariableItemKind string
-
-const (
-	EnvironmentVariableItemKindArgumentItem      EnvironmentVariableItemKind = "argument_item"
-	EnvironmentVariableItemKindWorkspaceDir      EnvironmentVariableItemKind = "workspace_dir"
-	EnvironmentVariableItemKindWorkspaceClean    EnvironmentVariableItemKind = "workspace_clean"
-	EnvironmentVariableItemKindWorkspaceProfile  EnvironmentVariableItemKind = "workspace_profile_item"
-	EnvironmentVariableItemKindWorkspaceExecutor EnvironmentVariableItemKind = "workspace_executor_item"
-	EnvironmentVariableItemKindWorkspaceRegistry EnvironmentVariableItemKind = "workspace_registry_item"
-	EnvironmentVariableItemKindWorkspaceRedirect EnvironmentVariableItemKind = "workspace_redirect_item"
-	EnvironmentVariableItemKindUnknown           EnvironmentVariableItemKind = "unknown"
-)
-
-func NewEnvironmentVariableItem(key, value string, source EnvironmentVariableItemSource) *EnvironmentVariableItem {
-	class := EnvironmentVariableItemKindUnknown
+func NewEnvironmentVariableItem(key, value string, source EnvironmentVariableSource) *EnvironmentVariableItem {
 	name := key
+	kind := EnvironmentVariableKindUnknown
 	if key == "workspace_dir" {
-		class = EnvironmentVariableItemKindWorkspaceDir
+		kind = EnvironmentVariableKindWorkspaceDir
 	} else if key == "workspace_clean" {
-		class = EnvironmentVariableItemKindWorkspaceClean
+		kind = EnvironmentVariableKindWorkspaceClean
 	} else if str, matched := strings.CutPrefix(key, "argument_item_"); matched {
 		name = str
-		class = EnvironmentVariableItemKindArgumentItem
+		kind = EnvironmentVariableKindArgumentItem
 	} else if str, matched = strings.CutPrefix(key, "workspace_profile_item_"); matched {
 		name = str
-		class = EnvironmentVariableItemKindWorkspaceProfile
+		kind = EnvironmentVariableKindWorkspaceProfile
 	} else if str, matched = strings.CutPrefix(key, "workspace_executor_item_"); matched {
 		name = str
-		class = EnvironmentVariableItemKindWorkspaceExecutor
+		kind = EnvironmentVariableKindWorkspaceExecutor
 	} else if str, matched = strings.CutPrefix(key, "workspace_registry_item_"); matched {
 		name = str
-		class = EnvironmentVariableItemKindWorkspaceRegistry
+		kind = EnvironmentVariableKindWorkspaceRegistry
 	} else if str, matched = strings.CutPrefix(key, "workspace_redirect_item_"); matched {
 		name = str
-		class = EnvironmentVariableItemKindWorkspaceRedirect
+		kind = EnvironmentVariableKindWorkspaceRedirect
 	}
 	return &EnvironmentVariableItem{
 		Key:    key,
 		Name:   name,
 		Value:  value,
 		Source: source,
-		Kind:   class,
+		Kind:   kind,
 	}
 }
 
@@ -139,18 +143,18 @@ func NewEnvironmentVariableParsedItem[T any](item *EnvironmentVariableItem, valu
 
 // endregion
 
-// region EnvironmentVariableParsedItemSet
+// region EnvironmentVariableParsedItemSlice
 
-type EnvironmentVariableParsedItemSet[T any] []*EnvironmentVariableParsedItem[T]
+type EnvironmentVariableParsedItemSlice[T any] []*EnvironmentVariableParsedItem[T]
 
-func (s EnvironmentVariableParsedItemSet[T]) Sort() EnvironmentVariableParsedItemSet[T] {
+func (s EnvironmentVariableParsedItemSlice[T]) Sort() EnvironmentVariableParsedItemSlice[T] {
 	slices.SortStableFunc(s, func(l, r *EnvironmentVariableParsedItem[T]) int {
 		return strings.Compare(l.Name, r.Name)
 	})
 	return s
 }
 
-func (s EnvironmentVariableParsedItemSet[T]) GetValues() []T {
+func (s EnvironmentVariableParsedItemSlice[T]) GetValues() []T {
 	result := make([]T, 0, len(s))
 	for i := 0; i < len(s); i++ {
 		result = append(result, s[i].Value)

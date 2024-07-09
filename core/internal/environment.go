@@ -60,43 +60,43 @@ func (e *EnvironmentCore) BuildSetting() (*EnvironmentSetting, error) {
 	})
 	argumentBuilder := builder.SetArgumentSetting()
 	workspaceBuilder := builder.SetWorkspaceSetting()
-	workspaceProfileItems := EnvironmentVariableParsedItemSet[*WorkspaceProfileItemSettingModel]{}
-	workspaceExecutorItems := EnvironmentVariableParsedItemSet[*ExecutorItemSettingModel]{}
-	workspaceRegistryItems := EnvironmentVariableParsedItemSet[*RegistryItemSettingModel]{}
-	workspaceRedirectItems := EnvironmentVariableParsedItemSet[*RedirectItemSettingModel]{}
+	workspaceProfileItems := EnvironmentVariableParsedItemSlice[*WorkspaceProfileItemSettingModel]{}
+	workspaceExecutorItems := EnvironmentVariableParsedItemSlice[*ExecutorItemSettingModel]{}
+	workspaceRegistryItems := EnvironmentVariableParsedItemSlice[*RegistryItemSettingModel]{}
+	workspaceRedirectItems := EnvironmentVariableParsedItemSlice[*RedirectItemSettingModel]{}
 
 	for i := 0; i < len(e.Variable.Items); i++ {
 		item := e.Variable.Items[i]
 		switch item.Kind {
-		case EnvironmentVariableItemKindArgumentItem:
+		case EnvironmentVariableKindArgumentItem:
 			argumentBuilder.AddItem(item.Name, item.Value)
-		case EnvironmentVariableItemKindWorkspaceDir:
+		case EnvironmentVariableKindWorkspaceDir:
 			workspaceBuilder.SetDir(item.Value)
-		case EnvironmentVariableItemKindWorkspaceClean:
+		case EnvironmentVariableKindWorkspaceClean:
 			parsed, err := NewEnvironmentVariableParsedItem(item, &WorkspaceCleanSettingModel{})
 			if err != nil {
 				return nil, err
 			}
 			workspaceBuilder.SetCleanSetting().SetOutputModel(parsed.Value.Output).CommitCleanSetting()
-		case EnvironmentVariableItemKindWorkspaceProfile:
+		case EnvironmentVariableKindWorkspaceProfile:
 			parsed, err := NewEnvironmentVariableParsedItem(item, &WorkspaceProfileItemSettingModel{})
 			if err != nil {
 				return nil, err
 			}
 			workspaceProfileItems = append(workspaceProfileItems, parsed)
-		case EnvironmentVariableItemKindWorkspaceExecutor:
+		case EnvironmentVariableKindWorkspaceExecutor:
 			parsed, err := NewEnvironmentVariableParsedItem(item, &ExecutorItemSettingModel{})
 			if err != nil {
 				return nil, err
 			}
 			workspaceExecutorItems = append(workspaceExecutorItems, parsed)
-		case EnvironmentVariableItemKindWorkspaceRegistry:
+		case EnvironmentVariableKindWorkspaceRegistry:
 			parsed, err := NewEnvironmentVariableParsedItem(item, &RegistryItemSettingModel{})
 			if err != nil {
 				return nil, err
 			}
 			workspaceRegistryItems = append(workspaceRegistryItems, parsed)
-		case EnvironmentVariableItemKindWorkspaceRedirect:
+		case EnvironmentVariableKindWorkspaceRedirect:
 			parsed, err := NewEnvironmentVariableParsedItem(item, &RedirectItemSettingModel{})
 			if err != nil {
 				return nil, err
