@@ -5,19 +5,19 @@ import . "github.com/orz-dsh/dsh/utils"
 // region ProfileSetting
 
 type ProfileSetting struct {
-	Argument *ArgumentSetting
-	Addition *AdditionSetting
+	Argument *ProfileArgumentSetting
+	Addition *ProfileAdditionSetting
 	Executor *ExecutorSetting
 	Registry *RegistrySetting
 	Redirect *RedirectSetting
 }
 
-func NewProfileSetting(argument *ArgumentSetting, addition *AdditionSetting, executor *ExecutorSetting, registry *RegistrySetting, redirect *RedirectSetting) *ProfileSetting {
+func NewProfileSetting(argument *ProfileArgumentSetting, addition *ProfileAdditionSetting, executor *ExecutorSetting, registry *RegistrySetting, redirect *RedirectSetting) *ProfileSetting {
 	if argument == nil {
-		argument = NewArgumentSetting(nil)
+		argument = NewProfileArgumentSetting(nil)
 	}
 	if addition == nil {
-		addition = NewAdditionSetting(nil)
+		addition = NewProfileAdditionSetting(nil)
 	}
 	if executor == nil {
 		executor = NewExecutorSetting(nil)
@@ -57,14 +57,14 @@ func LoadProfileSetting(logger *Logger, file string) (setting *ProfileSetting, e
 // region ProfileSettingModel
 
 type ProfileSettingModel struct {
-	Argument *ArgumentSettingModel `yaml:"argument,omitempty" toml:"argument,omitempty" json:"argument,omitempty"`
-	Addition *AdditionSettingModel `yaml:"addition,omitempty" toml:"addition,omitempty" json:"addition,omitempty"`
-	Executor *ExecutorSettingModel `yaml:"executor,omitempty" toml:"executor,omitempty" json:"executor,omitempty"`
-	Registry *RegistrySettingModel `yaml:"registry,omitempty" toml:"registry,omitempty" json:"registry,omitempty"`
-	Redirect *RedirectSettingModel `yaml:"redirect,omitempty" toml:"redirect,omitempty" json:"redirect,omitempty"`
+	Argument *ProfileArgumentSettingModel `yaml:"argument,omitempty" toml:"argument,omitempty" json:"argument,omitempty"`
+	Addition *ProfileAdditionSettingModel `yaml:"addition,omitempty" toml:"addition,omitempty" json:"addition,omitempty"`
+	Executor *ExecutorSettingModel        `yaml:"executor,omitempty" toml:"executor,omitempty" json:"executor,omitempty"`
+	Registry *RegistrySettingModel        `yaml:"registry,omitempty" toml:"registry,omitempty" json:"registry,omitempty"`
+	Redirect *RedirectSettingModel        `yaml:"redirect,omitempty" toml:"redirect,omitempty" json:"redirect,omitempty"`
 }
 
-func NewProfileSettingModel(argument *ArgumentSettingModel, addition *AdditionSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *ProfileSettingModel {
+func NewProfileSettingModel(argument *ProfileArgumentSettingModel, addition *ProfileAdditionSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *ProfileSettingModel {
 	return &ProfileSettingModel{
 		Argument: argument,
 		Addition: addition,
@@ -75,14 +75,14 @@ func NewProfileSettingModel(argument *ArgumentSettingModel, addition *AdditionSe
 }
 
 func (m *ProfileSettingModel) Convert(helper *ModelHelper) (_ *ProfileSetting, err error) {
-	var argument *ArgumentSetting
+	var argument *ProfileArgumentSetting
 	if m.Argument != nil {
 		if argument, err = m.Argument.Convert(helper.Child("argument")); err != nil {
 			return nil, err
 		}
 	}
 
-	var addition *AdditionSetting
+	var addition *ProfileAdditionSetting
 	if m.Addition != nil {
 		if addition, err = m.Addition.Convert(helper.Child("addition")); err != nil {
 			return nil, err

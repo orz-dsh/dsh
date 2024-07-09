@@ -1,6 +1,7 @@
 package setting
 
 import (
+	. "github.com/orz-dsh/dsh/core/inspection"
 	. "github.com/orz-dsh/dsh/utils"
 	"path/filepath"
 )
@@ -61,6 +62,14 @@ func (s *WorkspaceProfileSetting) GetFiles(evaluator *Evaluator) ([]string, erro
 	return files, nil
 }
 
+func (s *WorkspaceProfileSetting) Inspect() *WorkspaceProfileSettingInspection {
+	items := make([]*WorkspaceProfileItemSettingInspection, 0, len(s.Items))
+	for i := 0; i < len(s.Items); i++ {
+		items = append(items, s.Items[i].Inspect())
+	}
+	return NewWorkspaceProfileSettingInspection(items)
+}
+
 // endregion
 
 // region WorkspaceProfileItemSetting
@@ -79,6 +88,10 @@ func NewWorkspaceProfileItemSetting(file string, optional bool, match string, ma
 		Match:    match,
 		match:    matchObj,
 	}
+}
+
+func (s *WorkspaceProfileItemSetting) Inspect() *WorkspaceProfileItemSettingInspection {
+	return NewWorkspaceProfileItemSettingInspection(s.File, s.Optional, s.Match)
 }
 
 // endregion

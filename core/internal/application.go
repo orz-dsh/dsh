@@ -12,6 +12,7 @@ import (
 
 type ApplicationCore struct {
 	Logger                  *Logger
+	Environment             *EnvironmentCore
 	Workspace               *WorkspaceCore
 	Evaluator               *Evaluator
 	Setting                 *ApplicationSetting
@@ -47,9 +48,10 @@ func NewApplicationCore(workspace *WorkspaceCore, setting *ApplicationSetting, l
 		return nil, err
 	}
 
-	option := NewApplicationOption(mainProjectSetting.Name, workspace.SystemInfo, evaluator, arguments)
+	option := NewApplicationOption(mainProjectSetting.Name, workspace.Environment.System, evaluator, arguments)
 	core := &ApplicationCore{
 		Logger:                  workspace.Logger,
+		Environment:             workspace.Environment,
 		Workspace:               workspace,
 		Evaluator:               evaluator,
 		Setting:                 setting,

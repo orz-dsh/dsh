@@ -1,22 +1,22 @@
 package inspection
 
-// region AdditionSettingInspection
+// region ProfileAdditionSettingInspection
 
-type AdditionSettingInspection struct {
-	Items []*AdditionItemSettingInspection `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+type ProfileAdditionSettingInspection struct {
+	Items []*ProfileAdditionItemSettingInspection `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func NewAdditionSettingInspection(items []*AdditionItemSettingInspection) *AdditionSettingInspection {
-	return &AdditionSettingInspection{
+func NewProfileAdditionSettingInspection(items []*ProfileAdditionItemSettingInspection) *ProfileAdditionSettingInspection {
+	return &ProfileAdditionSettingInspection{
 		Items: items,
 	}
 }
 
 // endregion
 
-// region AdditionItemSettingInspection
+// region ProfileAdditionItemSettingInspection
 
-type AdditionItemSettingInspection struct {
+type ProfileAdditionItemSettingInspection struct {
 	Name       string                              `yaml:"name" toml:"name" json:"name"`
 	Dir        string                              `yaml:"dir" toml:"dir" json:"dir"`
 	Match      string                              `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
@@ -24,8 +24,8 @@ type AdditionItemSettingInspection struct {
 	Resource   *ProjectResourceSettingInspection   `yaml:"resource,omitempty" toml:"resource,omitempty" json:"resource,omitempty"`
 }
 
-func NewAdditionItemSettingInspection(name string, dir string, match string, dependency *ProjectDependencySettingInspection, resource *ProjectResourceSettingInspection) *AdditionItemSettingInspection {
-	return &AdditionItemSettingInspection{
+func NewProfileAdditionItemSettingInspection(name, dir, match string, dependency *ProjectDependencySettingInspection, resource *ProjectResourceSettingInspection) *ProfileAdditionItemSettingInspection {
+	return &ProfileAdditionItemSettingInspection{
 		Name:       name,
 		Dir:        dir,
 		Match:      match,

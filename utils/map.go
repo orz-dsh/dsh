@@ -1,6 +1,9 @@
 package utils
 
-import "reflect"
+import (
+	"maps"
+	"reflect"
+)
 
 type MapMergeMode string
 
@@ -15,6 +18,15 @@ func MapAnyByStr[E any, M map[string]E](m M) map[string]any {
 	for k, v := range m {
 		result[k] = v
 	}
+	return result
+}
+
+func MapCopy[K comparable, V any](source map[K]V) map[K]V {
+	if source == nil {
+		return map[K]V{}
+	}
+	result := map[K]V{}
+	maps.Copy(result, source)
 	return result
 }
 

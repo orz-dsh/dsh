@@ -4,8 +4,8 @@ import . "github.com/orz-dsh/dsh/core/internal/setting"
 
 // region WorkspaceSettingModelBuilder
 
-type WorkspaceSettingModelBuilder[P any] struct {
-	commit   func(*WorkspaceSettingModel) P
+type WorkspaceSettingModelBuilder[R any] struct {
+	commit   func(*WorkspaceSettingModel) R
 	clean    *WorkspaceCleanSettingModel
 	profile  *WorkspaceProfileSettingModel
 	executor *ExecutorSettingModel
@@ -13,57 +13,57 @@ type WorkspaceSettingModelBuilder[P any] struct {
 	redirect *RedirectSettingModel
 }
 
-func NewWorkspaceSettingModelBuilder[P any](commit func(*WorkspaceSettingModel) P) *WorkspaceSettingModelBuilder[P] {
-	return &WorkspaceSettingModelBuilder[P]{
+func NewWorkspaceSettingModelBuilder[R any](commit func(*WorkspaceSettingModel) R) *WorkspaceSettingModelBuilder[R] {
+	return &WorkspaceSettingModelBuilder[R]{
 		commit: commit,
 	}
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) SetCleanSetting() *WorkspaceCleanSettingModelBuilder[*WorkspaceSettingModelBuilder[P]] {
+func (b *WorkspaceSettingModelBuilder[R]) SetCleanSetting() *WorkspaceCleanSettingModelBuilder[*WorkspaceSettingModelBuilder[R]] {
 	return NewWorkspaceCleanSettingModelBuilder(b.setCleanSettingModel)
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) SetProfileSetting() *WorkspaceProfileSettingModelBuilder[*WorkspaceSettingModelBuilder[P]] {
+func (b *WorkspaceSettingModelBuilder[R]) SetProfileSetting() *WorkspaceProfileSettingModelBuilder[*WorkspaceSettingModelBuilder[R]] {
 	return NewWorkspaceProfileSettingModelBuilder(b.setProfileSettingModel)
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) SetExecutorSetting() *ExecutorSettingModelBuilder[*WorkspaceSettingModelBuilder[P]] {
+func (b *WorkspaceSettingModelBuilder[R]) SetExecutorSetting() *ExecutorSettingModelBuilder[*WorkspaceSettingModelBuilder[R]] {
 	return NewExecutorSettingModelBuilder(b.setExecutorSettingModel)
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) SetRegistrySetting() *RegistrySettingModelBuilder[*WorkspaceSettingModelBuilder[P]] {
+func (b *WorkspaceSettingModelBuilder[R]) SetRegistrySetting() *RegistrySettingModelBuilder[*WorkspaceSettingModelBuilder[R]] {
 	return NewProfileRegistrySettingBuilder(b.setRegistrySettingModel)
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) SetRedirectSetting() *RedirectSettingModelBuilder[*WorkspaceSettingModelBuilder[P]] {
+func (b *WorkspaceSettingModelBuilder[R]) SetRedirectSetting() *RedirectSettingModelBuilder[*WorkspaceSettingModelBuilder[R]] {
 	return NewRedirectSettingModelBuilder(b.setRedirectSettingModel)
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) CommitWorkspaceSetting() P {
+func (b *WorkspaceSettingModelBuilder[R]) CommitWorkspaceSetting() R {
 	return b.commit(NewWorkspaceSettingModel(b.clean, b.profile, b.executor, b.registry, b.redirect))
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) setCleanSettingModel(clean *WorkspaceCleanSettingModel) *WorkspaceSettingModelBuilder[P] {
+func (b *WorkspaceSettingModelBuilder[R]) setCleanSettingModel(clean *WorkspaceCleanSettingModel) *WorkspaceSettingModelBuilder[R] {
 	b.clean = clean
 	return b
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) setProfileSettingModel(profile *WorkspaceProfileSettingModel) *WorkspaceSettingModelBuilder[P] {
+func (b *WorkspaceSettingModelBuilder[R]) setProfileSettingModel(profile *WorkspaceProfileSettingModel) *WorkspaceSettingModelBuilder[R] {
 	b.profile = profile
 	return b
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) setExecutorSettingModel(executor *ExecutorSettingModel) *WorkspaceSettingModelBuilder[P] {
+func (b *WorkspaceSettingModelBuilder[R]) setExecutorSettingModel(executor *ExecutorSettingModel) *WorkspaceSettingModelBuilder[R] {
 	b.executor = executor
 	return b
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) setRegistrySettingModel(registry *RegistrySettingModel) *WorkspaceSettingModelBuilder[P] {
+func (b *WorkspaceSettingModelBuilder[R]) setRegistrySettingModel(registry *RegistrySettingModel) *WorkspaceSettingModelBuilder[R] {
 	b.registry = registry
 	return b
 }
 
-func (b *WorkspaceSettingModelBuilder[P]) setRedirectSettingModel(redirect *RedirectSettingModel) *WorkspaceSettingModelBuilder[P] {
+func (b *WorkspaceSettingModelBuilder[R]) setRedirectSettingModel(redirect *RedirectSettingModel) *WorkspaceSettingModelBuilder[R] {
 	b.redirect = redirect
 	return b
 }

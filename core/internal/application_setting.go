@@ -14,8 +14,8 @@ import (
 type ApplicationSetting struct {
 	Logger         *Logger
 	Workspace      *WorkspaceCore
-	Argument       *ArgumentSetting
-	Addition       *AdditionSetting
+	Argument       *ProfileArgumentSetting
+	Addition       *ProfileAdditionSetting
 	Executor       *ExecutorSetting
 	Registry       *RegistrySetting
 	Redirect       *RedirectSetting
@@ -24,8 +24,8 @@ type ApplicationSetting struct {
 }
 
 func NewApplicationSetting(workspace *WorkspaceCore, profiles []*ProfileSetting) *ApplicationSetting {
-	argument := NewArgumentSetting(nil)
-	addition := NewAdditionSetting(nil)
+	argument := NewProfileArgumentSetting(nil)
+	addition := NewProfileAdditionSetting(nil)
 	executor := NewExecutorSetting(nil)
 	registry := NewRegistrySetting(nil)
 	redirect := NewRedirectSetting(nil)

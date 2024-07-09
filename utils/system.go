@@ -8,20 +8,21 @@ import (
 	"strings"
 )
 
-var _systemInfo *SystemInfo
+var _system *System
 
-type SystemInfo struct {
+type System struct {
 	Os         string
 	Arch       string
 	Hostname   string
 	Username   string
 	HomeDir    string
-	WorkingDir string
+	CurrentDir string
+	Variables  map[string]string
 }
 
-func GetSystemInfo() (*SystemInfo, error) {
-	if _systemInfo != nil {
-		return _systemInfo, nil
+func GetSystem() (*System, error) {
+	if _system != nil {
+		return _system, nil
 	}
 
 	hostname, err := GetSystemHostname()
@@ -36,20 +37,21 @@ func GetSystemInfo() (*SystemInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	workingDir, err := GetSystemWorkingDir()
+	CurrentDir, err := GetSystemCurrentDir()
 	if err != nil {
 		return nil, err
 	}
 
-	_systemInfo = &SystemInfo{
+	_system = &System{
 		Os:         GetSystemOs(),
 		Arch:       GetSystemArch(),
 		Hostname:   hostname,
 		Username:   username,
 		HomeDir:    homedir,
-		WorkingDir: workingDir,
+		CurrentDir: CurrentDir,
+		Variables:  GetSystemVariables(),
 	}
-	return _systemInfo, nil
+	return _system, nil
 }
 
 func GetSystemOs() string {
@@ -103,17 +105,28 @@ func GetSystemHomeDir() (string, error) {
 	return path, nil
 }
 
-func GetSystemWorkingDir() (string, error) {
+func GetSystemCurrentDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", ErrW(err, "get system working dir error")
+		return "", ErrW(err, "get system current dir error")
 	}
 	path, err := filepath.Abs(dir)
 	if err != nil {
-		return "", ErrW(err, "get system working dir error",
+		return "", ErrW(err, "get system current dir error",
 			Reason("get abs path error"),
 			KV("dir", dir),
 		)
 	}
 	return path, nil
+}
+
+func GetSystemVariables() map[string]string {
+	variables := map[string]string{}
+	for _, e := range os.Environ() {
+		equalIndex := strings.Index(e, "=")
+		key := e[:equalIndex]
+		value := e[equalIndex+1:]
+		variables[key] = value
+	}
+	return variables
 }

@@ -19,10 +19,10 @@ type ApplicationOption struct {
 	Result    *ApplicationOptionResult
 }
 
-func NewApplicationOption(projectName string, systemInfo *SystemInfo, evaluator *Evaluator, arguments map[string]string) *ApplicationOption {
+func NewApplicationOption(projectName string, system *System, evaluator *Evaluator, arguments map[string]string) *ApplicationOption {
 	return &ApplicationOption{
 		evaluator: evaluator,
-		Common:    NewApplicationOptionCommon(systemInfo, arguments),
+		Common:    NewApplicationOptionCommon(system, arguments),
 		Argument:  NewApplicationOptionArgument(projectName, arguments),
 		Assign:    NewApplicationOptionAssign(),
 		Result:    NewApplicationOptionResult(),
@@ -166,14 +166,14 @@ type ApplicationOptionCommon struct {
 	Username string
 }
 
-func NewApplicationOptionCommon(systemInfo *SystemInfo, arguments map[string]string) *ApplicationOptionCommon {
+func NewApplicationOptionCommon(system *System, arguments map[string]string) *ApplicationOptionCommon {
 	os := ""
 	if os = arguments[OptionNameCommonOs]; os == "" {
-		os = systemInfo.Os
+		os = system.Os
 	}
 	arch := ""
 	if arch = arguments[OptionNameCommonArch]; arch == "" {
-		arch = systemInfo.Arch
+		arch = system.Arch
 	}
 	executor := ""
 	if executor = arguments[OptionNameCommonExecutor]; executor == "" {
@@ -185,11 +185,11 @@ func NewApplicationOptionCommon(systemInfo *SystemInfo, arguments map[string]str
 	}
 	hostname := ""
 	if hostname = arguments[OptionNameCommonHostname]; hostname == "" {
-		hostname = systemInfo.Os
+		hostname = system.Os
 	}
 	username := ""
 	if username = arguments[OptionNameCommonUsername]; username == "" {
-		username = systemInfo.Username
+		username = system.Username
 	}
 	return &ApplicationOptionCommon{
 		Os:       os,

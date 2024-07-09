@@ -104,8 +104,8 @@ func (w *WorkspaceCore) CleanOutputDir(excludeOutputPath string) error {
 	var removeDirNames []string
 	var projectCounts = map[string]int{}
 
-	cleanOutputCount := *w.Setting.Clean.OutputCount
-	cleanOutputExpires := *w.Setting.Clean.OutputExpires
+	cleanOutputCount := *w.Setting.Clean.Output.Count
+	cleanOutputExpires := *w.Setting.Clean.Output.Expires
 
 	now := time.Now()
 	for i := 0; i < len(dirNames); i++ {

@@ -20,8 +20,6 @@ func (a *ApplicationCore) Inspect() (*ApplicationInspection, error) {
 		)
 	}
 
-	variables := a.Evaluator.GetMap(false)
-
 	var additionProjects []*ProjectInspection
 	for i := 0; i < len(a.AdditionProjects); i++ {
 		additionProjects = append(additionProjects, a.AdditionProjects[i].Inspect())
@@ -33,7 +31,12 @@ func (a *ApplicationCore) Inspect() (*ApplicationInspection, error) {
 	}
 
 	inspection := NewApplicationInspection(
-		variables,
+		a.Environment.Inspect(),
+		a.Workspace.Inspect(),
+		NewApplicationVariableInspection(
+			a.Evaluator.GetData("local"),
+			a.Evaluator.GetData("global"),
+		),
 		a.Setting.Inspect(),
 		a.Option.Inspect(),
 		a.Config.Inspect(),
@@ -60,8 +63,24 @@ func (a *ApplicationCore) SaveInspection(serializer Serializer, outputDir string
 		)
 	}
 
+	environmentInspectionPath := filepath.Join(inspectionPath, "environment"+serializer.GetFileExt())
+	if err = serializer.SerializeFile(environmentInspectionPath, inspection.Environment); err != nil {
+		return ErrW(err, "make scripts error",
+			Reason("write environment inspection file error"),
+			KV("path", environmentInspectionPath),
+		)
+	}
+
+	workspaceInspectionPath := filepath.Join(inspectionPath, "workspace"+serializer.GetFileExt())
+	if err = serializer.SerializeFile(workspaceInspectionPath, inspection.Workspace); err != nil {
+		return ErrW(err, "make scripts error",
+			Reason("write workspace inspection file error"),
+			KV("path", workspaceInspectionPath),
+		)
+	}
+
 	variableInspectionPath := filepath.Join(inspectionPath, "app.variable"+serializer.GetFileExt())
-	if err = serializer.SerializeFile(variableInspectionPath, inspection.Variables); err != nil {
+	if err = serializer.SerializeFile(variableInspectionPath, inspection.Variable); err != nil {
 		return ErrW(err, "make scripts error",
 			Reason("write variable inspection file error"),
 			KV("path", variableInspectionPath),

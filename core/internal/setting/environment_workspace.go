@@ -5,9 +5,10 @@ import (
 	. "github.com/orz-dsh/dsh/utils"
 )
 
-// region WorkspaceSetting
+// region EnvironmentWorkspaceSetting
 
-type WorkspaceSetting struct {
+type EnvironmentWorkspaceSetting struct {
+	Dir      string
 	Clean    *WorkspaceCleanSetting
 	Profile  *WorkspaceProfileSetting
 	Executor *ExecutorSetting
@@ -15,7 +16,7 @@ type WorkspaceSetting struct {
 	Redirect *RedirectSetting
 }
 
-func NewWorkspaceSetting(clean *WorkspaceCleanSetting, profile *WorkspaceProfileSetting, executor *ExecutorSetting, registry *RegistrySetting, redirect *RedirectSetting) *WorkspaceSetting {
+func NewEnvironmentWorkspaceSetting(dir string, clean *WorkspaceCleanSetting, profile *WorkspaceProfileSetting, executor *ExecutorSetting, registry *RegistrySetting, redirect *RedirectSetting) *EnvironmentWorkspaceSetting {
 	if clean == nil {
 		clean = NewWorkspaceCleanSetting(nil)
 	}
@@ -31,7 +32,8 @@ func NewWorkspaceSetting(clean *WorkspaceCleanSetting, profile *WorkspaceProfile
 	if redirect == nil {
 		redirect = NewRedirectSetting(nil)
 	}
-	return &WorkspaceSetting{
+	return &EnvironmentWorkspaceSetting{
+		Dir:      dir,
 		Clean:    clean,
 		Profile:  profile,
 		Executor: executor,
@@ -40,41 +42,13 @@ func NewWorkspaceSetting(clean *WorkspaceCleanSetting, profile *WorkspaceProfile
 	}
 }
 
-func LoadWorkspaceSetting(logger *Logger, dir string) (setting *WorkspaceSetting, err error) {
-	model := &WorkspaceSettingModel{}
-	metadata, err := DeserializeDir(dir, []string{"workspace"}, model, false)
-	if err != nil {
-		return nil, ErrW(err, "load workspace setting error",
-			Reason("deserialize error"),
-			KV("dir", dir),
-		)
-	}
-	source := "default"
-	if metadata != nil {
-		source = metadata.File
-	}
-	if setting, err = model.Convert(NewModelHelper(logger, "workspace setting", source)); err != nil {
-		return nil, err
-	}
-	return setting, nil
+func (s *EnvironmentWorkspaceSetting) GetWorkspaceSetting() *WorkspaceSetting {
+	return NewWorkspaceSetting(s.Clean, s.Profile, s.Executor, s.Registry, s.Redirect)
 }
 
-func (s *WorkspaceSetting) Merge(other *WorkspaceSetting) {
-	s.Clean.Merge(other.Clean)
-	s.Profile.Merge(other.Profile)
-	s.Executor.Merge(other.Executor)
-	s.Registry.Merge(other.Registry)
-	s.Redirect.Merge(other.Redirect)
-}
-
-func (s *WorkspaceSetting) MergeDefault() {
-	s.Clean.MergeDefault()
-	s.Executor.MergeDefault()
-	s.Registry.MergeDefault()
-}
-
-func (s *WorkspaceSetting) Inspect() *WorkspaceSettingInspection {
-	return NewWorkspaceSettingInspection(
+func (s *EnvironmentWorkspaceSetting) Inspect() *EnvironmentWorkspaceSettingInspection {
+	return NewEnvironmentWorkspaceSettingInspection(
+		s.Dir,
 		s.Clean.Inspect(),
 		s.Profile.Inspect(),
 		s.Executor.Inspect(),
@@ -85,9 +59,10 @@ func (s *WorkspaceSetting) Inspect() *WorkspaceSettingInspection {
 
 // endregion
 
-// region WorkspaceSettingModel
+// region EnvironmentWorkspaceSettingModel
 
-type WorkspaceSettingModel struct {
+type EnvironmentWorkspaceSettingModel struct {
+	Dir      string                        `yaml:"dir,omitempty" toml:"dir,omitempty" json:"dir,omitempty"`
 	Clean    *WorkspaceCleanSettingModel   `yaml:"clean,omitempty" toml:"clean,omitempty" json:"clean,omitempty"`
 	Profile  *WorkspaceProfileSettingModel `yaml:"profile,omitempty" toml:"profile,omitempty" json:"profile,omitempty"`
 	Executor *ExecutorSettingModel         `yaml:"executor,omitempty" toml:"executor,omitempty" json:"executor,omitempty"`
@@ -95,8 +70,9 @@ type WorkspaceSettingModel struct {
 	Redirect *RedirectSettingModel         `yaml:"redirect,omitempty" toml:"redirect,omitempty" json:"redirect,omitempty"`
 }
 
-func NewWorkspaceSettingModel(clean *WorkspaceCleanSettingModel, profile *WorkspaceProfileSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *WorkspaceSettingModel {
-	return &WorkspaceSettingModel{
+func NewEnvironmentWorkspaceSettingModel(dir string, clean *WorkspaceCleanSettingModel, profile *WorkspaceProfileSettingModel, executor *ExecutorSettingModel, registry *RegistrySettingModel, redirect *RedirectSettingModel) *EnvironmentWorkspaceSettingModel {
+	return &EnvironmentWorkspaceSettingModel{
+		Dir:      dir,
 		Clean:    clean,
 		Profile:  profile,
 		Executor: executor,
@@ -105,7 +81,7 @@ func NewWorkspaceSettingModel(clean *WorkspaceCleanSettingModel, profile *Worksp
 	}
 }
 
-func (m *WorkspaceSettingModel) Convert(helper *ModelHelper) (_ *WorkspaceSetting, err error) {
+func (m *EnvironmentWorkspaceSettingModel) Convert(helper *ModelHelper) (_ *EnvironmentWorkspaceSetting, err error) {
 	var clean *WorkspaceCleanSetting
 	if m.Clean != nil {
 		if clean, err = m.Clean.Convert(helper.Child("clean")); err != nil {
@@ -141,7 +117,7 @@ func (m *WorkspaceSettingModel) Convert(helper *ModelHelper) (_ *WorkspaceSettin
 		}
 	}
 
-	return NewWorkspaceSetting(clean, profile, executor, registry, redirect), nil
+	return NewEnvironmentWorkspaceSetting(m.Dir, clean, profile, executor, registry, redirect), nil
 }
 
 // endregion

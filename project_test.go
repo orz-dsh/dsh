@@ -11,21 +11,27 @@ import (
 
 func TestProject1(t *testing.T) {
 	logger := NewLogger(LogLevelAll)
-	err := os.Setenv("DSH_GLOBAL_VAR1", "global variable 1 in env")
+	err := os.Setenv("DSH_ARGUMENT_ITEM_VAR1", "global variable 1 in env")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	err = os.Setenv("DSH_GLOBAL_VAR2", "global variable 2 in env")
+	err = os.Setenv("DSH_ARGUMENT_ITEM_VAR2", "global variable 2 in env")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	global, err := MakeGlobal(logger, map[string]string{
-		"var2": "global variable 2 in map",
+	environment, err := NewEnvironment(logger, map[string]string{
+		"argument_item_var2":          "global variable 2 in map",
+		"argument_item_test01":        "value01",
+		"workspace_dir":               "./.test_workspace",
+		"workspace_clean":             "{\"output\":{\"count\":30}}",
+		"workspace_registry_item_002": "{\"name\":\"registry1\",\"link\":\"git:https://github.com\"}",
+		"workspace_registry_item_001": "{\"name\":\"registry2\",\"link\":\"git:https://github.com\"}",
+		"workspace_registry_item_1":   "{\"name\":\"registry3\",\"link\":\"git:https://github.com\"}",
 	})
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	workspace, err := NewWorkspace(global, "./.test_workspace")
+	workspace, err := NewWorkspace(environment, "")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -68,7 +74,7 @@ func TestProject1(t *testing.T) {
 
 func TestProject2(t *testing.T) {
 	logger := NewLogger(LogLevelAll)
-	global, err := MakeGlobal(logger, nil)
+	global, err := NewEnvironment(logger, nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -92,11 +98,11 @@ func TestProject2(t *testing.T) {
 
 func TestProject3(t *testing.T) {
 	logger := NewLogger(LogLevelAll)
-	global, err := MakeGlobal(logger, nil)
+	environment, err := NewEnvironment(logger, nil)
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
-	workspace, err := NewWorkspace(global, "./.test_workspace")
+	workspace, err := NewWorkspace(environment, "./.test_workspace")
 	if err != nil {
 		logger.Panic("%+v", err)
 	}
@@ -137,4 +143,21 @@ func TestProject3(t *testing.T) {
 			logger.Panic("%+v", err)
 		}
 	}
+}
+
+func TestEnvironment(t *testing.T) {
+	logger := NewLogger(LogLevelAll)
+	environment, err := NewEnvironment(logger, map[string]string{
+		"workspace_dir":               "./.test_workspace",
+		"workspace_clean":             "{\"output\":{\"count\":30}}",
+		"workspace_registry_item_002": "{\"name\":\"registry1\",\"link\":\"git:https://github.com\"}",
+		"workspace_registry_item_001": "{\"name\":\"registry2\",\"link\":\"git:https://github.com\"}",
+		"workspace_registry_item_1":   "{\"name\":\"registry3\",\"link\":\"git:https://github.com\"}",
+		"workspace_profile_item_001":  "{\"file\":\"profile1\"}",
+		"argument_item_test01":        "value01",
+	})
+	if err != nil {
+		logger.Panic("%+v", err)
+	}
+	logger.InfoDesc("test environment", KV("environment", environment))
 }

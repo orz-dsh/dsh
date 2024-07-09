@@ -274,6 +274,10 @@ func (e *Evaluator) ClearRoot() *Evaluator {
 	return e.SetRoot("")
 }
 
+func (e *Evaluator) GetData(name string) map[string]any {
+	return e.dataset[name]
+}
+
 func (e *Evaluator) SetData(name string, data map[string]any) *Evaluator {
 	return &Evaluator{
 		root:    e.root,

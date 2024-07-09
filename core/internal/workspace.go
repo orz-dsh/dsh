@@ -1,6 +1,7 @@
 package internal
 
 import (
+	. "github.com/orz-dsh/dsh/core/inspection"
 	. "github.com/orz-dsh/dsh/core/internal/setting"
 	. "github.com/orz-dsh/dsh/utils"
 	"os"
@@ -11,16 +12,16 @@ import (
 
 type WorkspaceCore struct {
 	Dir             string
+	Environment     *EnvironmentCore
 	Logger          *Logger
-	SystemInfo      *SystemInfo
 	Evaluator       *Evaluator
 	Setting         *WorkspaceSetting
 	ProfileSettings []*ProfileSetting
 }
 
-func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variables map[string]any) (core *WorkspaceCore, err error) {
+func NewWorkspaceCore(environment *EnvironmentCore, dir string) (core *WorkspaceCore, err error) {
 	if dir == "" {
-		dir = getWorkspaceDirDefault(systemInfo.HomeDir)
+		dir = environment.GetWorkspaceDir()
 	}
 
 	absPath, err := filepath.Abs(dir)
@@ -32,7 +33,7 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 	}
 	dir = absPath
 
-	logger.InfoDesc("make workspace", KV("dir", dir))
+	environment.Logger.InfoDesc("make workspace", KV("dir", dir))
 	err = os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return nil, ErrW(err, "make workspace error",
@@ -40,27 +41,19 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 			KV("dir", dir),
 		)
 	}
-	setting, err := LoadWorkspaceSetting(logger, dir)
+	setting, err := LoadWorkspaceSetting(environment.Logger, dir)
 	if err != nil {
 		return nil, ErrW(err, "make workspace error",
 			Reason("load setting error"),
 			KV("dir", dir),
 		)
 	}
-	// TODO: merge environment settings
-	// setting.Merge(environment.WorkspaceSetting)
+
+	setting.Merge(environment.Setting.Workspace.GetWorkspaceSetting())
 	setting.MergeDefault()
 
-	evaluator := NewEvaluator().SetData("global", variables).SetData("local", map[string]any{
-		"os":                   systemInfo.Os,
-		"arch":                 systemInfo.Arch,
-		"hostname":             systemInfo.Hostname,
-		"username":             systemInfo.Username,
-		"home_dir":             systemInfo.HomeDir,
-		"working_dir":          systemInfo.WorkingDir,
-		"workspace_dir":        dir,
-		"runtime_version":      GetRuntimeVersion(),
-		"runtime_version_code": GetRuntimeVersionCode(),
+	evaluator := environment.Evaluator.MergeData("local", map[string]any{
+		"workspace_dir": dir,
 	})
 
 	profiles, err := setting.Profile.GetFiles(evaluator)
@@ -69,7 +62,7 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 	}
 	var profileSettings []*ProfileSetting
 	for i := 0; i < len(profiles); i++ {
-		profileSetting, err := LoadProfileSetting(logger, profiles[i])
+		profileSetting, err := LoadProfileSetting(environment.Logger, profiles[i])
 		if err != nil {
 			return nil, err
 		}
@@ -78,8 +71,8 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 
 	core = &WorkspaceCore{
 		Dir:             dir,
-		Logger:          logger,
-		SystemInfo:      systemInfo,
+		Environment:     environment,
+		Logger:          environment.Logger,
 		Evaluator:       evaluator,
 		Setting:         setting,
 		ProfileSettings: profileSettings,
@@ -87,14 +80,8 @@ func NewWorkspaceCore(dir string, logger *Logger, systemInfo *SystemInfo, variab
 	return core, nil
 }
 
-func getWorkspaceDirDefault(homeDir string) string {
-	if path, exist := os.LookupEnv("DSH_WORKSPACE"); exist {
-		return path
-	}
-	if homeDir != "" {
-		return filepath.Join(homeDir, "dsh")
-	}
-	return filepath.Join(os.TempDir(), "dsh")
+func (w *WorkspaceCore) Inspect() *WorkspaceInspection {
+	return NewWorkspaceInspection(w.Dir, w.Setting.Inspect())
 }
 
 // endregion

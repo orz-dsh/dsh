@@ -4,23 +4,32 @@ import . "github.com/orz-dsh/dsh/core/internal/setting"
 
 // region RegistrySettingModelBuilder
 
-type RegistrySettingModelBuilder[P any] struct {
-	commit func(*RegistrySettingModel) P
+type RegistrySettingModelBuilder[R any] struct {
+	commit func(*RegistrySettingModel) R
 	items  []*RegistryItemSettingModel
 }
 
-func NewProfileRegistrySettingBuilder[P any](commit func(*RegistrySettingModel) P) *RegistrySettingModelBuilder[P] {
-	return &RegistrySettingModelBuilder[P]{
+func NewProfileRegistrySettingBuilder[R any](commit func(*RegistrySettingModel) R) *RegistrySettingModelBuilder[R] {
+	return &RegistrySettingModelBuilder[R]{
 		commit: commit,
 	}
 }
 
-func (b *RegistrySettingModelBuilder[P]) AddItem(name, link, match string) *RegistrySettingModelBuilder[P] {
-	b.items = append(b.items, NewRegistryItemSettingModel(name, link, match))
+func (b *RegistrySettingModelBuilder[R]) SetItems(items []*RegistryItemSettingModel) *RegistrySettingModelBuilder[R] {
+	b.items = items
 	return b
 }
 
-func (b *RegistrySettingModelBuilder[P]) CommitRegistrySetting() P {
+func (b *RegistrySettingModelBuilder[R]) AddItem(name, link, match string) *RegistrySettingModelBuilder[R] {
+	return b.AddItemModel(NewRegistryItemSettingModel(name, link, match))
+}
+
+func (b *RegistrySettingModelBuilder[R]) AddItemModel(item *RegistryItemSettingModel) *RegistrySettingModelBuilder[R] {
+	b.items = append(b.items, item)
+	return b
+}
+
+func (b *RegistrySettingModelBuilder[R]) CommitRegistrySetting() R {
 	return b.commit(NewRegistrySettingModel(b.items))
 }
 

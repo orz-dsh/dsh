@@ -1,6 +1,6 @@
 profile:
   items:
-    - file: "{{.local.working_dir}}/profile.yml"
+    - file: "{{.local.current_dir}}/profile.yml"
       optional: true
     - file: "{{.local.workspace_dir}}/profile.test.yml"
       optional: true

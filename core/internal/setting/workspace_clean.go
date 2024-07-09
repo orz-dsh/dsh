@@ -1,6 +1,7 @@
 package setting
 
 import (
+	. "github.com/orz-dsh/dsh/core/inspection"
 	. "github.com/orz-dsh/dsh/utils"
 	"time"
 )
@@ -15,35 +16,70 @@ var workspaceCleanOutputExpiresDefault = 24 * time.Hour
 // region WorkspaceCleanSetting
 
 type WorkspaceCleanSetting struct {
-	OutputCount   *int
-	OutputExpires *time.Duration
+	Output *WorkspaceCleanOutputSetting
 }
 
-func NewWorkspaceCleanSetting(outputCount *int, outputExpires *time.Duration) *WorkspaceCleanSetting {
+func NewWorkspaceCleanSetting(output *WorkspaceCleanOutputSetting) *WorkspaceCleanSetting {
+	if output == nil {
+		output = NewWorkspaceCleanOutputSetting(nil, nil)
+	}
 	return &WorkspaceCleanSetting{
-		OutputCount:   outputCount,
-		OutputExpires: outputExpires,
+		Output: output,
 	}
 }
 
 func (s *WorkspaceCleanSetting) Merge(other *WorkspaceCleanSetting) *WorkspaceCleanSetting {
-	if s.OutputCount == nil {
-		s.OutputCount = other.OutputCount
-	}
-	if s.OutputExpires == nil {
-		s.OutputExpires = other.OutputExpires
-	}
+	s.Output.Merge(other.Output)
 	return s
 }
 
 func (s *WorkspaceCleanSetting) MergeDefault() *WorkspaceCleanSetting {
-	if s.OutputCount == nil {
-		s.OutputCount = &workspaceCleanOutputCountDefault
+	s.Output.MergeDefault()
+	return s
+}
+
+func (s *WorkspaceCleanSetting) Inspect() *WorkspaceCleanSettingInspection {
+	return NewWorkspaceCleanSettingInspection(s.Output.Inspect())
+}
+
+// endregion
+
+// region WorkspaceCleanOutputSetting
+
+type WorkspaceCleanOutputSetting struct {
+	Count   *int
+	Expires *time.Duration
+}
+
+func NewWorkspaceCleanOutputSetting(count *int, expires *time.Duration) *WorkspaceCleanOutputSetting {
+	return &WorkspaceCleanOutputSetting{
+		Count:   count,
+		Expires: expires,
 	}
-	if s.OutputExpires == nil {
-		s.OutputExpires = &workspaceCleanOutputExpiresDefault
+}
+
+func (s *WorkspaceCleanOutputSetting) Merge(other *WorkspaceCleanOutputSetting) *WorkspaceCleanOutputSetting {
+	if s.Count == nil {
+		s.Count = other.Count
+	}
+	if s.Expires == nil {
+		s.Expires = other.Expires
 	}
 	return s
+}
+
+func (s *WorkspaceCleanOutputSetting) MergeDefault() *WorkspaceCleanOutputSetting {
+	if s.Count == nil {
+		s.Count = &workspaceCleanOutputCountDefault
+	}
+	if s.Expires == nil {
+		s.Expires = &workspaceCleanOutputExpiresDefault
+	}
+	return s
+}
+
+func (s *WorkspaceCleanOutputSetting) Inspect() *WorkspaceCleanOutputSettingInspection {
+	return NewWorkspaceCleanOutputSettingInspection(s.Count, s.Expires)
 }
 
 // endregion
@@ -61,15 +97,14 @@ func NewWorkspaceCleanSettingModel(output *WorkspaceCleanOutputSettingModel) *Wo
 }
 
 func (m *WorkspaceCleanSettingModel) Convert(helper *ModelHelper) (_ *WorkspaceCleanSetting, err error) {
-	var outputCount *int
-	var outputExpires *time.Duration
+	var output *WorkspaceCleanOutputSetting
 	if m.Output != nil {
-		outputCount, outputExpires, err = m.Output.Convert(helper.Child("output"))
+		output, err = m.Output.Convert(helper.Child("output"))
 		if err != nil {
 			return nil, err
 		}
 	}
-	return NewWorkspaceCleanSetting(outputCount, outputExpires), nil
+	return NewWorkspaceCleanSetting(output), nil
 }
 
 // endregion
@@ -88,12 +123,12 @@ func NewWorkspaceCleanOutputSettingModel(count *int, expires string) *WorkspaceC
 	}
 }
 
-func (m *WorkspaceCleanOutputSettingModel) Convert(helper *ModelHelper) (*int, *time.Duration, error) {
+func (m *WorkspaceCleanOutputSettingModel) Convert(helper *ModelHelper) (*WorkspaceCleanOutputSetting, error) {
 	var count *int
 	if m.Count != nil {
 		value := *m.Count
 		if value <= 0 {
-			return nil, nil, helper.Child("count").NewValueInvalidError(value)
+			return nil, helper.Child("count").NewValueInvalidError(value)
 		}
 		count = &value
 	}
@@ -102,12 +137,12 @@ func (m *WorkspaceCleanOutputSettingModel) Convert(helper *ModelHelper) (*int, *
 	if m.Expires != "" {
 		value, err := time.ParseDuration(m.Expires)
 		if err != nil {
-			return nil, nil, helper.Child("expires").WrapValueInvalidError(err, m.Expires)
+			return nil, helper.Child("expires").WrapValueInvalidError(err, m.Expires)
 		}
 		expires = &value
 	}
 
-	return count, expires, nil
+	return NewWorkspaceCleanOutputSetting(count, expires), nil
 }
 
 // endregion

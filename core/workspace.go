@@ -10,8 +10,8 @@ type Workspace struct {
 	core *WorkspaceCore
 }
 
-func NewWorkspace(global *Global, dir string) (workspace *Workspace, err error) {
-	core, err := NewWorkspaceCore(dir, global.logger, global.systemInfo, global.variables)
+func NewWorkspace(environment *Environment, dir string) (workspace *Workspace, err error) {
+	core, err := NewWorkspaceCore(environment.core, dir)
 	if err != nil {
 		return nil, err
 	}

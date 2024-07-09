@@ -6,23 +6,23 @@ import (
 	"path/filepath"
 )
 
-// region AdditionSetting
+// region ProfileAdditionSetting
 
-type AdditionSetting struct {
-	Items []*AdditionItemSetting
+type ProfileAdditionSetting struct {
+	Items []*ProfileAdditionItemSetting
 }
 
-func NewAdditionSetting(items []*AdditionItemSetting) *AdditionSetting {
-	return &AdditionSetting{
+func NewProfileAdditionSetting(items []*ProfileAdditionItemSetting) *ProfileAdditionSetting {
+	return &ProfileAdditionSetting{
 		Items: items,
 	}
 }
 
-func (s *AdditionSetting) Merge(other *AdditionSetting) {
+func (s *ProfileAdditionSetting) Merge(other *ProfileAdditionSetting) {
 	s.Items = append(s.Items, other.Items...)
 }
 
-func (s *AdditionSetting) GetProjectSettings(evaluator *Evaluator) ([]*ProjectSetting, error) {
+func (s *ProfileAdditionSetting) GetProjectSettings(evaluator *Evaluator) ([]*ProjectSetting, error) {
 	var result []*ProjectSetting
 	for i := len(s.Items) - 1; i >= 0; i-- {
 		item := s.Items[i]
@@ -58,19 +58,19 @@ func (s *AdditionSetting) GetProjectSettings(evaluator *Evaluator) ([]*ProjectSe
 	return result, nil
 }
 
-func (s *AdditionSetting) Inspect() *AdditionSettingInspection {
-	var items []*AdditionItemSettingInspection
+func (s *ProfileAdditionSetting) Inspect() *ProfileAdditionSettingInspection {
+	var items []*ProfileAdditionItemSettingInspection
 	for i := 0; i < len(s.Items); i++ {
 		items = append(items, s.Items[i].Inspect())
 	}
-	return NewAdditionSettingInspection(items)
+	return NewProfileAdditionSettingInspection(items)
 }
 
 // endregion
 
-// region AdditionItemSetting
+// region ProfileAdditionItemSetting
 
-type AdditionItemSetting struct {
+type ProfileAdditionItemSetting struct {
 	Name       string
 	Dir        string
 	Match      string
@@ -79,14 +79,14 @@ type AdditionItemSetting struct {
 	match      *EvalExpr
 }
 
-func NewAdditionItemSetting(name, dir, match string, dependency *ProjectDependencySetting, resource *ProjectResourceSetting, matchObj *EvalExpr) *AdditionItemSetting {
+func NewProfileAdditionItemSetting(name, dir, match string, dependency *ProjectDependencySetting, resource *ProjectResourceSetting, matchObj *EvalExpr) *ProfileAdditionItemSetting {
 	if dependency == nil {
 		dependency = NewProjectDependencySetting(nil)
 	}
 	if resource == nil {
 		resource = NewProjectResourceSetting(nil)
 	}
-	return &AdditionItemSetting{
+	return &ProfileAdditionItemSetting{
 		Name:       name,
 		Dir:        dir,
 		Match:      match,
@@ -96,37 +96,37 @@ func NewAdditionItemSetting(name, dir, match string, dependency *ProjectDependen
 	}
 }
 
-func (s *AdditionItemSetting) Inspect() *AdditionItemSettingInspection {
-	return NewAdditionItemSettingInspection(s.Name, s.Dir, s.Match, s.Dependency.Inspect(), s.Resource.Inspect())
+func (s *ProfileAdditionItemSetting) Inspect() *ProfileAdditionItemSettingInspection {
+	return NewProfileAdditionItemSettingInspection(s.Name, s.Dir, s.Match, s.Dependency.Inspect(), s.Resource.Inspect())
 }
 
 // endregion
 
-// region AdditionSettingModel
+// region ProfileAdditionSettingModel
 
-type AdditionSettingModel struct {
-	Items []*AdditionItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+type ProfileAdditionSettingModel struct {
+	Items []*ProfileAdditionItemSettingModel `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func NewAdditionSettingModel(items []*AdditionItemSettingModel) *AdditionSettingModel {
-	return &AdditionSettingModel{
+func NewProfileAdditionSettingModel(items []*ProfileAdditionItemSettingModel) *ProfileAdditionSettingModel {
+	return &ProfileAdditionSettingModel{
 		Items: items,
 	}
 }
 
-func (m *AdditionSettingModel) Convert(helper *ModelHelper) (*AdditionSetting, error) {
+func (m *ProfileAdditionSettingModel) Convert(helper *ModelHelper) (*ProfileAdditionSetting, error) {
 	items, err := ConvertChildModels(helper, "items", m.Items)
 	if err != nil {
 		return nil, err
 	}
-	return NewAdditionSetting(items), nil
+	return NewProfileAdditionSetting(items), nil
 }
 
 // endregion
 
-// region AdditionItemSettingModel
+// region ProfileAdditionItemSettingModel
 
-type AdditionItemSettingModel struct {
+type ProfileAdditionItemSettingModel struct {
 	Name       string                         `yaml:"name" toml:"name" json:"name"`
 	Dir        string                         `yaml:"dir" toml:"dir" json:"dir"`
 	Match      string                         `yaml:"match,omitempty" toml:"match,omitempty" json:"match,omitempty"`
@@ -134,8 +134,8 @@ type AdditionItemSettingModel struct {
 	Resource   *ProjectResourceSettingModel   `yaml:"resource,omitempty" toml:"resource,omitempty" json:"resource,omitempty"`
 }
 
-func NewAdditionItemSettingModel(name, dir, match string, dependency *ProjectDependencySettingModel, resource *ProjectResourceSettingModel) *AdditionItemSettingModel {
-	return &AdditionItemSettingModel{
+func NewProfileAdditionItemSettingModel(name, dir, match string, dependency *ProjectDependencySettingModel, resource *ProjectResourceSettingModel) *ProfileAdditionItemSettingModel {
+	return &ProfileAdditionItemSettingModel{
 		Name:       name,
 		Dir:        dir,
 		Match:      match,
@@ -144,7 +144,7 @@ func NewAdditionItemSettingModel(name, dir, match string, dependency *ProjectDep
 	}
 }
 
-func (m *AdditionItemSettingModel) Convert(helper *ModelHelper) (_ *AdditionItemSetting, err error) {
+func (m *ProfileAdditionItemSettingModel) Convert(helper *ModelHelper) (_ *ProfileAdditionItemSetting, err error) {
 	if m.Name == "" {
 		return nil, helper.Child("name").NewValueEmptyError()
 	}
@@ -175,7 +175,7 @@ func (m *AdditionItemSettingModel) Convert(helper *ModelHelper) (_ *AdditionItem
 		return nil, err
 	}
 
-	return NewAdditionItemSetting(m.Name, m.Dir, m.Match, dependency, resource, matchObj), nil
+	return NewProfileAdditionItemSetting(m.Name, m.Dir, m.Match, dependency, resource, matchObj), nil
 }
 
 // endregion
