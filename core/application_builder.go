@@ -16,13 +16,9 @@ type ApplicationBuilder struct {
 }
 
 func newAppBuilder(workspace *WorkspaceCore) *ApplicationBuilder {
-	var profileSettings []*ProfileSetting
-	for i := 0; i < len(workspace.ProfileSettings); i++ {
-		profileSettings = append(profileSettings, workspace.ProfileSettings[i])
-	}
 	return &ApplicationBuilder{
 		workspace:       workspace,
-		profileSettings: profileSettings,
+		profileSettings: slices.Clone(workspace.ProfileSettings),
 	}
 }
 
@@ -34,6 +30,7 @@ func (b *ApplicationBuilder) AddProfileSetting(source string, position int) *Pro
 
 func (b *ApplicationBuilder) AddProfileSettingFile(position int, file string) *ApplicationBuilder {
 	path, err := filepath.Abs(file)
+	// TODO: error
 	if err != nil {
 		return b.addProfileSetting(position, nil, err)
 	}
