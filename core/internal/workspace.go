@@ -12,8 +12,8 @@ import (
 
 type WorkspaceCore struct {
 	Dir             string
-	Environment     *EnvironmentCore
 	Logger          *Logger
+	Environment     *EnvironmentCore
 	Evaluator       *Evaluator
 	Setting         *WorkspaceSetting
 	ProfileSettings []*ProfileSetting
@@ -26,35 +26,35 @@ func NewWorkspaceCore(environment *EnvironmentCore, dir string) (core *Workspace
 
 	absPath, err := filepath.Abs(dir)
 	if err != nil {
-		return nil, ErrW(err, "make workspace error",
+		return nil, ErrW(err, "new workspace error",
 			Reason("get abs-path error"),
 			KV("dir", dir),
 		)
 	}
 	dir = absPath
 
-	environment.Logger.InfoDesc("make workspace", KV("dir", dir))
+	environment.Logger.InfoDesc("new workspace", KV("dir", dir))
 	err = os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		return nil, ErrW(err, "make workspace error",
+		return nil, ErrW(err, "new workspace error",
 			Reason("make dir error"),
 			KV("dir", dir),
 		)
 	}
-	setting, err := LoadWorkspaceSetting(environment.Logger, dir)
-	if err != nil {
-		return nil, ErrW(err, "make workspace error",
-			Reason("load setting error"),
-			KV("dir", dir),
-		)
-	}
-
-	setting.Merge(environment.Setting.Workspace.GetWorkspaceSetting())
-	setting.MergeDefault()
 
 	evaluator := environment.Evaluator.MergeData("local", map[string]any{
 		"workspace_dir": dir,
 	})
+
+	setting, err := LoadWorkspaceSetting(environment.Logger, dir)
+	if err != nil {
+		return nil, ErrW(err, "new workspace error",
+			Reason("load setting error"),
+			KV("dir", dir),
+		)
+	}
+	setting.Merge(environment.Setting.Workspace.GetWorkspaceSetting())
+	setting.MergeDefault()
 
 	profiles, err := setting.Profile.GetFiles(evaluator)
 	if err != nil {
@@ -71,8 +71,8 @@ func NewWorkspaceCore(environment *EnvironmentCore, dir string) (core *Workspace
 
 	core = &WorkspaceCore{
 		Dir:             dir,
-		Environment:     environment,
 		Logger:          environment.Logger,
+		Environment:     environment,
 		Evaluator:       evaluator,
 		Setting:         setting,
 		ProfileSettings: profileSettings,

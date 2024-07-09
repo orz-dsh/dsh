@@ -21,7 +21,7 @@ type EnvironmentCore struct {
 func NewEnvironmentCore(logger *Logger, assigns map[string]string) (*EnvironmentCore, error) {
 	system, err := GetSystem()
 	if err != nil {
-		return nil, ErrW(err, "environment error",
+		return nil, ErrW(err, "new environment error",
 			Reason("get system error"),
 		)
 	}
@@ -33,7 +33,7 @@ func NewEnvironmentCore(logger *Logger, assigns map[string]string) (*Environment
 
 	setting, err := core.BuildSetting()
 	if err != nil {
-		return nil, ErrW(err, "environment error",
+		return nil, ErrW(err, "new environment error",
 			Reason("build setting error"),
 		)
 	}
