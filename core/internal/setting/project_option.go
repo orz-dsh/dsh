@@ -1,16 +1,15 @@
 package setting
 
 import (
-	"encoding/json"
 	. "github.com/orz-dsh/dsh/utils"
 	"regexp"
-	"slices"
-	"strings"
 )
 
 // region base
 
 var projectOptionNameCheckRegex = regexp.MustCompile("^[a-z][a-z0-9_]*[a-z0-9]$")
+
+var projectOptionExportCheckRegex = regexp.MustCompile("^@?[a-z][a-z0-9_]*[a-z0-9].[a-z][a-z0-9_]*[a-z0-9]$")
 
 var projectOptionNameUnsoundDict = map[string]bool{
 	"option": true,
@@ -18,16 +17,7 @@ var projectOptionNameUnsoundDict = map[string]bool{
 	"local":  true,
 }
 
-type ProjectOptionValueType string
-
-const (
-	ProjectOptionValueTypeString  ProjectOptionValueType = "string"
-	ProjectOptionValueTypeBool    ProjectOptionValueType = "bool"
-	ProjectOptionValueTypeInteger ProjectOptionValueType = "integer"
-	ProjectOptionValueTypeDecimal ProjectOptionValueType = "decimal"
-	ProjectOptionValueTypeObject  ProjectOptionValueType = "object"
-	ProjectOptionValueTypeArray   ProjectOptionValueType = "array"
-)
+type ProjectOptionValueType = CastType
 
 // endregion
 
@@ -50,118 +40,112 @@ func NewProjectOptionSetting(items []*ProjectOptionItemSetting, checks []*Projec
 // region ProjectOptionItemSetting
 
 type ProjectOptionItemSetting struct {
-	Name               string
-	ValueType          ProjectOptionValueType
-	ValueChoices       []string
-	Optional           bool
-	DefaultRawValue    string
-	DefaultParsedValue any
-	Assigns            []*ProjectOptionAssignSetting
+	Name     string
+	Type     ProjectOptionValueType
+	Usage    string
+	Export   string
+	Hidden   bool
+	Compute  string
+	Default  any
+	Choices  []any
+	Optional bool
 }
 
-func NewProjectOptionItemSetting(name string, valueType ProjectOptionValueType, valueChoices []string, optional bool) *ProjectOptionItemSetting {
+func NewProjectOptionItemSetting(name string, typ ProjectOptionValueType, usage, export string, hidden bool, compute string, optional bool) *ProjectOptionItemSetting {
 	return &ProjectOptionItemSetting{
-		Name:         name,
-		ValueType:    valueType,
-		ValueChoices: valueChoices,
-		Optional:     optional,
+		Name:     name,
+		Type:     typ,
+		Usage:    usage,
+		Export:   export,
+		Hidden:   hidden,
+		Compute:  compute,
+		Optional: optional,
 	}
 }
 
-func (s *ProjectOptionItemSetting) setDefaultValue(defaultValue *string) error {
-	if defaultValue != nil {
-		defaultRawValue := *defaultValue
-		defaultParsedValue, err := s.ParseValue(defaultRawValue)
+func (s *ProjectOptionItemSetting) setChoices(choices []string) error {
+	if choices != nil {
+		result, err := CastSlice(choices, s.Type)
 		if err != nil {
-			return err
+			return ErrW(err, "parse option choices error",
+				Reason("cast error"),
+				KV("name", s.Name),
+				KV("choices", choices),
+				KV("type", s.Type),
+			)
 		}
-		s.DefaultRawValue = defaultRawValue
-		s.DefaultParsedValue = defaultParsedValue
+		s.Choices = result
 	}
 	return nil
 }
 
-func (s *ProjectOptionItemSetting) addAssign(assign *ProjectOptionAssignSetting) {
-	s.Assigns = append(s.Assigns, assign)
-}
-
-func (s *ProjectOptionItemSetting) ParseValue(rawValue string) (any, error) {
-	if len(s.ValueChoices) > 0 && !slices.Contains(s.ValueChoices, rawValue) {
-		return nil, ErrN("parse option value error",
+func (s *ProjectOptionItemSetting) checkChoices(value any) error {
+	if len(s.Choices) > 0 {
+		for i := 0; i < len(s.Choices); i++ {
+			// TODO: check object、array
+			if s.Choices[i] == value {
+				return nil
+			}
+		}
+		return ErrN("check option choices error",
 			Reason("not in choices"),
 			KV("name", s.Name),
-			KV("value", rawValue),
-			KV("choices", s.ValueChoices),
+			KV("value", value),
+			KV("choices", s.Choices),
 		)
 	}
-	var parsedValue any = nil
-	switch s.ValueType {
-	case ProjectOptionValueTypeString:
-		parsedValue = rawValue
-	case ProjectOptionValueTypeBool:
-		parsedValue = rawValue == "true"
-	case ProjectOptionValueTypeInteger:
-		integer, err := ParseInt64(rawValue)
-		if err != nil {
-			return nil, ErrW(err, "parse option value error",
-				Reason("parse integer error"),
-				KV("name", s.Name),
-				KV("value", rawValue),
-			)
-		}
-		parsedValue = integer
-	case ProjectOptionValueTypeDecimal:
-		decimal, err := ParseFloat64(rawValue)
-		if err != nil {
-			return nil, ErrW(err, "parse option value error",
-				Reason("parse decimal error"),
-				KV("name", s.Name),
-				KV("value", rawValue),
-			)
-		}
-		parsedValue = decimal
-	case ProjectOptionValueTypeObject:
-		var object map[string]any
-		if err := json.Unmarshal([]byte(rawValue), &object); err != nil {
-			return nil, ErrW(err, "parse option value error",
-				Reason("parse object error"),
-				KV("name", s.Name),
-				KV("value", rawValue),
-			)
-		}
-		parsedValue = object
-	case ProjectOptionValueTypeArray:
-		var array []any
-		if err := json.Unmarshal([]byte(rawValue), &array); err != nil {
-			return nil, ErrW(err, "parse option value error",
-				Reason("parse array error"),
-				KV("name", s.Name),
-				KV("value", rawValue),
-			)
-		}
-		parsedValue = array
-	default:
-		Impossible()
-	}
-	return parsedValue, nil
+	return nil
 }
 
-// endregion
-
-// region ProjectOptionAssignSetting
-
-type ProjectOptionAssignSetting struct {
-	Target     string
-	Mapping    string
-	MappingObj *EvalExpr
+func (s *ProjectOptionItemSetting) setDefault(value *string) error {
+	if value != nil {
+		result, err := Cast(*value, s.Type)
+		if err != nil {
+			return ErrW(err, "parse option value error",
+				Reason("cast error"),
+				KV("name", s.Name),
+				KV("value", value),
+				KV("type", s.Type),
+			)
+		}
+		if err = s.checkChoices(result); err != nil {
+			return ErrW(err, "option default error", Reason("check choices error"))
+		}
+		s.Default = result
+	}
+	return nil
 }
 
-func NewProjectOptionAssignSetting(target, mapping string, mappingObj *EvalExpr) *ProjectOptionAssignSetting {
-	return &ProjectOptionAssignSetting{
-		Target:     target,
-		Mapping:    mapping,
-		MappingObj: mappingObj,
+func (s *ProjectOptionItemSetting) ParseValue(value string) (any, error) {
+	result, err := Cast(value, s.Type)
+	if err != nil {
+		return nil, ErrW(err, "parse option value error",
+			Reason("cast value error"),
+			KV("name", s.Name),
+			KV("value", value),
+			KV("type", s.Type),
+		)
 	}
+	if err = s.checkChoices(result); err != nil {
+		return nil, ErrW(err, "parse option value error", Reason("check choices error"))
+	}
+	return result, nil
+}
+
+func (s *ProjectOptionItemSetting) ComputeValue(evaluator *Evaluator) (any, error) {
+	result, err := evaluator.EvalExpr(s.Compute, s.Type)
+	if err != nil {
+		return nil, ErrW(err, "compute option value error",
+			Reason("eval expr error"),
+			KV("name", s.Name),
+			KV("compute", s.Compute),
+			KV("type", s.Type),
+		)
+	}
+	if err = s.checkChoices(result); err != nil {
+		return nil, ErrW(err, "compute option value error", Reason("check choices error"))
+	}
+	return result, nil
 }
 
 // endregion
@@ -169,14 +153,12 @@ func NewProjectOptionAssignSetting(target, mapping string, mappingObj *EvalExpr)
 // region ProjectOptionCheckSetting
 
 type ProjectOptionCheckSetting struct {
-	Expr    string
-	ExprObj *EvalExpr
+	Expr string
 }
 
-func NewProjectOptionCheckSetting(expr string, exprObj *EvalExpr) *ProjectOptionCheckSetting {
+func NewProjectOptionCheckSetting(expr string) *ProjectOptionCheckSetting {
 	return &ProjectOptionCheckSetting{
-		Expr:    expr,
-		ExprObj: exprObj,
+		Expr: expr,
 	}
 }
 
@@ -192,9 +174,9 @@ type ProjectOptionSettingModel struct {
 func (m *ProjectOptionSettingModel) Convert(helper *ModelHelper) (*ProjectOptionSetting, error) {
 	var items []*ProjectOptionItemSetting
 	namesDict := map[string]bool{}
-	assignTargetsDict := map[string]bool{}
+	exportsDict := map[string]bool{}
 	for i := 0; i < len(m.Items); i++ {
-		item, err := m.Items[i].Convert(helper.ChildItem("items", i), namesDict, assignTargetsDict)
+		item, err := m.Items[i].Convert(helper.ChildItem("items", i), namesDict, exportsDict)
 		if err != nil {
 			return nil, err
 		}
@@ -207,11 +189,7 @@ func (m *ProjectOptionSettingModel) Convert(helper *ModelHelper) (*ProjectOption
 		if expr == "" {
 			return nil, helper.ChildItem("checks", i).NewValueEmptyError()
 		}
-		exprObj, err := CompileExpr(expr)
-		if err != nil {
-			return nil, helper.ChildItem("checks", i).WrapValueInvalidError(err, expr)
-		}
-		checks = append(checks, NewProjectOptionCheckSetting(expr, exprObj))
+		checks = append(checks, NewProjectOptionCheckSetting(expr))
 	}
 
 	return NewProjectOptionSetting(items, checks), nil
@@ -222,94 +200,75 @@ func (m *ProjectOptionSettingModel) Convert(helper *ModelHelper) (*ProjectOption
 // region ProjectOptionItemSettingModel
 
 type ProjectOptionItemSettingModel struct {
-	Name     string                             `yaml:"name" toml:"name" json:"name"`
-	Type     ProjectOptionValueType             `yaml:"type,omitempty" toml:"type,omitempty" json:"type,omitempty"`
-	Choices  []string                           `yaml:"choices,omitempty" toml:"choices,omitempty" json:"choices,omitempty"`
-	Default  *string                            `yaml:"default,omitempty" toml:"default,omitempty" json:"default,omitempty"`
-	Optional bool                               `yaml:"optional,omitempty" toml:"optional,omitempty" json:"optional,omitempty"`
-	Assigns  []*ProjectOptionAssignSettingModel `yaml:"assigns,omitempty" toml:"assigns,omitempty" json:"assigns,omitempty"`
+	Name     string                 `yaml:"name" toml:"name" json:"name"`
+	Type     ProjectOptionValueType `yaml:"type,omitempty" toml:"type,omitempty" json:"type,omitempty"`
+	Usage    string                 `yaml:"usage,omitempty" toml:"usage,omitempty" json:"usage,omitempty"`
+	Export   string                 `yaml:"export,omitempty" toml:"export,omitempty" json:"export,omitempty"`
+	Hidden   bool                   `yaml:"hidden,omitempty" toml:"hidden,omitempty" json:"hidden,omitempty"`
+	Compute  string                 `yaml:"compute,omitempty" toml:"compute,omitempty" json:"compute,omitempty"`
+	Default  *string                `yaml:"default,omitempty" toml:"default,omitempty" json:"default,omitempty"`
+	Choices  []string               `yaml:"choices,omitempty" toml:"choices,omitempty" json:"choices,omitempty"`
+	Optional bool                   `yaml:"optional,omitempty" toml:"optional,omitempty" json:"optional,omitempty"`
 }
 
-func (m *ProjectOptionItemSettingModel) Convert(helper *ModelHelper, namesDict, assignTargetsDict map[string]bool) (*ProjectOptionItemSetting, error) {
+func (m *ProjectOptionItemSettingModel) Convert(helper *ModelHelper, namesDict, exportsDict map[string]bool) (*ProjectOptionItemSetting, error) {
 	if m.Name == "" {
 		return nil, helper.Child("name").NewValueEmptyError()
 	}
 	if !projectOptionNameCheckRegex.MatchString(m.Name) {
 		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
-	if _, exist := namesDict[m.Name]; exist {
+	if namesDict[m.Name] {
 		return nil, helper.Child("name").NewError("option name duplicated", KV("name", m.Name))
 	}
 	if projectOptionNameUnsoundDict[m.Name] {
 		helper.Child("name").WarnValueUnsound(m.Name)
 	}
 
-	valueType := m.Type
-	if valueType == "" {
-		valueType = ProjectOptionValueTypeString
+	typ := m.Type
+	if typ == "" {
+		typ = CastTypeString
 	}
-	switch valueType {
-	case ProjectOptionValueTypeString:
-	case ProjectOptionValueTypeBool:
-	case ProjectOptionValueTypeInteger:
-	case ProjectOptionValueTypeDecimal:
-	case ProjectOptionValueTypeObject:
-	case ProjectOptionValueTypeArray:
+	switch typ {
+	case CastTypeString:
+	case CastTypeBool:
+	case CastTypeInteger:
+	case CastTypeDecimal:
+	case CastTypeObject:
+	case CastTypeArray:
 	default:
-		return nil, helper.Child("type").NewValueInvalidError(m.Type)
-	}
-
-	setting := NewProjectOptionItemSetting(m.Name, valueType, m.Choices, m.Optional)
-	if err := setting.setDefaultValue(m.Default); err != nil {
-		return nil, helper.Child("default").WrapValueInvalidError(err, *m.Default)
-	}
-
-	for i := 0; i < len(m.Assigns); i++ {
-		if assignSetting, err := m.Assigns[i].convert(helper.ChildItem("assigns", i), assignTargetsDict); err != nil {
-			return nil, err
-		} else {
-			setting.addAssign(assignSetting)
-		}
-	}
-
-	namesDict[m.Name] = true
-	return setting, nil
-}
-
-// endregion
-
-// region ProjectOptionAssignSettingModel
-
-type ProjectOptionAssignSettingModel struct {
-	Target  string `yaml:"target" toml:"target" json:"target"`
-	Mapping string `yaml:"mapping,omitempty" toml:"mapping,omitempty" json:"mapping,omitempty"`
-}
-
-func (m *ProjectOptionAssignSettingModel) convert(helper *ModelHelper, targetsDict map[string]bool) (*ProjectOptionAssignSetting, error) {
-	if m.Target == "" {
-		return nil, helper.Child("target").NewValueEmptyError()
-	}
-
-	if strings.Count(m.Target, ".") != 1 {
-		return nil, helper.Child("target").NewValueInvalidError(m.Target)
+		return nil, helper.Child("type").NewValueInvalidError(typ)
 	}
 
 	projectName := helper.GetStringVariable("projectName")
-	if projectName != "" && strings.HasPrefix(m.Target, projectName+".") {
-		return nil, helper.Child("target").NewError("can not assign to self project option", KV("target", m.Target))
+	export := m.Export
+	if export == "" {
+		export = projectName + "." + m.Name
+	}
+	if !projectOptionExportCheckRegex.MatchString(export) {
+		return nil, helper.Child("export").NewValueInvalidError(export)
+	}
+	if exportsDict[export] {
+		return nil, helper.Child("export").NewError("option export duplicated", KV("export", export))
 	}
 
-	if _, exists := targetsDict[m.Target]; exists {
-		return nil, helper.NewError("option assign target duplicated", KV("target", m.Target))
+	setting := NewProjectOptionItemSetting(m.Name, typ, m.Usage, export, m.Hidden, m.Compute, m.Optional)
+
+	if err := setting.setChoices(m.Choices); err != nil {
+		return nil, helper.Child("choices").WrapValueInvalidError(err, m.Choices)
 	}
 
-	mappingObj, err := helper.ConvertEvalExpr("mapping", m.Mapping)
-	if err != nil {
-		return nil, err
+	if setting.Compute == "" {
+		if err := setting.setDefault(m.Default); err != nil {
+			return nil, helper.Child("default").WrapValueInvalidError(err, m.Default)
+		}
+	} else if m.Default != nil {
+		return nil, helper.Child("default").NewError("option compute and default conflict")
 	}
 
-	targetsDict[m.Target] = true
-	return NewProjectOptionAssignSetting(m.Target, m.Mapping, mappingObj), nil
+	namesDict[m.Name] = true
+	exportsDict[export] = true
+	return setting, nil
 }
 
 // endregion

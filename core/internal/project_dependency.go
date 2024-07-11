@@ -25,7 +25,7 @@ func NewProjectDependency(context *ApplicationCore, setting *ProjectSetting, opt
 	}
 	for i := 0; i < len(setting.Dependency.Items); i++ {
 		importSetting := setting.Dependency.Items[i]
-		matched, err := option.evaluator.EvalBoolExpr(importSetting.MatchObj)
+		matched, err := option.evaluator.EvalBoolExpr(importSetting.Match)
 		if err != nil {
 			return nil, err
 		}

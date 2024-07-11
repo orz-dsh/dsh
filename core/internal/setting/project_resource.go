@@ -34,16 +34,14 @@ type ProjectResourceItemSetting struct {
 	Includes []string
 	Excludes []string
 	Match    string
-	MatchObj *EvalExpr
 }
 
-func NewProjectResourceItemSetting(dir string, includes, excludes []string, match string, matchObj *EvalExpr) *ProjectResourceItemSetting {
+func NewProjectResourceItemSetting(dir string, includes, excludes []string, match string) *ProjectResourceItemSetting {
 	return &ProjectResourceItemSetting{
 		Dir:      dir,
 		Includes: includes,
 		Excludes: excludes,
 		Match:    match,
-		MatchObj: matchObj,
 	}
 }
 
@@ -106,12 +104,7 @@ func (m *ProjectResourceItemSettingModel) Convert(helper *ModelHelper) (*Project
 		return nil, err
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProjectResourceItemSetting(m.Dir, m.Includes, m.Excludes, m.Match, matchObj), nil
+	return NewProjectResourceItemSetting(m.Dir, m.Includes, m.Excludes, m.Match), nil
 }
 
 // endregion

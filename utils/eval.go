@@ -1,114 +1,40 @@
 package utils
 
 import (
-	"encoding/json"
 	"github.com/expr-lang/expr"
-	"github.com/expr-lang/expr/vm"
 	"maps"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strconv"
 	"strings"
 	"text/template"
 )
 
-type EvalExpr = vm.Program
-
-func CompileExpr(content string) (*EvalExpr, error) {
-	program, err := expr.Compile(content)
+func EvalExpr(str string, data map[string]any, cast CastType) (any, error) {
+	program, err := expr.Compile(str, expr.Env(data))
 	if err != nil {
-		return nil, ErrW(err, "compile expr error", KV("content", content))
-	}
-	return program, nil
-}
-
-func EvalBoolExpr(program *EvalExpr, data map[string]any) (bool, error) {
-	result, err := expr.Run(program, data)
-	if err != nil {
-		return false, ErrW(err, "eval bool expr error",
-			Reason("eval expr error"),
-			KV("program", program.Source().Content()),
+		return nil, ErrW(err, "eval expr error",
+			Reason("compile expr error"),
+			KV("str", str),
 			KV("data", data),
 		)
 	}
-	if result != nil {
-		switch result.(type) {
-		case bool:
-			return result.(bool), nil
-		case string:
-			return result.(string) != "", nil
-		case int:
-			return result.(int) != 0, nil
-		case uint:
-			return result.(uint) != 0, nil
-		case float64:
-			return result.(float64) != 0, nil
-		case []any:
-			return len(result.([]any)) > 0, nil
-		case map[string]any:
-			return len(result.(map[string]any)) > 0, nil
-		default:
-			return false, ErrN("eval bool expr error",
-				Reason("unsupported result type"),
-				KV("result", result),
-				KV("resultType", reflect.TypeOf(result)),
-			)
-		}
-	}
-	return false, nil
-}
-
-func EvalStringExpr(program *EvalExpr, data map[string]any) (*string, error) {
 	result, err := expr.Run(program, data)
 	if err != nil {
-		return nil, ErrW(err, "eval string expr error",
+		return nil, ErrW(err, "eval expr error",
 			Reason("eval expr error"),
-			KV("program", program.Source().Content()),
+			KV("str", str),
 			KV("data", data),
 		)
 	}
-	if result != nil {
-		var str string
-		switch result.(type) {
-		case bool:
-			str = strconv.FormatBool(result.(bool))
-		case string:
-			str = result.(string)
-		case int:
-			str = strconv.Itoa(result.(int))
-		case uint:
-			str = strconv.FormatUint(uint64(result.(uint)), 10)
-		case float64:
-			str = strconv.FormatFloat(result.(float64), 'f', -1, 64)
-		case []any:
-			if bytes, err := json.Marshal(result.([]any)); err != nil {
-				return nil, ErrW(err, "eval string expr error",
-					Reason("array result marshal json error"),
-					KV("result", result),
-				)
-			} else {
-				str = string(bytes)
-			}
-		case map[string]any:
-			if bytes, err := json.Marshal(result.(map[string]any)); err != nil {
-				return nil, ErrW(err, "eval string expr error",
-					Reason("map result marshal json error"),
-					KV("result", result),
-				)
-			} else {
-				str = string(bytes)
-			}
-		default:
-			return nil, ErrN("eval string expr error",
-				Reason("unsupported result type"),
-				KV("result", result),
-				KV("resultType", reflect.TypeOf(result)),
-			)
-		}
-		return &str, nil
+	castResult, err := Cast(result, cast)
+	if err != nil {
+		return nil, ErrW(err, "eval expr error",
+			Reason("cast result error"),
+			KV("result", result),
+			KV("cast", cast),
+		)
 	}
-	return nil, nil
+	return castResult, nil
 }
 
 func EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string, data map[string]any, funcs template.FuncMap) error {
@@ -354,18 +280,24 @@ func (e *Evaluator) DescExtraKeyValues() KVS {
 	}
 }
 
-func (e *Evaluator) EvalBoolExpr(expr *EvalExpr) (bool, error) {
-	if expr == nil {
-		return true, nil
-	}
-	return EvalBoolExpr(expr, e.GetMap(true))
-}
-
-func (e *Evaluator) EvalStringExpr(expr *EvalExpr) (*string, error) {
-	if expr == nil {
+func (e *Evaluator) EvalExpr(expr string, cast CastType) (any, error) {
+	if expr == "" {
 		return nil, nil
 	}
-	return EvalStringExpr(expr, e.GetMap(true))
+	return EvalExpr(expr, e.GetMap(true), cast)
+}
+
+func (e *Evaluator) EvalBoolExpr(expr string) (bool, error) {
+	if expr == "" {
+		return true, nil
+	}
+	if result, err := EvalExpr(expr, e.GetMap(true), CastTypeBool); err != nil {
+		return false, err
+	} else if result == nil {
+		return false, nil
+	} else {
+		return result.(bool), nil
+	}
 }
 
 func (e *Evaluator) EvalFileTemplate(inputPath string, libraryPaths []string, outputPath string) error {

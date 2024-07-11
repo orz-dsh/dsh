@@ -31,18 +31,16 @@ func (s *ProjectDependencySetting) Inspect() *ProjectDependencySettingInspection
 // region ProjectDependencyItemSetting
 
 type ProjectDependencyItemSetting struct {
-	Link     string
-	Match    string
-	LinkObj  *ProjectLink
-	MatchObj *EvalExpr
+	Link    string
+	Match   string
+	LinkObj *ProjectLink
 }
 
-func NewProjectDependencyItemSetting(link string, match string, linkObj *ProjectLink, matchObj *EvalExpr) *ProjectDependencyItemSetting {
+func NewProjectDependencyItemSetting(link string, match string, linkObj *ProjectLink) *ProjectDependencyItemSetting {
 	return &ProjectDependencyItemSetting{
-		Link:     link,
-		Match:    match,
-		LinkObj:  linkObj,
-		MatchObj: matchObj,
+		Link:    link,
+		Match:   match,
+		LinkObj: linkObj,
 	}
 }
 
@@ -97,12 +95,7 @@ func (m *ProjectDependencyItemSettingModel) Convert(helper *ModelHelper) (*Proje
 		return nil, helper.Child("link").WrapValueInvalidError(err, m.Link)
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProjectDependencyItemSetting(m.Link, m.Match, linkObj, matchObj), nil
+	return NewProjectDependencyItemSetting(m.Link, m.Match, linkObj), nil
 }
 
 // endregion

@@ -9,136 +9,110 @@ import (
 	"strings"
 )
 
+// region base
+
+type AppOptionResultSource string
+
+const (
+	ApplicationOptionResultSourceUnset   = "unset"
+	ApplicationOptionResultSourceExport  = "export"
+	ApplicationOptionResultSourceAssign  = "assign"
+	ApplicationOptionResultSourceCompute = "compute"
+	ApplicationOptionResultSourceDefault = "default"
+)
+
+// endregion
+
 // region ApplicationOption
 
 type ApplicationOption struct {
-	evaluator *Evaluator
-	Common    *ApplicationOptionCommon
-	Argument  *ApplicationOptionArgument
-	Assign    *ApplicationOptionAssign
-	Result    *ApplicationOptionResult
+	Common *ApplicationOptionCommon
+	Export *ApplicationOptionExport
+	Assign *ApplicationOptionAssign
+	Result *ApplicationOptionResult
 }
 
-func NewApplicationOption(projectName string, system *System, evaluator *Evaluator, arguments map[string]string) *ApplicationOption {
+func NewApplicationOption(projectName string, system *System, evaluator *Evaluator, assigns map[string]string) *ApplicationOption {
 	return &ApplicationOption{
-		evaluator: evaluator,
-		Common:    NewApplicationOptionCommon(system, arguments),
-		Argument:  NewApplicationOptionArgument(projectName, arguments),
-		Assign:    NewApplicationOptionAssign(),
-		Result:    NewApplicationOptionResult(),
+		Common: NewApplicationOptionCommon(system, assigns),
+		Export: NewApplicationOptionExport(),
+		Assign: NewApplicationOptionAssign(projectName, assigns),
+		Result: NewApplicationOptionResult(evaluator),
 	}
-}
-
-func (o *ApplicationOption) findAssignValue(projectName string, optionName string) (*ApplicationOptionAssignItem, *string, error) {
-	target := projectName + "." + optionName
-	if assign, exist := o.Assign.Items[target]; exist {
-		if result, exist := o.Result.Items[assign.Source]; exist {
-			if assign.mapping != nil {
-				evaluator := o.evaluator.SetRootData("option", o.Common.merge(map[string]any{
-					"value": result.ParsedValue,
-				}))
-				mappingResult, err := evaluator.EvalStringExpr(assign.mapping)
-				if err != nil {
-					return assign, nil, ErrW(err, "find option assign value error",
-						Reason("mapping value error"),
-						KV("target", target),
-						KV("assign", assign),
-						KV("result", result),
-					)
-				}
-				return assign, mappingResult, nil
-			} else {
-				return assign, &result.RawValue, nil
-			}
-		} else {
-			return assign, nil, ErrN("find option assign value error",
-				Reason("source result not found"),
-				KV("target", target),
-				KV("assign", assign),
-			)
-		}
-	}
-	return nil, nil, nil
 }
 
 func (o *ApplicationOption) findResult(projectName string, setting *ProjectOptionItemSetting) (result *ApplicationOptionResultItem, err error) {
 	found := false
-	var rawValue string
-	var parsedValue any = nil
-	var source AppOptionResultSource = AppOptionResultSourceUnset
-	var assign *ApplicationOptionAssignItem = nil
+	var value any
+	var source AppOptionResultSource = ApplicationOptionResultSourceUnset
 
-	if arguments, exist := o.Argument.Items[projectName]; exist {
-		if value, exist := arguments[setting.Name]; exist {
-			rawValue = value
-			parsedValue, err = setting.ParseValue(rawValue)
-			if err != nil {
-				return nil, ErrW(err, "find option result error",
-					Reason("parse argument value error"),
-					KV("projectName", projectName),
-					KV("optionName", setting.Name),
-					KV("optionValue", rawValue),
-				)
-			}
-			source = AppOptionResultSourceArgument
-			found = true
-		}
-	}
-
-	if !found {
-		var assignValue *string
-		assign, assignValue, err = o.findAssignValue(projectName, setting.Name)
-		if err != nil {
-			return nil, ErrW(err, "find option result error",
-				Reason("get assign value error"),
+	if export, exist := o.Export.Items[setting.Export]; exist {
+		if export.Type != setting.Type {
+			return nil, ErrN("find option result error",
+				Reason("export value type conflict"),
 				KV("projectName", projectName),
 				KV("optionName", setting.Name),
+				KV("optionType", setting.Type),
+				KV("exportValue", export.Value),
+				KV("exportType", export.Type),
 			)
 		}
-		if assign != nil {
-			if assignValue != nil {
-				rawValue = *assignValue
-				parsedValue, err = setting.ParseValue(rawValue)
+		value = export.Value
+		source = ApplicationOptionResultSourceExport
+		found = true
+	}
+
+	if !found {
+		if assigns, exist := o.Assign.Items[projectName]; exist {
+			if assignValue, exist := assigns[setting.Name]; exist {
+				value, err = setting.ParseValue(assignValue)
 				if err != nil {
 					return nil, ErrW(err, "find option result error",
-						Reason("parse assign value error"),
+						Reason("parse argument value error"),
 						KV("projectName", projectName),
 						KV("optionName", setting.Name),
-						KV("optionValue", rawValue),
+						KV("optionValue", assignValue),
 					)
 				}
+				source = ApplicationOptionResultSourceAssign
+				found = true
 			}
-			source = AppOptionResultSourceAssign
+		}
+	}
+
+	if !found {
+		if setting.Compute != "" {
+			value, err = setting.ComputeValue(o.Result.NewEvaluator(projectName))
+			if err != nil {
+				return nil, ErrW(err, "find option result error",
+					Reason("compute option value error"),
+					KV("projectName", projectName),
+					KV("optionName", setting.Name),
+				)
+			}
+			source = ApplicationOptionResultSourceCompute
 			found = true
 		}
 	}
 
 	if !found {
-		if setting.DefaultParsedValue != nil {
-			rawValue = setting.DefaultRawValue
-			parsedValue = setting.DefaultParsedValue
-			source = AppOptionResultSourceDefault
+		if setting.Default != nil {
+			value = setting.Default
+			source = ApplicationOptionResultSourceDefault
 			found = true
 		}
 	}
 
-	if parsedValue == nil && !setting.Optional {
+	if value == nil && !setting.Optional {
 		return nil, ErrN("find option result error",
 			Reason("option value empty"),
 			KV("projectName", projectName),
 			KV("optionName", setting.Name),
 			KV("source", source),
-			KV("assign", assign),
 		)
 	}
 
-	result = &ApplicationOptionResultItem{
-		RawValue:    rawValue,
-		ParsedValue: parsedValue,
-		Source:      source,
-		Assign:      assign,
-	}
-
+	result = NewApplicationOptionResultItem(value, source)
 	if err = o.Result.AddItem(projectName, setting.Name, result); err != nil {
 		return nil, ErrW(err, "find option result error",
 			Reason("add option result error"),
@@ -147,11 +121,15 @@ func (o *ApplicationOption) findResult(projectName string, setting *ProjectOptio
 		)
 	}
 
+	if source != ApplicationOptionResultSourceExport {
+		o.Export.Items[setting.Export] = NewApplicationOptionExportItem(value, setting.Type)
+	}
+
 	return result, nil
 }
 
 func (o *ApplicationOption) Inspect() *ApplicationOptionInspection {
-	return NewApplicationOptionInspection(o.Common.Inspect(), o.Argument.Inspect(), o.Assign.Inspect(), o.Result.Inspect())
+	return NewApplicationOptionInspection(o.Common.Inspect(), o.Export.Inspect(), o.Assign.Inspect(), o.Result.Inspect())
 }
 
 // endregion
@@ -224,35 +202,44 @@ func (c *ApplicationOptionCommon) Inspect() *ApplicationOptionCommonInspection {
 
 // endregion
 
-// region ApplicationOptionArgument
+// region ApplicationOptionExport
 
-type ApplicationOptionArgument struct {
-	Items map[string]map[string]string
+type ApplicationOptionExport struct {
+	Items map[string]*ApplicationOptionExportItem
 }
 
-func NewApplicationOptionArgument(projectName string, arguments map[string]string) *ApplicationOptionArgument {
-	items := map[string]string{}
-	for k, v := range arguments {
-		if strings.HasPrefix(k, "_") {
-			// universal option
-			continue
-		}
-		if strings.Contains(k, ".") {
-			// Because of the Option Assign feature
-			// Should not set option arguments for other than the main project
-			continue
-		}
-		items[k] = v
-	}
-	return &ApplicationOptionArgument{
-		Items: map[string]map[string]string{
-			projectName: items,
-		},
+func NewApplicationOptionExport() *ApplicationOptionExport {
+	return &ApplicationOptionExport{
+		Items: map[string]*ApplicationOptionExportItem{},
 	}
 }
 
-func (a *ApplicationOptionArgument) Inspect() *ApplicationOptionArgumentInspection {
-	return NewApplicationOptionArgumentInspection(a.Items)
+func (e *ApplicationOptionExport) Inspect() *ApplicationOptionExportInspection {
+	items := map[string]*ApplicationOptionExportItemInspection{}
+	for k, v := range e.Items {
+		items[k] = v.Inspect()
+	}
+	return NewApplicationOptionExportInspection(items)
+}
+
+// endregion
+
+// region ApplicationOptionExportItem
+
+type ApplicationOptionExportItem struct {
+	Value any
+	Type  CastType
+}
+
+func NewApplicationOptionExportItem(value any, typ CastType) *ApplicationOptionExportItem {
+	return &ApplicationOptionExportItem{
+		Value: value,
+		Type:  typ,
+	}
+}
+
+func (i *ApplicationOptionExportItem) Inspect() *ApplicationOptionExportItemInspection {
+	return NewApplicationOptionExportItemInspection(i.Value, string(i.Type))
 }
 
 // endregion
@@ -260,63 +247,27 @@ func (a *ApplicationOptionArgument) Inspect() *ApplicationOptionArgumentInspecti
 // region ApplicationOptionAssign
 
 type ApplicationOptionAssign struct {
-	Items map[string]*ApplicationOptionAssignItem
+	Items map[string]map[string]string
 }
 
-func NewApplicationOptionAssign() *ApplicationOptionAssign {
-	return &ApplicationOptionAssign{
-		Items: map[string]*ApplicationOptionAssignItem{},
-	}
-}
-
-func (a *ApplicationOptionAssign) AddItem(sourceProject string, sourceOption string, assignSetting *ProjectOptionAssignSetting) error {
-	source := sourceProject + "." + sourceOption
-	target := assignSetting.Target
-	assign := &ApplicationOptionAssignItem{
-		Source:      source,
-		FinalSource: source,
-		Mapping:     assignSetting.Mapping,
-		mapping:     assignSetting.MappingObj,
-	}
-	if sourceAssign, exist := a.Items[source]; exist {
-		assign.FinalSource = sourceAssign.FinalSource
-	}
-	if existAssign, exist := a.Items[target]; exist {
-		if existAssign.FinalSource != assign.FinalSource {
-			return ErrN("add option assign error",
-				Reason("option assign conflict"),
-				KV("target", target),
-				KV("assign", assign),
-				KV("existAssign", existAssign),
-			)
+func NewApplicationOptionAssign(projectName string, assigns map[string]string) *ApplicationOptionAssign {
+	items := map[string]string{}
+	for k, v := range assigns {
+		if strings.HasPrefix(k, "_") {
+			// common option
+			continue
 		}
-	} else {
-		a.Items[target] = assign
+		items[k] = v
 	}
-	return nil
+	return &ApplicationOptionAssign{
+		Items: map[string]map[string]string{
+			projectName: items,
+		},
+	}
 }
 
 func (a *ApplicationOptionAssign) Inspect() *ApplicationOptionAssignInspection {
-	items := map[string]*ApplicationOptionAssignItemInspection{}
-	for k, v := range a.Items {
-		items[k] = v.Inspect()
-	}
-	return NewApplicationOptionAssignInspection(items)
-}
-
-// endregion
-
-// region ApplicationOptionAssignItem
-
-type ApplicationOptionAssignItem struct {
-	Source      string
-	FinalSource string
-	Mapping     string
-	mapping     *EvalExpr
-}
-
-func (i *ApplicationOptionAssignItem) Inspect() *ApplicationOptionAssignItemInspection {
-	return NewApplicationOptionAssignItemInspection(i.Source, i.FinalSource, i.Mapping)
+	return NewApplicationOptionAssignInspection(a.Items)
 }
 
 // endregion
@@ -324,42 +275,52 @@ func (i *ApplicationOptionAssignItem) Inspect() *ApplicationOptionAssignItemInsp
 // region ApplicationOptionResult
 
 type ApplicationOptionResult struct {
-	Items map[string]*ApplicationOptionResultItem
+	Evaluator *Evaluator
+	Items     map[string]map[string]*ApplicationOptionResultItem
 }
 
-type AppOptionResultSource string
-
-const (
-	AppOptionResultSourceUnset    = "unset"
-	AppOptionResultSourceArgument = "argument"
-	AppOptionResultSourceAssign   = "assign"
-	AppOptionResultSourceDefault  = "default"
-)
-
-func NewApplicationOptionResult() *ApplicationOptionResult {
+func NewApplicationOptionResult(evaluator *Evaluator) *ApplicationOptionResult {
 	return &ApplicationOptionResult{
-		Items: map[string]*ApplicationOptionResultItem{},
+		Evaluator: evaluator,
+		Items:     map[string]map[string]*ApplicationOptionResultItem{},
 	}
 }
 
+func (r *ApplicationOptionResult) NewEvaluator(projectName string) *Evaluator {
+	data := map[string]any{}
+	for k, v := range r.Items[projectName] {
+		data[k] = v.Value
+	}
+	return r.Evaluator.SetRootData("option", data)
+}
+
 func (r *ApplicationOptionResult) AddItem(projectName string, optionName string, result *ApplicationOptionResultItem) error {
-	target := projectName + "." + optionName
-	if existResult, exist := r.Items[target]; exist {
+	projectItems := r.Items[projectName]
+	if projectItems == nil {
+		projectItems = map[string]*ApplicationOptionResultItem{}
+		r.Items[projectName] = projectItems
+	}
+	if existResult, exist := projectItems[optionName]; exist {
 		return ErrN("add option result error",
 			Reason("option result exists"),
-			KV("target", target),
+			KV("projectName", projectName),
+			KV("optionName", optionName),
 			KV("result", result),
 			KV("existResult", existResult),
 		)
 	}
-	r.Items[target] = result
+	projectItems[optionName] = result
 	return nil
 }
 
 func (r *ApplicationOptionResult) Inspect() *ApplicationOptionResultInspection {
-	items := map[string]*ApplicationOptionResultItemInspection{}
+	items := map[string]map[string]*ApplicationOptionResultItemInspection{}
 	for k, v := range r.Items {
-		items[k] = v.Inspect()
+		projectItems := map[string]*ApplicationOptionResultItemInspection{}
+		for k2, v2 := range v {
+			projectItems[k2] = v2.Inspect()
+		}
+		items[k] = projectItems
 	}
 	return NewApplicationOptionResultInspection(items)
 }
@@ -369,18 +330,19 @@ func (r *ApplicationOptionResult) Inspect() *ApplicationOptionResultInspection {
 // region ApplicationOptionResultItem
 
 type ApplicationOptionResultItem struct {
-	RawValue    string
-	ParsedValue any
-	Source      AppOptionResultSource
-	Assign      *ApplicationOptionAssignItem
+	Value  any
+	Source AppOptionResultSource
+}
+
+func NewApplicationOptionResultItem(value any, source AppOptionResultSource) *ApplicationOptionResultItem {
+	return &ApplicationOptionResultItem{
+		Value:  value,
+		Source: source,
+	}
 }
 
 func (i *ApplicationOptionResultItem) Inspect() *ApplicationOptionResultItemInspection {
-	var assign *ApplicationOptionAssignItemInspection
-	if i.Assign != nil {
-		assign = i.Assign.Inspect()
-	}
-	return NewApplicationOptionResultItemInspection(i.RawValue, i.ParsedValue, string(i.Source), assign)
+	return NewApplicationOptionResultItemInspection(i.Value, string(i.Source))
 }
 
 // endregion

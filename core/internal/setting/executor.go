@@ -80,7 +80,7 @@ func (s *ExecutorSetting) GetItem(name string, evaluator *Evaluator) (*ExecutorI
 	}
 	for i := 0; i < len(items); i++ {
 		item := items[i]
-		matched, err := evaluator.EvalBoolExpr(item.match)
+		matched, err := evaluator.EvalBoolExpr(item.Match)
 		if err != nil {
 			return nil, ErrW(err, "get workspace executor item error",
 				Reason("eval expr error"),
@@ -134,17 +134,15 @@ type ExecutorItemSetting struct {
 	Exts  []string
 	Args  []string
 	Match string
-	match *EvalExpr
 }
 
-func NewExecutorItemSetting(name, file string, exts, args []string, match string, matchObj *EvalExpr) *ExecutorItemSetting {
+func NewExecutorItemSetting(name, file string, exts, args []string, match string) *ExecutorItemSetting {
 	return &ExecutorItemSetting{
 		Name:  name,
 		File:  file,
 		Exts:  exts,
 		Args:  args,
 		Match: match,
-		match: matchObj,
 	}
 }
 
@@ -230,12 +228,7 @@ func (m *ExecutorItemSettingModel) Convert(helper *ModelHelper) (*ExecutorItemSe
 		return nil, err
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewExecutorItemSetting(m.Name, m.File, m.Exts, m.Args, m.Match, matchObj), nil
+	return NewExecutorItemSetting(m.Name, m.File, m.Exts, m.Args, m.Match), nil
 }
 
 // endregion

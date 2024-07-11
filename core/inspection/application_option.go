@@ -3,18 +3,18 @@ package inspection
 // region ApplicationOptionInspection
 
 type ApplicationOptionInspection struct {
-	Common   *ApplicationOptionCommonInspection   `yaml:"common" toml:"common" json:"common"`
-	Argument *ApplicationOptionArgumentInspection `yaml:"argument" toml:"argument" json:"argument"`
-	Assign   *ApplicationOptionAssignInspection   `yaml:"assign" toml:"assign" json:"assign"`
-	Result   *ApplicationOptionResultInspection   `yaml:"result" toml:"result" json:"result"`
+	Common *ApplicationOptionCommonInspection `yaml:"common" toml:"common" json:"common"`
+	Export *ApplicationOptionExportInspection `yaml:"export" toml:"export" json:"export"`
+	Assign *ApplicationOptionAssignInspection `yaml:"assign" toml:"assign" json:"assign"`
+	Result *ApplicationOptionResultInspection `yaml:"result" toml:"result" json:"result"`
 }
 
-func NewApplicationOptionInspection(common *ApplicationOptionCommonInspection, argument *ApplicationOptionArgumentInspection, assign *ApplicationOptionAssignInspection, result *ApplicationOptionResultInspection) *ApplicationOptionInspection {
+func NewApplicationOptionInspection(common *ApplicationOptionCommonInspection, export *ApplicationOptionExportInspection, assign *ApplicationOptionAssignInspection, result *ApplicationOptionResultInspection) *ApplicationOptionInspection {
 	return &ApplicationOptionInspection{
-		Common:   common,
-		Argument: argument,
-		Assign:   assign,
-		Result:   result,
+		Common: common,
+		Export: export,
+		Assign: assign,
+		Result: result,
 	}
 }
 
@@ -42,15 +42,31 @@ func NewApplicationOptionCommonInspection(os, arch, executor, hostname, username
 
 // endregion
 
-// region ApplicationOptionArgumentInspection
+// region ApplicationOptionExportInspection
 
-type ApplicationOptionArgumentInspection struct {
-	Items map[string]map[string]string `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+type ApplicationOptionExportInspection struct {
+	Items map[string]*ApplicationOptionExportItemInspection `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func NewApplicationOptionArgumentInspection(items map[string]map[string]string) *ApplicationOptionArgumentInspection {
-	return &ApplicationOptionArgumentInspection{
+func NewApplicationOptionExportInspection(items map[string]*ApplicationOptionExportItemInspection) *ApplicationOptionExportInspection {
+	return &ApplicationOptionExportInspection{
 		Items: items,
+	}
+}
+
+// endregion
+
+// region ApplicationOptionExportItemInspection
+
+type ApplicationOptionExportItemInspection struct {
+	Value any    `yaml:"value" toml:"value" json:"value"`
+	Type  string `yaml:"type" toml:"type" json:"type"`
+}
+
+func NewApplicationOptionExportItemInspection(value any, typ string) *ApplicationOptionExportItemInspection {
+	return &ApplicationOptionExportItemInspection{
+		Value: value,
+		Type:  typ,
 	}
 }
 
@@ -59,30 +75,12 @@ func NewApplicationOptionArgumentInspection(items map[string]map[string]string) 
 // region ApplicationOptionAssignInspection
 
 type ApplicationOptionAssignInspection struct {
-	Items map[string]*ApplicationOptionAssignItemInspection `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+	Items map[string]map[string]string `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func NewApplicationOptionAssignInspection(items map[string]*ApplicationOptionAssignItemInspection) *ApplicationOptionAssignInspection {
+func NewApplicationOptionAssignInspection(items map[string]map[string]string) *ApplicationOptionAssignInspection {
 	return &ApplicationOptionAssignInspection{
 		Items: items,
-	}
-}
-
-// endregion
-
-// region ApplicationOptionAssignItemInspection
-
-type ApplicationOptionAssignItemInspection struct {
-	Source      string `yaml:"source" toml:"source" json:"source"`
-	FinalSource string `yaml:"finalSource" toml:"finalSource" json:"finalSource"`
-	Mapping     string `yaml:"mapping,omitempty" toml:"mapping,omitempty" json:"mapping,omitempty"`
-}
-
-func NewApplicationOptionAssignItemInspection(source string, finalSource string, mapping string) *ApplicationOptionAssignItemInspection {
-	return &ApplicationOptionAssignItemInspection{
-		Source:      source,
-		FinalSource: finalSource,
-		Mapping:     mapping,
 	}
 }
 
@@ -91,10 +89,10 @@ func NewApplicationOptionAssignItemInspection(source string, finalSource string,
 // region ApplicationOptionResultInspection
 
 type ApplicationOptionResultInspection struct {
-	Items map[string]*ApplicationOptionResultItemInspection `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+	Items map[string]map[string]*ApplicationOptionResultItemInspection `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
 }
 
-func NewApplicationOptionResultInspection(items map[string]*ApplicationOptionResultItemInspection) *ApplicationOptionResultInspection {
+func NewApplicationOptionResultInspection(items map[string]map[string]*ApplicationOptionResultItemInspection) *ApplicationOptionResultInspection {
 	return &ApplicationOptionResultInspection{
 		Items: items,
 	}
@@ -105,18 +103,14 @@ func NewApplicationOptionResultInspection(items map[string]*ApplicationOptionRes
 // region ApplicationOptionResultItemInspection
 
 type ApplicationOptionResultItemInspection struct {
-	RawValue    string                                 `yaml:"rawValue" toml:"rawValue" json:"rawValue"`
-	ParsedValue any                                    `yaml:"parsedValue" toml:"parsedValue" json:"parsedValue"`
-	Source      string                                 `yaml:"source" toml:"source" json:"source"`
-	Assign      *ApplicationOptionAssignItemInspection `yaml:"assign,omitempty" toml:"assign,omitempty" json:"assign,omitempty"`
+	Value  any    `yaml:"value" toml:"value" json:"value"`
+	Source string `yaml:"source" toml:"source" json:"source"`
 }
 
-func NewApplicationOptionResultItemInspection(rawValue string, parsedValue any, source string, assign *ApplicationOptionAssignItemInspection) *ApplicationOptionResultItemInspection {
+func NewApplicationOptionResultItemInspection(value any, source string) *ApplicationOptionResultItemInspection {
 	return &ApplicationOptionResultItemInspection{
-		RawValue:    rawValue,
-		ParsedValue: parsedValue,
-		Source:      source,
-		Assign:      assign,
+		Value:  value,
+		Source: source,
 	}
 }
 

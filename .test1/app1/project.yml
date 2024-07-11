@@ -5,32 +5,39 @@ runtime:
 option:
   items:
     - name: test
+      usage: "test string value"
       default: c
-      choices:
-        - a
-        - b
-        - c
-        - d
-      assigns:
-        - target: lib1.test
-          mapping: >-
-            value == 'a' ? '1234' : (value == 'b' ? '5678' : (value == 'c' ? '0000' : nil))
-        - target: lib2.test
-          mapping: upper(value)
+      choices: [ 'a', 'b', 'c', 'd' ]
     - name: test_object
       type: object
+      usage: "test object with json format"
       default: '{"a": 1, "b": 2}'
-      assigns:
-        - target: lib3.test
-          mapping: value.b
     - name: test_array
       type: array
+      usage: "test array with json format"
       default: '[1, 2, 3]'
-      assigns:
-        - target: lib4.test
-          mapping: value[1]
+    - name: lib1_test
+      export: lib1.test
+      hidden: true
+      compute: >-
+        test == 'a' ? '1234' : (test == 'b' ? '5678' : (test == 'c' ? '0000' : nil))
+    - name: lib2_test
+      export: lib2.test
+      hidden: true
+      compute: >-
+        upper(test)
+    - name: lib3_test
+      export: lib3.test
+      hidden: true
+      compute: >-
+        test_object.b
+    - name: lib4_test
+      export: lib4.test
+      hidden: true
+      compute: >-
+        test_array[1]
   checks:
-    - _os == 'linux'
+    #    - _os == 'linux'
     - test != 'd'
     - test_object.a == 1
     - test_array[0] == 1

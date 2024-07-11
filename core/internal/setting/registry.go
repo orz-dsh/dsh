@@ -77,7 +77,7 @@ func (s *RegistrySetting) GetLink(name string, evaluator *Evaluator) (*ProjectLi
 	if items, exist := s.itemsByName[name]; exist {
 		for i := 0; i < len(items); i++ {
 			model := items[i]
-			matched, err := evaluator.EvalBoolExpr(model.match)
+			matched, err := evaluator.EvalBoolExpr(model.Match)
 			if err != nil {
 				return nil, ErrW(err, "get workspace import registry setting link error",
 					Reason("eval expr error"),
@@ -123,15 +123,13 @@ type RegistryItemSetting struct {
 	Name  string
 	Link  string
 	Match string
-	match *EvalExpr
 }
 
-func NewRegistryItemSetting(name, link, match string, matchObj *EvalExpr) *RegistryItemSetting {
+func NewRegistryItemSetting(name, link, match string) *RegistryItemSetting {
 	return &RegistryItemSetting{
 		Name:  name,
 		Link:  link,
 		Match: match,
-		match: matchObj,
 	}
 }
 
@@ -194,12 +192,7 @@ func (m *RegistryItemSettingModel) Convert(helper *ModelHelper) (*RegistryItemSe
 		return nil, helper.Child("link").NewValueInvalidError(m.Link)
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRegistryItemSetting(m.Name, m.Link, m.Match, matchObj), nil
+	return NewRegistryItemSetting(m.Name, m.Link, m.Match), nil
 }
 
 // endregion

@@ -2,7 +2,8 @@ argument:
   items:
     - name: xxxx
       value: xxxx
-      match: xxxx
+      match: >-
+        global.test01 == 'value01'
 executor:
   items:
     - name: powershell

@@ -26,7 +26,7 @@ func (s *WorkspaceProfileSetting) GetFiles(evaluator *Evaluator) ([]string, erro
 	var files []string
 	for i := 0; i < len(s.Items); i++ {
 		item := s.Items[i]
-		if matched, err := evaluator.EvalBoolExpr(item.match); err != nil {
+		if matched, err := evaluator.EvalBoolExpr(item.Match); err != nil {
 			return nil, ErrW(err, "get workspace profile setting files error",
 				Reason("eval expr error"),
 				KV("item", item),
@@ -78,15 +78,13 @@ type WorkspaceProfileItemSetting struct {
 	File     string
 	Optional bool
 	Match    string
-	match    *EvalExpr
 }
 
-func NewWorkspaceProfileItemSetting(file string, optional bool, match string, matchObj *EvalExpr) *WorkspaceProfileItemSetting {
+func NewWorkspaceProfileItemSetting(file string, optional bool, match string) *WorkspaceProfileItemSetting {
 	return &WorkspaceProfileItemSetting{
 		File:     file,
 		Optional: optional,
 		Match:    match,
-		match:    matchObj,
 	}
 }
 
@@ -139,12 +137,7 @@ func (m *WorkspaceProfileItemSettingModel) Convert(helper *ModelHelper) (*Worksp
 		return nil, helper.Child("file").NewValueEmptyError()
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewWorkspaceProfileItemSetting(m.File, m.Optional, m.Match, matchObj), nil
+	return NewWorkspaceProfileItemSetting(m.File, m.Optional, m.Match), nil
 }
 
 // endregion

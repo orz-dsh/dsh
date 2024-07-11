@@ -2,13 +2,8 @@ name: lib2
 option:
   items:
     - name: test
-      choices:
-        - A
-        - B
-        - C
-        - D
-      assigns:
-        - target: lib1.test
+      export: lib1.test
+      choices: [ A, B, C, D ]
 dependency:
   items:
     - link: "dir:./.test1/lib1"

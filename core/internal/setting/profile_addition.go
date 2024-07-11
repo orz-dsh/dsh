@@ -26,7 +26,7 @@ func (s *ProfileAdditionSetting) GetProjectSettings(evaluator *Evaluator) ([]*Pr
 	var result []*ProjectSetting
 	for i := len(s.Items) - 1; i >= 0; i-- {
 		item := s.Items[i]
-		matched, err := evaluator.EvalBoolExpr(item.match)
+		matched, err := evaluator.EvalBoolExpr(item.Match)
 		if err != nil {
 			return nil, ErrW(err, "get profile project settings error",
 				Reason("eval expr error"),
@@ -76,10 +76,9 @@ type ProfileAdditionItemSetting struct {
 	Match      string
 	Dependency *ProjectDependencySetting
 	Resource   *ProjectResourceSetting
-	match      *EvalExpr
 }
 
-func NewProfileAdditionItemSetting(name, dir, match string, dependency *ProjectDependencySetting, resource *ProjectResourceSetting, matchObj *EvalExpr) *ProfileAdditionItemSetting {
+func NewProfileAdditionItemSetting(name, dir, match string, dependency *ProjectDependencySetting, resource *ProjectResourceSetting) *ProfileAdditionItemSetting {
 	if dependency == nil {
 		dependency = NewProjectDependencySetting(nil)
 	}
@@ -92,7 +91,6 @@ func NewProfileAdditionItemSetting(name, dir, match string, dependency *ProjectD
 		Match:      match,
 		Dependency: dependency,
 		Resource:   resource,
-		match:      matchObj,
 	}
 }
 
@@ -170,12 +168,7 @@ func (m *ProfileAdditionItemSettingModel) Convert(helper *ModelHelper) (_ *Profi
 		}
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProfileAdditionItemSetting(m.Name, m.Dir, m.Match, dependency, resource, matchObj), nil
+	return NewProfileAdditionItemSetting(m.Name, m.Dir, m.Match, dependency, resource), nil
 }
 
 // endregion

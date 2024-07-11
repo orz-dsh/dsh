@@ -35,7 +35,7 @@ func (s *ProfileArgumentSetting) GetArguments(evaluator *Evaluator) (map[string]
 		if _, exist := items[item.Name]; exist {
 			continue
 		}
-		matched, err := evaluator.EvalBoolExpr(item.match)
+		matched, err := evaluator.EvalBoolExpr(item.Match)
 		if err != nil {
 			return nil, ErrW(err, "get arguments error",
 				Reason("eval expr error"),
@@ -65,15 +65,13 @@ type ProfileArgumentItemSetting struct {
 	Name  string
 	Value string
 	Match string
-	match *EvalExpr
 }
 
-func NewProfileArgumentItemSetting(name, value, match string, matchObj *EvalExpr) *ProfileArgumentItemSetting {
+func NewProfileArgumentItemSetting(name, value, match string) *ProfileArgumentItemSetting {
 	return &ProfileArgumentItemSetting{
 		Name:  name,
 		Value: value,
 		Match: match,
-		match: matchObj,
 	}
 }
 
@@ -129,12 +127,7 @@ func (m *ProfileArgumentItemSettingModel) Convert(helper *ModelHelper) (*Profile
 		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProfileArgumentItemSetting(m.Name, m.Value, m.Match, matchObj), nil
+	return NewProfileArgumentItemSetting(m.Name, m.Value, m.Match), nil
 }
 
 // endregion

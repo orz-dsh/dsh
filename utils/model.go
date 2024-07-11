@@ -84,6 +84,24 @@ func (h *ModelHelper) WarnValueUnsound(value any) {
 	)
 }
 
+func (h *ModelHelper) WarnValueUseless(value any) {
+	h.Logger.WarnDesc(fmt.Sprintf("%s warn", h.Title),
+		Reason("value useless"),
+		KV("source", h.Source),
+		KV("field", h.Field),
+		KV("value", value),
+	)
+}
+
+func (h *ModelHelper) Warn(reason string, extra ...DescKeyValue) {
+	kvs := KVS{
+		Reason(reason),
+		KV("source", h.Source),
+		KV("field", h.Field),
+	}
+	h.Logger.WarnDesc(fmt.Sprintf("%s warn", h.Title), append(kvs, extra...)...)
+}
+
 func (h *ModelHelper) NewError(reason string, extra ...DescKeyValue) error {
 	kvs := KVS{
 		Reason(reason),
@@ -126,17 +144,6 @@ func (h *ModelHelper) WrapValueInvalidError(err error, value any) error {
 		KV("field", h.Field),
 		KV("value", value),
 	)
-}
-
-func (h *ModelHelper) ConvertEvalExpr(field, expr string) (*EvalExpr, error) {
-	if expr != "" {
-		exprObj, err := CompileExpr(expr)
-		if err != nil {
-			return nil, h.Child(field).WrapValueInvalidError(err, expr)
-		}
-		return exprObj, nil
-	}
-	return nil, nil
 }
 
 func (h *ModelHelper) CheckStringItemEmpty(field string, items []string) error {

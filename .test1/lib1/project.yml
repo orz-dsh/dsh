@@ -3,17 +3,17 @@ option:
   items:
     - name: test
       default: 1234
-      choices:
-        - "1234"
-        - "5678"
-        - "0000"
-      assigns:
-        - target: lib2.test
-          mapping: >-
-            value == '1234' ? 'A' : (value == '5678' ? 'B' : (value == '0000' ? 'C' : nil))
-        - target: app1.test
-          mapping: >-
-            value == '1234' ? 'a' : (value == '5678' ? 'b' : (value == '0000' ? 'c' : nil))
+      choices: [ "1234", "5678", "0000" ]
+    - name: lib2_test
+      export: lib2.test
+      hidden: true
+      compute: >-
+        value == '1234' ? 'A' : (value == '5678' ? 'B' : (value == '0000' ? 'C' : nil))
+    - name: app_test
+      export: app1.test
+      hidden: true
+      compute: >-
+        value == '1234' ? 'a' : (value == '5678' ? 'b' : (value == '0000' ? 'c' : nil))
     - name: local
       optional: true
 dependency:

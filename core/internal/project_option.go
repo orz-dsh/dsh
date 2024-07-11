@@ -16,23 +16,23 @@ type ProjectOption struct {
 func NewProjectOption(core *ApplicationCore, setting *ProjectSetting) (*ProjectOption, error) {
 	items := core.Option.Common.copy()
 	for i := 0; i < len(setting.Option.Items); i++ {
-		declare := setting.Option.Items[i]
-		result, err := core.Option.findResult(setting.Name, declare)
+		item := setting.Option.Items[i]
+		result, err := core.Option.findResult(setting.Name, item)
 		if err != nil {
 			return nil, ErrW(err, "load project options error",
 				Reason("find option result error"),
 				KV("projectName", setting.Name),
 				KV("projectPath", setting.Dir),
-				KV("optionName", declare.Name),
+				KV("optionName", item.Name),
 			)
 		}
-		items[declare.Name] = result.ParsedValue
+		items[item.Name] = result.Value
 	}
 
 	evaluator := core.Evaluator.SetRootData("option", items)
 	for i := 0; i < len(setting.Option.Checks); i++ {
 		check := setting.Option.Checks[i]
-		result, err := evaluator.EvalBoolExpr(check.ExprObj)
+		result, err := evaluator.EvalBoolExpr(check.Expr)
 		if err != nil {
 			return nil, ErrW(err, "load project options error",
 				Reason("eval check error"),
@@ -51,21 +51,21 @@ func NewProjectOption(core *ApplicationCore, setting *ProjectSetting) (*ProjectO
 		}
 	}
 
-	for i := 0; i < len(setting.Option.Items); i++ {
-		optionSetting := setting.Option.Items[i]
-		for j := 0; j < len(optionSetting.Assigns); j++ {
-			assignSetting := optionSetting.Assigns[j]
-			if err := core.Option.Assign.AddItem(setting.Name, optionSetting.Name, assignSetting); err != nil {
-				return nil, ErrW(err, "load project options error",
-					Reason("add option assign error"),
-					KV("projectName", setting.Name),
-					KV("projectPath", setting.Dir),
-					KV("optionName", optionSetting.Name),
-					KV("assignTarget", assignSetting.Target),
-				)
-			}
-		}
-	}
+	//for i := 0; i < len(setting.Option.Items); i++ {
+	//	optionSetting := setting.Option.Items[i]
+	//	for j := 0; j < len(optionSetting.Assigns); j++ {
+	//		assignSetting := optionSetting.Assigns[j]
+	//		if err := core.Option.Assign.AddItem(setting.Name, optionSetting.Name, assignSetting); err != nil {
+	//			return nil, ErrW(err, "load project options error",
+	//				Reason("add option assign error"),
+	//				KV("projectName", setting.Name),
+	//				KV("projectPath", setting.Dir),
+	//				KV("optionName", optionSetting.Name),
+	//				KV("assignTarget", assignSetting.Target),
+	//			)
+	//		}
+	//	}
+	//}
 
 	option := &ProjectOption{
 		Items:     items,

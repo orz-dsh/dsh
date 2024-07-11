@@ -6,167 +6,107 @@ import (
 
 func TestEvalBoolExpr(t *testing.T) {
 	// return true bool
-	program, err := CompileExpr("true")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := EvalBoolExpr(program, nil)
+	result, err := EvalExpr("true", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return true bool:", result)
 
 	// return false bool
-	program, err = CompileExpr("false")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("false", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return false bool:", result)
 
 	// return non-empty string
-	program, err = CompileExpr("'aa'")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("'aa'", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-empty string:", result)
 
 	// return empty string
-	program, err = CompileExpr("''")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("''", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return empty string:", result)
 
 	// return non-zero int
-	program, err = CompileExpr("1 + 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("1 + 2", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-zero int:", result)
 
 	// return zero int
-	program, err = CompileExpr("1 - 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("1 - 1", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return zero int:", result)
 
 	// return non-zero float
-	program, err = CompileExpr("1.1 + 2.2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("1.1 + 2.2", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-zero float:", result)
 
 	// return zero float
-	program, err = CompileExpr("1.1 - 1.1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("1.1 - 1.1", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return zero float:", result)
 
 	// return non-empty array
-	program, err = CompileExpr("[1, 2, 3]")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("[1, 2, 3]", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-empty array:", result)
 
 	// return empty array
-	program, err = CompileExpr("[]")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("[]", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return empty array:", result)
 
 	// return non-empty map
-	program, err = CompileExpr("{'a': 1, 'b': 2}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("{'a': 1, 'b': 2}", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-empty map:", result)
 
 	// return empty map
-	program, err = CompileExpr("{}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("{}", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return empty map:", result)
 
 	// return exists variables
-	program, err = CompileExpr("exists_variable")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, map[string]any{
+	result, err = EvalExpr("exists_variable", map[string]any{
 		"exists_variable": 1,
-	})
+	}, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return exists variables:", result)
 
 	// return non-exists variables
-	program, err = CompileExpr("non_exists_variable")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("'non_exists_variable' in $env", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-exists variables:", result)
 
 	// return nil
-	program, err = CompileExpr("nil")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalBoolExpr(program, nil)
+	result, err = EvalExpr("nil", nil, CastTypeBool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,167 +115,107 @@ func TestEvalBoolExpr(t *testing.T) {
 
 func TestEvalStringExpr(t *testing.T) {
 	// return true bool
-	program, err := CompileExpr("true")
+	result, err := EvalExpr("true", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return true bool:", *result)
+	t.Log("return true bool:", result)
 
 	// return false bool
-	program, err = CompileExpr("false")
+	result, err = EvalExpr("false", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return false bool:", *result)
+	t.Log("return false bool:", result)
 
 	// return non-empty string
-	program, err = CompileExpr("'aa'")
+	result, err = EvalExpr("'aa'", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return non-empty string:", *result)
+	t.Log("return non-empty string:", result)
 
 	// return empty string
-	program, err = CompileExpr("''")
+	result, err = EvalExpr("''", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return empty string:", *result)
+	t.Log("return empty string:", result)
 
 	// return non-zero int
-	program, err = CompileExpr("1 + 2")
+	result, err = EvalExpr("1 + 2", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return non-zero int:", *result)
+	t.Log("return non-zero int:", result)
 
 	// return zero int
-	program, err = CompileExpr("1 - 1")
+	result, err = EvalExpr("1 - 1", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return zero int:", *result)
+	t.Log("return zero int:", result)
 
 	// return non-zero float
-	program, err = CompileExpr("1.1 + 2.2")
+	result, err = EvalExpr("1.1 + 2.2", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return non-zero float:", *result)
+	t.Log("return non-zero float:", result)
 
 	// return zero float
-	program, err = CompileExpr("1.1 - 1.1")
+	result, err = EvalExpr("1.1 - 1.1", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return zero float:", *result)
+	t.Log("return zero float:", result)
 
 	// return non-empty array
-	program, err = CompileExpr("[1, 2, 3]")
+	result, err = EvalExpr("[1, 2, 3]", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return non-empty array:", *result)
+	t.Log("return non-empty array:", result)
 
 	// return empty array
-	program, err = CompileExpr("[]")
+	result, err = EvalExpr("[]", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return empty array:", *result)
+	t.Log("return empty array:", result)
 
 	// return non-empty map
-	program, err = CompileExpr("{'a': 1, 'b': 2}")
+	result, err = EvalExpr("{'a': 1, 'b': 2}", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return non-empty map:", *result)
+	t.Log("return non-empty map:", result)
 
 	// return empty map
-	program, err = CompileExpr("{}")
+	result, err = EvalExpr("{}", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = EvalStringExpr(program, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("return empty map:", *result)
+	t.Log("return empty map:", result)
 
 	// return exists variables
-	program, err = CompileExpr("exists_variable")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalStringExpr(program, map[string]any{
+	result, err = EvalExpr("exists_variable", map[string]any{
 		"exists_variable": 1,
-	})
+	}, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("return exists variables:", *result)
+	t.Log("return exists variables:", result)
 
 	// return non-exists variables
-	program, err = CompileExpr("non_exists_variable")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalStringExpr(program, nil)
+	result, err = EvalExpr("'non_exists_variable' in $env", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("return non-exists variables:", result)
 
 	// return nil
-	program, err = CompileExpr("nil")
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = EvalStringExpr(program, nil)
+	result, err = EvalExpr("nil", nil, CastTypeString)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,10 +223,6 @@ func TestEvalStringExpr(t *testing.T) {
 }
 
 func TestEvalExprModifyData(t *testing.T) {
-	program, err := CompileExpr("setValue(\"a\", 2)")
-	if err != nil {
-		t.Fatal(err)
-	}
 	data := map[string]any{
 		"a": 1,
 	}
@@ -354,7 +230,7 @@ func TestEvalExprModifyData(t *testing.T) {
 		data[k] = v
 		return v
 	}
-	result, err := EvalStringExpr(program, data)
+	result, err := EvalExpr("setValue(\"a\", 2)", data, CastTypeInteger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,21 +261,13 @@ func TestEvaluator(t *testing.T) {
 		return input == "g3value1"
 	})
 
-	expr1, err := CompileExpr("funcs.test(g3key1)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	expr2, err := CompileExpr("funcs.test(g3key2)")
-	if err != nil {
-		t.Fatal(err)
-	}
 	template1 := "{{test .g3key1}} / {{.g3key1}} / {{.g3key2}} / {{.g3.g3}}"
 	template2 := "{{test .g3key2}} / {{.g3key1}} / {{.g3key2}} / {{.g3.g3}}"
-	expr1Result, err := evaluator5.EvalBoolExpr(expr1)
+	expr1Result, err := evaluator5.EvalBoolExpr("funcs.test(g3key1)")
 	if err != nil {
 		t.Fatal(err)
 	}
-	expr2Result, err := evaluator5.EvalBoolExpr(expr2)
+	expr2Result, err := evaluator5.EvalBoolExpr("funcs.test(g3key2)")
 	if err != nil {
 		t.Fatal(err)
 	}

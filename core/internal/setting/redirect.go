@@ -34,11 +34,11 @@ func (s *RedirectSetting) GetLink(originals []string, evaluator *Evaluator) (*Pr
 		original := originals[i]
 		for j := 0; j < len(s.Items); j++ {
 			item := s.Items[j]
-			matched, values := RegexMatch(item.regex, original)
+			matched, values := RegexMatch(item.RegexObj, original)
 			if !matched {
 				continue
 			}
-			matched, err := evaluator.EvalBoolExpr(item.match)
+			matched, err := evaluator.EvalBoolExpr(item.Match)
 			if err != nil {
 				return nil, "", ErrW(err, "get workspace import redirect setting link error",
 					Reason("eval expr error"),
@@ -83,20 +83,18 @@ func (s *RedirectSetting) Inspect() *RedirectSettingInspection {
 // region RedirectItemSetting
 
 type RedirectItemSetting struct {
-	Regex string
-	Link  string
-	Match string
-	regex *regexp.Regexp
-	match *EvalExpr
+	Regex    string
+	Link     string
+	Match    string
+	RegexObj *regexp.Regexp
 }
 
-func NewRedirectItemSetting(regex, link, match string, regexObj *regexp.Regexp, matchObj *EvalExpr) *RedirectItemSetting {
+func NewRedirectItemSetting(regex, link, match string, regexObj *regexp.Regexp) *RedirectItemSetting {
 	return &RedirectItemSetting{
-		Regex: regex,
-		Link:  link,
-		Match: match,
-		regex: regexObj,
-		match: matchObj,
+		Regex:    regex,
+		Link:     link,
+		Match:    match,
+		RegexObj: regexObj,
 	}
 }
 
@@ -160,12 +158,7 @@ func (m *RedirectItemSettingModel) Convert(helper *ModelHelper) (*RedirectItemSe
 		return nil, helper.Child("link").NewValueInvalidError(m.Link)
 	}
 
-	matchObj, err := helper.ConvertEvalExpr("match", m.Match)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRedirectItemSetting(m.Regex, m.Link, m.Match, regexObj, matchObj), nil
+	return NewRedirectItemSetting(m.Regex, m.Link, m.Match, regexObj), nil
 }
 
 // endregion

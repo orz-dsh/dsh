@@ -35,7 +35,7 @@ func NewProjectResource(context *ApplicationCore, setting *ProjectSetting, optio
 	filesByTarget := map[string]string{}
 	for i := 0; i < len(setting.Resource.Items); i++ {
 		item := setting.Resource.Items[i]
-		matched, err := option.evaluator.EvalBoolExpr(item.MatchObj)
+		matched, err := option.evaluator.EvalBoolExpr(item.Match)
 		if err != nil {
 			return nil, err
 		}
