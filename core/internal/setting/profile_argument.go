@@ -8,7 +8,8 @@ import (
 
 // region base
 
-var profileArgumentNameCheckRegex = regexp.MustCompile("^_?[a-z][a-z0-9_]*[a-z0-9]$")
+var profileArgumentNameCheckRegex1 = regexp.MustCompile("^_?[a-z][a-z0-9_]*[a-z0-9]$")
+var profileArgumentNameCheckRegex2 = regexp.MustCompile("^@?[a-z][a-z0-9_]*[a-z0-9].[a-z][a-z0-9_]*[a-z0-9]$")
 
 // endregion
 
@@ -123,7 +124,7 @@ func (m *ProfileArgumentItemSettingModel) Convert(helper *ModelHelper) (*Profile
 	if m.Name == "" {
 		return nil, helper.Child("name").NewValueEmptyError()
 	}
-	if !profileArgumentNameCheckRegex.MatchString(m.Name) {
+	if !profileArgumentNameCheckRegex1.MatchString(m.Name) && !profileArgumentNameCheckRegex2.MatchString(m.Name) {
 		return nil, helper.Child("name").NewValueInvalidError(m.Name)
 	}
 

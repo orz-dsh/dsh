@@ -8,12 +8,12 @@ option:
       export: lib2.test
       hidden: true
       compute: >-
-        value == '1234' ? 'A' : (value == '5678' ? 'B' : (value == '0000' ? 'C' : nil))
+        test == '1234' ? 'A' : (test == '5678' ? 'B' : (test == '0000' ? 'C' : nil))
     - name: app_test
       export: app1.test
       hidden: true
       compute: >-
-        value == '1234' ? 'a' : (value == '5678' ? 'b' : (value == '0000' ? 'c' : nil))
+        test == '1234' ? 'a' : (test == '5678' ? 'b' : (test == '0000' ? 'c' : nil))
     - name: local
       optional: true
 dependency:

@@ -7,15 +7,27 @@ option:
     - name: test
       usage: "test string value"
       default: c
-      choices: [ 'a', 'b', 'c', 'd' ]
+      choices:
+        - 'a'
+        - 'b'
+        - 'c'
+        - 'd'
     - name: test_object
       type: object
       usage: "test object with json format"
       default: '{"a": 1, "b": 2}'
+      choices:
+        - '{"b": 2, "a": 1}'
+        - '{"a": 1, "b": 3}'
+        - '{"a": 2, "b": 2}'
     - name: test_array
       type: array
       usage: "test array with json format"
       default: '[1, 2, 3]'
+      choices:
+        - '[1, 2, 3]'
+        - '[2, 3, 4]'
+        - '[3, 4, 5]'
     - name: lib1_test
       export: lib1.test
       hidden: true

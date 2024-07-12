@@ -59,14 +59,16 @@ func NewApplicationOptionExportInspection(items map[string]*ApplicationOptionExp
 // region ApplicationOptionExportItemInspection
 
 type ApplicationOptionExportItemInspection struct {
-	Value any    `yaml:"value" toml:"value" json:"value"`
-	Type  string `yaml:"type" toml:"type" json:"type"`
+	Value  any    `yaml:"value" toml:"value" json:"value"`
+	Type   string `yaml:"type" toml:"type" json:"type"`
+	Source string `yaml:"source" toml:"source" json:"source"`
 }
 
-func NewApplicationOptionExportItemInspection(value any, typ string) *ApplicationOptionExportItemInspection {
+func NewApplicationOptionExportItemInspection(value any, typ, source string) *ApplicationOptionExportItemInspection {
 	return &ApplicationOptionExportItemInspection{
-		Value: value,
-		Type:  typ,
+		Value:  value,
+		Type:   typ,
+		Source: source,
 	}
 }
 

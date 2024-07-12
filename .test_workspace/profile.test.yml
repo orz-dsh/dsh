@@ -4,6 +4,12 @@ argument:
       value: xxxx
       match: >-
         global.test01 == 'value01'
+    - name: app1.test
+      value: a
+    - name: lib3.test
+      value: '3'
+    - name: test_object
+      value: '{"a": 1, "b": 3}'
 executor:
   items:
     - name: powershell

@@ -352,3 +352,19 @@ func CastSlice[T any](slice []T, typ CastType) ([]any, error) {
 	}
 	return result, nil
 }
+
+// region Value
+
+type Value struct {
+	Value any
+}
+
+func WrapValue(value any) *Value {
+	return &Value{Value: value}
+}
+
+func (v *Value) DeepEqual(other *Value) bool {
+	return reflect.DeepEqual(v.Value, other.Value)
+}
+
+// endregion

@@ -2,6 +2,7 @@ package setting
 
 import (
 	. "github.com/orz-dsh/dsh/utils"
+	"reflect"
 	"regexp"
 )
 
@@ -82,8 +83,7 @@ func (s *ProjectOptionItemSetting) setChoices(choices []string) error {
 func (s *ProjectOptionItemSetting) checkChoices(value any) error {
 	if len(s.Choices) > 0 {
 		for i := 0; i < len(s.Choices); i++ {
-			// TODO: check object、array
-			if s.Choices[i] == value {
+			if reflect.DeepEqual(s.Choices[i], value) {
 				return nil
 			}
 		}
