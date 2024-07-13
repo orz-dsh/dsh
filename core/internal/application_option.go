@@ -34,18 +34,20 @@ const (
 // region ApplicationOption
 
 type ApplicationOption struct {
+	Assign *ApplicationOptionAssign
 	Common *ApplicationOptionCommon
 	Export *ApplicationOptionExport
-	Assign *ApplicationOptionAssign
 	Result *ApplicationOptionResult
 }
 
 func NewApplicationOption(projectName string, system *System, evaluator *Evaluator, assigns map[string]string) *ApplicationOption {
+	assign := NewApplicationOptionAssign(projectName, assigns)
+	common := NewApplicationOptionCommon(system, evaluator, assign)
 	return &ApplicationOption{
-		Common: NewApplicationOptionCommon(system, assigns),
-		Export: NewApplicationOptionExport(assigns),
-		Assign: NewApplicationOptionAssign(projectName, assigns),
-		Result: NewApplicationOptionResult(evaluator),
+		Assign: assign,
+		Common: common,
+		Export: NewApplicationOptionExport(assign),
+		Result: NewApplicationOptionResult(common),
 	}
 }
 
@@ -133,14 +135,94 @@ func (o *ApplicationOption) findResult(projectName string, setting *ProjectOptio
 	}
 
 	if source != ApplicationOptionResultSourceExport {
-		o.Export.Items[setting.Export] = NewApplicationOptionExportItem(value, setting.Type, ApplicationOptionExportSource(source))
+		export := NewApplicationOptionExportItem(value, setting.Type, ApplicationOptionExportSource(source))
+		export.Links = append(export.Links, NewApplicationOptionExportItemLink(projectName, setting.Name))
+		o.Export.Items[setting.Export] = export
 	}
 
 	return result, nil
 }
 
 func (o *ApplicationOption) Inspect() *ApplicationOptionInspection {
-	return NewApplicationOptionInspection(o.Common.Inspect(), o.Export.Inspect(), o.Assign.Inspect(), o.Result.Inspect())
+	return NewApplicationOptionInspection(o.Assign.Inspect(), o.Common.Inspect(), o.Export.Inspect(), o.Result.Inspect())
+}
+
+// endregion
+
+// region ApplicationOptionAssign
+
+type ApplicationOptionAssign struct {
+	Common  map[string]string
+	Export  map[string]string
+	Project map[string]map[string]string
+}
+
+func NewApplicationOptionAssign(projectName string, assigns map[string]string) *ApplicationOptionAssign {
+	common := map[string]string{}
+	export := map[string]string{}
+	project := map[string]string{}
+	for k, v := range assigns {
+		if strings.HasPrefix(k, "_") {
+			common[k] = v
+		} else if strings.Contains(k, ".") {
+			export[k] = v
+		} else {
+			project[k] = v
+		}
+	}
+	return &ApplicationOptionAssign{
+		Common: common,
+		Export: export,
+		Project: map[string]map[string]string{
+			projectName: project,
+		},
+	}
+}
+
+func (a *ApplicationOptionAssign) GetValue(projectName string, setting *ProjectOptionItemSetting) (*Value, error) {
+	var value *Value
+	if items, exist1 := a.Project[projectName]; exist1 {
+		if item, exist2 := items[setting.Name]; exist2 {
+			assignValue, err := setting.ParseValue(item)
+			if err != nil {
+				return nil, ErrW(err, "find option result error",
+					Reason("parse argument value error"),
+					KV("projectName", projectName),
+					KV("optionName", setting.Name),
+					KV("optionValue", assignValue),
+				)
+			}
+			value = WrapValue(assignValue)
+		}
+	}
+	return value, nil
+}
+
+func (a *ApplicationOptionAssign) GetCommonItem(optionName string) (string, bool) {
+	if item, exist := a.Common[optionName]; exist {
+		return item, true
+	}
+	return "", false
+}
+
+func (a *ApplicationOptionAssign) GetExportItem(exportName string) (string, bool) {
+	if item, exist := a.Export[exportName]; exist {
+		return item, true
+	}
+	return "", false
+}
+
+func (a *ApplicationOptionAssign) GetProjectItem(projectName, optionName string) (string, bool) {
+	if items, exist1 := a.Project[projectName]; exist1 {
+		if item, exist2 := items[optionName]; exist2 {
+			return item, true
+		}
+	}
+	return "", false
+}
+
+func (a *ApplicationOptionAssign) Inspect() *ApplicationOptionAssignInspection {
+	return NewApplicationOptionAssignInspection(a.Common, a.Export, a.Project)
 }
 
 // endregion
@@ -148,24 +230,25 @@ func (o *ApplicationOption) Inspect() *ApplicationOptionInspection {
 // region ApplicationOptionCommon
 
 type ApplicationOptionCommon struct {
-	Os       string
-	Arch     string
-	Executor string
-	Hostname string
-	Username string
+	Evaluator *Evaluator
+	Os        string
+	Arch      string
+	Executor  string
+	Hostname  string
+	Username  string
 }
 
-func NewApplicationOptionCommon(system *System, arguments map[string]string) *ApplicationOptionCommon {
+func NewApplicationOptionCommon(system *System, evaluator *Evaluator, assign *ApplicationOptionAssign) *ApplicationOptionCommon {
 	os := ""
-	if os = arguments[OptionNameCommonOs]; os == "" {
+	if os, _ = assign.GetCommonItem(OptionNameCommonOs); os == "" {
 		os = system.Os
 	}
 	arch := ""
-	if arch = arguments[OptionNameCommonArch]; arch == "" {
+	if arch, _ = assign.GetCommonItem(OptionNameCommonArch); arch == "" {
 		arch = system.Arch
 	}
 	executor := ""
-	if executor = arguments[OptionNameCommonExecutor]; executor == "" {
+	if executor, _ = assign.GetCommonItem(OptionNameCommonExecutor); executor == "" {
 		if os == "windows" {
 			executor = "cmd"
 		} else {
@@ -173,19 +256,20 @@ func NewApplicationOptionCommon(system *System, arguments map[string]string) *Ap
 		}
 	}
 	hostname := ""
-	if hostname = arguments[OptionNameCommonHostname]; hostname == "" {
-		hostname = system.Os
+	if hostname, _ = assign.GetCommonItem(OptionNameCommonHostname); hostname == "" {
+		hostname = system.Hostname
 	}
 	username := ""
-	if username = arguments[OptionNameCommonUsername]; username == "" {
+	if username, _ = assign.GetCommonItem(OptionNameCommonUsername); username == "" {
 		username = system.Username
 	}
 	return &ApplicationOptionCommon{
-		Os:       os,
-		Arch:     arch,
-		Executor: executor,
-		Hostname: hostname,
-		Username: username,
+		Evaluator: evaluator,
+		Os:        os,
+		Arch:      arch,
+		Executor:  executor,
+		Hostname:  hostname,
+		Username:  username,
 	}
 }
 
@@ -199,12 +283,12 @@ func (c *ApplicationOptionCommon) copy() map[string]any {
 	}
 }
 
-func (c *ApplicationOptionCommon) merge(items map[string]any) map[string]any {
-	result := c.copy()
+func (c *ApplicationOptionCommon) NewEvaluator(items map[string]any) *Evaluator {
+	data := c.copy()
 	if items != nil {
-		maps.Copy(result, items)
+		maps.Copy(data, items)
 	}
-	return result
+	return c.Evaluator.SetRootData("option", data)
 }
 
 func (c *ApplicationOptionCommon) Inspect() *ApplicationOptionCommonInspection {
@@ -216,20 +300,14 @@ func (c *ApplicationOptionCommon) Inspect() *ApplicationOptionCommonInspection {
 // region ApplicationOptionExport
 
 type ApplicationOptionExport struct {
-	Items   map[string]*ApplicationOptionExportItem
-	Assigns map[string]string
+	Assign *ApplicationOptionAssign
+	Items  map[string]*ApplicationOptionExportItem
 }
 
-func NewApplicationOptionExport(assigns map[string]string) *ApplicationOptionExport {
-	a := map[string]string{}
-	for k, v := range assigns {
-		if strings.Contains(k, ".") {
-			a[k] = v
-		}
-	}
+func NewApplicationOptionExport(assign *ApplicationOptionAssign) *ApplicationOptionExport {
 	return &ApplicationOptionExport{
-		Items:   map[string]*ApplicationOptionExportItem{},
-		Assigns: a,
+		Assign: assign,
+		Items:  map[string]*ApplicationOptionExportItem{},
 	}
 }
 
@@ -246,10 +324,11 @@ func (e *ApplicationOptionExport) GetValue(projectName string, setting *ProjectO
 				KV("exportType", export.Type),
 			)
 		}
+		export.Links = append(export.Links, NewApplicationOptionExportItemLink(projectName, setting.Name))
 		value = WrapValue(export.Value)
 	}
 	if value == nil {
-		if assign, exist := e.Assigns[setting.Export]; exist {
+		if assign, exist := e.Assign.GetExportItem(setting.Export); exist {
 			assignValue, err := setting.ParseValue(assign)
 			if err != nil {
 				return nil, ErrW(err, "find option result error",
@@ -258,7 +337,9 @@ func (e *ApplicationOptionExport) GetValue(projectName string, setting *ProjectO
 					KV("optionValue", assign),
 				)
 			}
-			e.Items[setting.Export] = NewApplicationOptionExportItem(assignValue, setting.Type, ApplicationOptionExportSourceAssign)
+			export := NewApplicationOptionExportItem(assignValue, setting.Type, ApplicationOptionExportSourceAssign)
+			export.Links = append(export.Links, NewApplicationOptionExportItemLink(projectName, setting.Name))
+			e.Items[setting.Export] = export
 			value = WrapValue(assignValue)
 		}
 	}
@@ -281,6 +362,7 @@ type ApplicationOptionExportItem struct {
 	Value  any
 	Type   CastType
 	Source ApplicationOptionExportSource
+	Links  []*ApplicationOptionExportItemLink
 }
 
 func NewApplicationOptionExportItem(value any, typ CastType, source ApplicationOptionExportSource) *ApplicationOptionExportItem {
@@ -291,59 +373,32 @@ func NewApplicationOptionExportItem(value any, typ CastType, source ApplicationO
 	}
 }
 
-func (i *ApplicationOptionExportItem) Inspect() *ApplicationOptionExportItemInspection {
-	return NewApplicationOptionExportItemInspection(i.Value, string(i.Type), string(i.Source))
+func (ei *ApplicationOptionExportItem) Inspect() *ApplicationOptionExportItemInspection {
+	links := make([]*ApplicationOptionExportItemLinkInspection, 0, len(ei.Links))
+	for i := 0; i < len(ei.Links); i++ {
+		links = append(links, ei.Links[i].Inspect())
+	}
+	return NewApplicationOptionExportItemInspection(ei.Value, string(ei.Type), string(ei.Source), links)
 }
 
 // endregion
 
-// region ApplicationOptionAssign
+// region ApplicationOptionExportItemLink
 
-type ApplicationOptionAssign struct {
-	Items map[string]map[string]string
+type ApplicationOptionExportItemLink struct {
+	ProjectName string
+	OptionName  string
 }
 
-func NewApplicationOptionAssign(projectName string, assigns map[string]string) *ApplicationOptionAssign {
-	items := map[string]string{}
-	for k, v := range assigns {
-		if strings.HasPrefix(k, "_") {
-			// common option
-			continue
-		}
-		if strings.Contains(k, ".") {
-			// export option
-			continue
-		}
-		items[k] = v
-	}
-	return &ApplicationOptionAssign{
-		Items: map[string]map[string]string{
-			projectName: items,
-		},
+func NewApplicationOptionExportItemLink(projectName, optionName string) *ApplicationOptionExportItemLink {
+	return &ApplicationOptionExportItemLink{
+		ProjectName: projectName,
+		OptionName:  optionName,
 	}
 }
 
-func (a *ApplicationOptionAssign) GetValue(projectName string, setting *ProjectOptionItemSetting) (*Value, error) {
-	var value *Value
-	if assigns, exist := a.Items[projectName]; exist {
-		if assign, exist := assigns[setting.Name]; exist {
-			assignValue, err := setting.ParseValue(assign)
-			if err != nil {
-				return nil, ErrW(err, "find option result error",
-					Reason("parse argument value error"),
-					KV("projectName", projectName),
-					KV("optionName", setting.Name),
-					KV("optionValue", assignValue),
-				)
-			}
-			value = WrapValue(assignValue)
-		}
-	}
-	return value, nil
-}
-
-func (a *ApplicationOptionAssign) Inspect() *ApplicationOptionAssignInspection {
-	return NewApplicationOptionAssignInspection(a.Items)
+func (l *ApplicationOptionExportItemLink) Inspect() *ApplicationOptionExportItemLinkInspection {
+	return NewApplicationOptionExportItemLinkInspection(l.ProjectName, l.OptionName)
 }
 
 // endregion
@@ -351,30 +406,26 @@ func (a *ApplicationOptionAssign) Inspect() *ApplicationOptionAssignInspection {
 // region ApplicationOptionResult
 
 type ApplicationOptionResult struct {
-	Evaluator *Evaluator
-	Items     map[string]map[string]*ApplicationOptionResultItem
+	Common *ApplicationOptionCommon
+	Items  map[string]map[string]*ApplicationOptionResultItem
 }
 
-func NewApplicationOptionResult(evaluator *Evaluator) *ApplicationOptionResult {
+func NewApplicationOptionResult(common *ApplicationOptionCommon) *ApplicationOptionResult {
 	return &ApplicationOptionResult{
-		Evaluator: evaluator,
-		Items:     map[string]map[string]*ApplicationOptionResultItem{},
+		Common: common,
+		Items:  map[string]map[string]*ApplicationOptionResultItem{},
 	}
-}
-
-func (r *ApplicationOptionResult) NewEvaluator(projectName string) *Evaluator {
-	data := map[string]any{}
-	for k, v := range r.Items[projectName] {
-		data[k] = v.Value
-	}
-	return r.Evaluator.SetRootData("option", data)
 }
 
 func (r *ApplicationOptionResult) GetComputeValue(projectName string, setting *ProjectOptionItemSetting) (*Value, error) {
 	if setting.Compute == "" {
 		return nil, nil
 	}
-	value, err := setting.ComputeValue(r.NewEvaluator(projectName))
+	data := map[string]any{}
+	for k, v := range r.Items[projectName] {
+		data[k] = v.Value
+	}
+	value, err := setting.ComputeValue(r.Common.NewEvaluator(data))
 	if err != nil {
 		return nil, ErrW(err, "get compute value error",
 			KV("projectName", projectName),

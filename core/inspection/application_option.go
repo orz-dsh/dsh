@@ -3,18 +3,36 @@ package inspection
 // region ApplicationOptionInspection
 
 type ApplicationOptionInspection struct {
+	Assign *ApplicationOptionAssignInspection `yaml:"assign" toml:"assign" json:"assign"`
 	Common *ApplicationOptionCommonInspection `yaml:"common" toml:"common" json:"common"`
 	Export *ApplicationOptionExportInspection `yaml:"export" toml:"export" json:"export"`
-	Assign *ApplicationOptionAssignInspection `yaml:"assign" toml:"assign" json:"assign"`
 	Result *ApplicationOptionResultInspection `yaml:"result" toml:"result" json:"result"`
 }
 
-func NewApplicationOptionInspection(common *ApplicationOptionCommonInspection, export *ApplicationOptionExportInspection, assign *ApplicationOptionAssignInspection, result *ApplicationOptionResultInspection) *ApplicationOptionInspection {
+func NewApplicationOptionInspection(assign *ApplicationOptionAssignInspection, common *ApplicationOptionCommonInspection, export *ApplicationOptionExportInspection, result *ApplicationOptionResultInspection) *ApplicationOptionInspection {
 	return &ApplicationOptionInspection{
+		Assign: assign,
 		Common: common,
 		Export: export,
-		Assign: assign,
 		Result: result,
+	}
+}
+
+// endregion
+
+// region ApplicationOptionAssignInspection
+
+type ApplicationOptionAssignInspection struct {
+	Common  map[string]string            `yaml:"common,omitempty" toml:"common,omitempty" json:"common,omitempty"`
+	Export  map[string]string            `yaml:"export,omitempty" toml:"export,omitempty" json:"export,omitempty"`
+	Project map[string]map[string]string `yaml:"project,omitempty" toml:"project,omitempty" json:"project,omitempty"`
+}
+
+func NewApplicationOptionAssignInspection(common map[string]string, export map[string]string, project map[string]map[string]string) *ApplicationOptionAssignInspection {
+	return &ApplicationOptionAssignInspection{
+		Common:  common,
+		Export:  export,
+		Project: project,
 	}
 }
 
@@ -59,30 +77,34 @@ func NewApplicationOptionExportInspection(items map[string]*ApplicationOptionExp
 // region ApplicationOptionExportItemInspection
 
 type ApplicationOptionExportItemInspection struct {
-	Value  any    `yaml:"value" toml:"value" json:"value"`
-	Type   string `yaml:"type" toml:"type" json:"type"`
-	Source string `yaml:"source" toml:"source" json:"source"`
+	Value  any                                          `yaml:"value" toml:"value" json:"value"`
+	Type   string                                       `yaml:"type" toml:"type" json:"type"`
+	Source string                                       `yaml:"source" toml:"source" json:"source"`
+	Links  []*ApplicationOptionExportItemLinkInspection `yaml:"links,omitempty" toml:"links,omitempty" json:"links,omitempty"`
 }
 
-func NewApplicationOptionExportItemInspection(value any, typ, source string) *ApplicationOptionExportItemInspection {
+func NewApplicationOptionExportItemInspection(value any, typ, source string, links []*ApplicationOptionExportItemLinkInspection) *ApplicationOptionExportItemInspection {
 	return &ApplicationOptionExportItemInspection{
 		Value:  value,
 		Type:   typ,
 		Source: source,
+		Links:  links,
 	}
 }
 
 // endregion
 
-// region ApplicationOptionAssignInspection
+// region ApplicationOptionExportItemLinkInspection
 
-type ApplicationOptionAssignInspection struct {
-	Items map[string]map[string]string `yaml:"items,omitempty" toml:"items,omitempty" json:"items,omitempty"`
+type ApplicationOptionExportItemLinkInspection struct {
+	ProjectName string `yaml:"projectName" toml:"projectName" json:"projectName"`
+	OptionName  string `yaml:"optionName" toml:"optionName" json:"optionName"`
 }
 
-func NewApplicationOptionAssignInspection(items map[string]map[string]string) *ApplicationOptionAssignInspection {
-	return &ApplicationOptionAssignInspection{
-		Items: items,
+func NewApplicationOptionExportItemLinkInspection(projectName, optionName string) *ApplicationOptionExportItemLinkInspection {
+	return &ApplicationOptionExportItemLinkInspection{
+		ProjectName: projectName,
+		OptionName:  optionName,
 	}
 }
 
